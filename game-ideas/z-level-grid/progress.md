@@ -1,0 +1,65 @@
+Original prompt: the first game prototype is z-level-grid. in this game I want to see a layer of tilted rectangular grids, lets say a 10x10 grid, rotated about 45 degree, and I want to see 5 layers of this above each other, and one cell of the top grid is selected, marked with a different fill color, and user to move with wasd keys in left-right-forward-backward in one z layer, and with r-f buttons up-and down to next z level. implement this in a browser.
+
+Progress:
+- Created a dependency-free browser/canvas prototype plan for a 10x10 grid across 5 z layers.
+- Implemented `index.html`, `src/styles.css`, and `src/main.js` with canvas rendering, selected-cell highlighting, WASD movement, R/F z movement, `render_game_to_text`, and `advanceTime`.
+- Installed local Playwright dev dependency for smoke testing.
+- Verified the prototype with the develop-web-game Playwright client and inspected screenshots.
+- Added `tests/smoke.mjs`; `npm test` passes and exercises WASD plus R/F movement.
+- Reworked rendering to Three.js/WebGL and added mouse/pointer drag rotation for the whole level stack.
+- Updated `tests/smoke.mjs` to assert WebGL renderer state and verify that mouse drag changes the level rotation.
+- Re-ran `npm test`, the develop-web-game Playwright client, and inspected default plus drag-rotated screenshots.
+- Changed WASD movement to be screen-relative after rotation: W moves toward screen top, S bottom, A left, and D right.
+- Updated smoke tests to assert projected selected-cell movement follows each screen-edge direction after a drag rotation.
+- Added mouse-wheel zoom by changing camera distance with min/max bounds.
+- Removed vertical drag rotation clamp; drag now wraps angles so the level stack can rotate through full 360-degree orientations.
+- Updated smoke tests to verify zoom in/out and vertical rotation beyond the previous clamp.
+- Added right-click drag to rotate the remaining `y` angle while left drag rotates `x/z`.
+- Added live HUD rotation readout showing `x`, `y`, and `z` angles while rotating.
+- Updated smoke tests to verify right-drag `y` rotation and HUD updates.
+- Changed the grid from 10x10 to 100x100 while keeping 5 z layers.
+- Replaced per-cell meshes with one filled surface and one line geometry per layer, plus a single selected-cell marker, to keep WebGL performance stable.
+- Set the default camera closer so the selected cell area is visible; wheel zoom can still pull back for a full-grid view.
+- Changed depth from 5 z layers to 100 z layers.
+- Added a live numeric zoom readout to the HUD and text state already reports `zoom.cameraDistance`.
+- Increased the camera far plane and verified max zoom out still renders the field instead of clipping/disappearing.
+- Removed the large yellow ball marker; the current cell is now only the one-cell yellow highlighter.
+- Added a visited-cell trail: each unique cell the user enters gets a red trail tile, tracked in text state as `trail.visitedCells`.
+- Verified the trail visually after several WASD and z-level moves.
+- Added keyboard rotation controls: `Shift+W/S` rotates `x`, `Shift+A/D` rotates `z`, and `Q/E` rotates Euler `y`.
+- Updated smoke tests and verified HUD rotation readout after keyboard rotation.
+- Added a deterministic solvable maze across all 100 z levels. Each layer has an entry, connected open cells, a stair/exit cell, and a 30% exploration requirement before descending.
+- Movement now blocks closed cells and z descent is gated by the current layer's exploration progress.
+- Added active-layer maze open-cell rendering plus objective HUD text showing progress and stair coordinates.
+- Added `tests/maze.mjs` to verify every layer has a connected entry-to-stair route and the 30% requirement is computed correctly.
+- Split scene construction into `src/scene-builders.js` so `src/main.js` stays within the file-size guideline.
+- Removed the maze system, maze tests, objective HUD, and movement blocking.
+- Restored full-field walkability across all x/y cells and free R/F z-level movement.
+- Set z-level spacing equal to cell size (`layerGap = cellSize = 1`) so the 100x100x100 field forms uniform cubical cells.
+- Added `C` to center the camera on the current cell and reset the field to the default top view.
+- Changed current-cell and trail markers from flat planes to cube volumes; visited cells now highlight as full red cubes.
+- Added vertical boundary lattice lines so rotated views read as a field of cubical cells.
+- Remapped mouse dragging: left drag pans the camera target, right drag rotates `x/y`, and middle drag rotates `z`.
+- Updated HUD labels, text-state controls, and smoke tests for the new mouse mapping.
+- Reduced mouse-wheel zoom sensitivity to fixed 10-unit steps.
+- Changed middle mouse drag to rotate Euler `y` with vertical movement instead of rotating `z`.
+- Split center controls: `C` recenters the selected cell without changing rotation; `Shift+C` recenters and resets to the default top view.
+- Changed mouse-wheel zoom to 1-unit steps, `Shift+wheel` to 10-unit steps, and sustained wheel input to accelerate after a few seconds.
+- Exposed the last zoom step in `render_game_to_text` and added smoke-test coverage for normal, Shift, and accelerated wheel zoom.
+- Changed `C` and `Shift+C` centering to target the center of the selected z grid instead of the selected cell.
+- Changed field rotation to pivot around the currently selected cell, keeping that cell fixed on screen during rotation.
+- Added Shift-held side number labels for all six cube sides, with dynamic zoom-based sizing and number keys `1`-`6` to face a side toward the camera.
+- Split side-label creation into `src/side-labels.js` and material creation into `src/scene-builders.js` to keep `src/main.js` below the file-size limit.
+- Moved the HUD into a separate left column and the WebGL board into the right column so the info box no longer overlaps gameplay.
+- Changed side indicators from billboarding sprites to face-mounted planes, so labels rotate with the cube sides while Shift is held.
+- Remapped side-indicator visibility from Shift to left Alt, made side-label scale fixed, and blocked app-level context menus during right-click rotation.
+- Fixed side `3`/`4` snap rotations and changed number-key side snaps to recenter the camera on the transformed cube center so all six sides start from a comparable view.
+- Added a transient side readout overlay that shows the chosen side number for a few seconds after pressing `1`-`6`.
+- Switched the camera to orthographic projection and added filled, gridded outer faces on all six cube sides so snapped side views remain rectangular and visually consistent.
+- Removed the separate temporary side toast; number-key side changes now temporarily show only the matching cube-mounted side label, while left Alt still shows all side labels.
+- Fixed rotated WASD movement so changing the selected cell no longer reapplies the board transform and moves the viewport; rotation still pivots around the selected cell when rotation input occurs.
+- Corrected cube-shell z bounds to full cell extents and replaced outer face line meshes with textured grid faces to avoid uneven side-cell rendering and line aliasing when rotated.
+- Changed plain `C` to center the viewport on the selected cell's transformed world position, instead of centering on the selected z grid.
+
+TODO:
+- Consider adding mouse hover/click selection if direct cell picking becomes useful.

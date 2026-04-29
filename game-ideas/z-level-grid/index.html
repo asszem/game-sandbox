@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Z-Level Grid</title>
+    <link rel="stylesheet" href="./src/styles.css">
+  </head>
+  <body>
+    <main class="game-shell">
+      <canvas id="game" aria-label="Z-Level Grid prototype"></canvas>
+      <section class="hud" aria-live="polite">
+        <h1>Z-Level Grid</h1>
+        <p>WASD move | Wheel zoom | Left Alt shows sides | 1-6 face side | Left drag pan | Right drag x/y | C center</p>
+        <p id="selected-readout">Selected: x 5, y 5, z 5</p>
+        <p id="rotation-readout">Rotation: x -0.92, y 0.00, z -0.78</p>
+        <p id="zoom-readout">Zoom: 90.0</p>
+        <p id="input-readout">Last input: none</p>
+      </section>
+    </main>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./node_modules/three/build/three.module.js"
+        }
+      }
+    </script>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

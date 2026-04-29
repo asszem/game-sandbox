@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+out/
+public/build/
+
+# Package manager files
+.npm/
+.pnpm-store/
+.yarn/
+!.yarn/releases/
+!.yarn/plugins/
+!.yarn/sdks/
+!.yarn/versions/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Tool caches
+.cache/
+.parcel-cache/
+.vite/
+.turbo/
+.eslintcache
+coverage/
+
+# Testing artifacts
+test-results/
+test-output/
+playwright-report/
+blob-report/
+coverage-final.json
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+
+# Browser game asset pipeline output
+*.blend1
+*.blend2
+*.tmp
+*.temp
+*.bak
+*.orig
+
+# Local server and deployment output
+.vercel/
+.netlify/
+firebase-debug.log
+firestore-debug.log
+
+.vscode

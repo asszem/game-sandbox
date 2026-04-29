@@ -1,0 +1,20 @@
+{
+  "name": "z-level-grid",
+  "version": "1.0.0",
+  "description": "WebGL prototype for navigating stacked z-level grids.",
+  "private": true,
+  "scripts": {
+    "dev": "python3 -m http.server 4173",
+    "test": "node tests/smoke.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "playwright": "^1.59.1"
+  },
+  "dependencies": {
+    "three": "^0.184.0"
+  }
+}
