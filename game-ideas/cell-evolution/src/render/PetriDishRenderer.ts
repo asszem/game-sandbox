@@ -258,7 +258,7 @@ export class PetriDishRenderer {
     );
     dishVeins.position.z = 0.02;
 
-    this.board.add(dish, agar, dishVeins, this.resourceLayer, this.hazardLayer, this.blockLayer, this.effectLayer, this.sensorLayer, this.cellLayer, rim, this.selectedRing);
+    this.board.add(dish, agar, dishVeins, this.resourceLayer, this.hazardLayer, this.effectLayer, this.sensorLayer, this.cellLayer, this.blockLayer, rim, this.selectedRing);
     this.scene.add(ambient, key, this.board);
   }
 
@@ -1215,14 +1215,15 @@ export class PetriDishRenderer {
         this.createBlockGeometry(block),
         this.createMineralMaterial(block.id),
       );
-      mesh.position.set(block.position.x, block.position.y, 4);
+      mesh.position.set(block.position.x, block.position.y, 12);
+      mesh.renderOrder = 820;
       this.blockVisuals.set(block.id, mesh);
       this.blockLayer.add(mesh);
     }
   }
 
   private createMineralMaterial(seed: number): THREE.ShaderMaterial {
-    return this.createTimedShaderMaterial({
+    const material = this.createTimedShaderMaterial({
       transparent: true,
       uniforms: {
         uSeed: { value: seed * 0.037 },
@@ -1234,17 +1235,22 @@ export class PetriDishRenderer {
         varying vec2 vLocal;
         ${this.noiseShaderChunk()}
         void main() {
-          vec2 p = vLocal * 0.08;
-          float strata = sin((p.x * 5.0 + p.y * 2.0) + fbm(p * 7.0 + uSeed) * 3.0);
-          float facets = fbm(p * 16.0 + uSeed);
-          vec3 purple = vec3(0.26, 0.18, 0.58);
-          vec3 teal = vec3(0.18, 0.45, 0.5);
-          vec3 mineral = mix(purple, teal, facets * 0.38 + strata * 0.18);
-          mineral += vec3(0.18, 0.14, 0.32) * smoothstep(0.72, 1.0, facets);
-          gl_FragColor = vec4(mineral, 0.74);
+          vec2 p = vLocal * 0.09;
+          float grain = fbm(p * 22.0 + uSeed);
+          float coarse = fbm(p * 6.0 + uSeed * 1.7);
+          float strata = sin(p.x * 13.0 + p.y * 4.0 + coarse * 4.0);
+          float chips = smoothstep(0.66, 0.98, grain);
+          float cracks = 1.0 - smoothstep(0.02, 0.075, abs(strata) * (0.65 + coarse));
+          vec3 base = mix(vec3(0.22, 0.25, 0.26), vec3(0.48, 0.52, 0.51), coarse);
+          vec3 mineral = base + chips * vec3(0.16, 0.17, 0.16);
+          mineral -= cracks * vec3(0.18, 0.19, 0.18);
+          mineral += smoothstep(0.12, 0.9, vLocal.y * 0.025 + 0.5) * vec3(0.08);
+          gl_FragColor = vec4(mineral, 0.96);
         }
       `,
     });
+    material.depthTest = false;
+    return material;
   }
 
   private pickAtPoint(point: Vec2, state: SimulationState): MapPick {

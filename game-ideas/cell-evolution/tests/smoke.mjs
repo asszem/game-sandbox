@@ -46,6 +46,7 @@ async function runSmoke() {
     await page.keyboard.press('Space');
     await exerciseDishLifecycle(page);
     await exerciseSaveSlot(page);
+    await exerciseDishPicker(page);
     await exerciseTutorial(page);
     await page.waitForTimeout(250);
 
@@ -177,6 +178,32 @@ async function exerciseSaveSlot(page) {
   await clickBySelector(page, '#save-modal-close');
 }
 
+async function exerciseDishPicker(page) {
+  await page.evaluate(() => {
+    const layer = document.querySelector('#dish-layer');
+    layer?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  });
+  await page.waitForFunction(() => document.querySelector('[data-dish-action="tutorial"]')?.hidden === false);
+  await page.waitForFunction(() => document.querySelectorAll('[data-rename-dish]').length >= 1);
+  await page.evaluate(() => {
+    const input = document.querySelector('[data-rename-dish]');
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('Missing dish rename input');
+    }
+    input.value = 'Training Dish';
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await page.evaluate(() => {
+    const icon = document.querySelector('[data-select-dish]');
+    if (!(icon instanceof HTMLButtonElement)) {
+      throw new Error('Missing dish select icon');
+    }
+    icon.click();
+  });
+  await page.waitForFunction(() => document.querySelector('#dish-window-title')?.textContent === 'Training Dish | State');
+  await page.waitForFunction(() => document.querySelector('[data-dish-action="tutorial"]')?.hidden === true);
+}
+
 async function exerciseTutorial(page) {
   await page.evaluate(() => {
     const layer = document.querySelector('#dish-layer');
@@ -186,6 +213,11 @@ async function exerciseTutorial(page) {
   await page.locator('#tutorial-title', { hasText: 'Tutorial | 1/7' }).waitFor();
   await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length === 1);
   await page.waitForFunction(() => document.querySelector('#population-readout')?.textContent === '1 cells');
+  const beforeNextRect = await page.evaluate(() => {
+    const canvas = document.querySelector('.dish-canvas');
+    const rect = canvas.getBoundingClientRect();
+    return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+  });
   await page.evaluate(() => {
     const control = document.querySelector('[data-control="oxygenMetabolism"]');
     if (!(control instanceof HTMLInputElement)) {
@@ -198,6 +230,16 @@ async function exerciseTutorial(page) {
   await clickBySelector(page, '#tutorial-next');
   await page.locator('#tutorial-title', { hasText: 'Tutorial | 2/7' }).waitFor();
   await page.waitForFunction(() => (document.querySelector('#dish-detail')?.textContent ?? '').includes('Glucose1'));
+  const afterNextRect = await page.evaluate(() => {
+    const canvas = document.querySelector('.dish-canvas');
+    const rect = canvas.getBoundingClientRect();
+    return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+  });
+  for (const key of ['left', 'top', 'width', 'height']) {
+    if (Math.abs(beforeNextRect[key] - afterNextRect[key]) > 0.5) {
+      throw new Error(`Tutorial next moved dish ${key}: ${beforeNextRect[key]} -> ${afterNextRect[key]}`);
+    }
+  }
 }
 
 async function clickBySelector(page, selector) {

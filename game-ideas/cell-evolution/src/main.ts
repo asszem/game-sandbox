@@ -18,6 +18,7 @@ type SaveData = {
 
 type DishSaveData = {
   id: number;
+  name?: string;
   state: SimulationState;
   inspectedTarget: MapPick;
   view: RendererView;
@@ -29,7 +30,9 @@ type DishSaveData = {
 
 type DishInstance = {
   id: number;
+  name: string;
   canvas: HTMLCanvasElement;
+  label: HTMLElement;
   simulation: CellSimulation;
   renderer: PetriDishRenderer;
   inspectedTarget: MapPick;
@@ -114,6 +117,7 @@ const tooltipStatus = document.querySelector<HTMLElement>('#tooltip-status');
 const dishWindowTitle = document.querySelector<HTMLElement>('#dish-window-title');
 const dishName = document.querySelector<HTMLElement>('#dish-name');
 const dishDetail = document.querySelector<HTMLElement>('#dish-detail');
+const dishList = document.querySelector<HTMLElement>('#dish-list');
 const entityWindowTitle = document.querySelector<HTMLElement>('#entity-window-title');
 const entityName = document.querySelector<HTMLElement>('#entity-name');
 const entityDetail = document.querySelector<HTMLElement>('#entity-detail');
@@ -418,9 +422,43 @@ newDishEnvironmentSliders.forEach((slider) => {
     syncRangeOutput(slider);
   });
 });
+dishList?.addEventListener('click', (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const selectButton = target.closest<HTMLButtonElement>('[data-select-dish]');
+  if (selectButton) {
+    const dish = dishes.find((item) => item.id === Number(selectButton.dataset.selectDish));
+    if (dish) {
+      setActiveDish(dish, dish.inspectedTarget);
+    }
+  }
+});
+dishList?.addEventListener('change', (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement) || !target.dataset.renameDish) {
+    return;
+  }
+  const dish = dishes.find((item) => item.id === Number(target.dataset.renameDish));
+  if (!dish) {
+    return;
+  }
+  dish.name = sanitizeDishName(target.value, dish.id);
+  target.value = dish.name;
+  updateDishLabel(dish);
+  updateHud();
+});
+dishList?.addEventListener('keydown', (event) => {
+  const target = event.target;
+  if (event.code === 'Enter' && target instanceof HTMLInputElement && target.dataset.renameDish) {
+    event.preventDefault();
+    target.blur();
+  }
+});
 tutorialNext?.addEventListener('click', () => {
   if (tutorialGoalMet) {
-    goToTutorialStep(Math.min(tutorialStepIndex + 1, tutorialSteps.length - 1), true);
+    goToTutorialStep(Math.min(tutorialStepIndex + 1, tutorialSteps.length - 1), false);
   }
 });
 tutorialExit?.addEventListener('click', exitTutorial);
@@ -508,18 +546,24 @@ function createDish(options: {
   size?: number;
   zIndex?: number;
   id?: number;
+  name?: string;
   select?: boolean;
   setup?: NewDishSetup;
 } = {}): DishInstance {
   const canvas = document.createElement('canvas');
   canvas.className = 'dish-canvas';
   canvas.dataset.dishId = String(options.id ?? nextDishId);
+  const label = document.createElement('button');
+  label.className = 'dish-label';
+  label.type = 'button';
+  label.dataset.dishId = String(options.id ?? nextDishId);
   const size = options.size ?? Math.min(560, Math.max(400, Math.round(window.innerWidth * 0.32)));
   canvas.style.width = `${size}px`;
   canvas.style.height = `${size}px`;
   canvas.style.left = `${options.left ?? window.innerWidth - size - 48}px`;
   canvas.style.top = `${options.top ?? window.innerHeight - size - 32}px`;
   dishLayerElement.appendChild(canvas);
+  dishLayerElement.appendChild(label);
 
   const dishSimulation = new CellSimulation();
   if (options.state) {
@@ -536,7 +580,9 @@ function createDish(options: {
   dishRenderer.applyView(options.view);
   const dish: DishInstance = {
     id: options.id ?? nextDishId,
+    name: options.name ?? `Dish ${options.id ?? nextDishId}`,
     canvas,
+    label,
     simulation: dishSimulation,
     renderer: dishRenderer,
     inspectedTarget: options.inspectedTarget ?? { kind: 'dish', id: null },
@@ -550,6 +596,7 @@ function createDish(options: {
   nextDishId = Math.max(nextDishId, dish.id + 1);
   nextDishZ = Math.max(nextDishZ, dish.zIndex + 1);
   canvas.style.zIndex = String(dish.zIndex);
+  updateDishLabel(dish);
   bindDishEvents(dish);
   dishes.push(dish);
   dishRenderer.applyView(options.view);
@@ -560,6 +607,10 @@ function createDish(options: {
 }
 
 function bindDishEvents(dish: DishInstance): void {
+  dish.label.addEventListener('click', () => {
+    setActiveDish(dish, dish.inspectedTarget);
+  });
+
   dish.canvas.addEventListener('contextmenu', (event) => {
     event.preventDefault();
   });
@@ -604,6 +655,7 @@ function bindDishEvents(dish: DishInstance): void {
       }
       dish.canvas.style.left = `${dish.dragStart.left + dx}px`;
       dish.canvas.style.top = `${dish.dragStart.top + dy}px`;
+      updateDishLabel(dish);
     }
   });
 
@@ -673,6 +725,7 @@ function resizeDish(dish: DishInstance, factor: number): void {
   dish.canvas.style.height = `${nextSize}px`;
   dish.canvas.style.left = `${centerX - nextSize / 2}px`;
   dish.canvas.style.top = `${centerY - nextSize / 2}px`;
+  updateDishLabel(dish);
   dish.renderer.applyView(dish.renderer.exportView());
   updateHud();
 }
@@ -687,6 +740,7 @@ function setActiveDish(dish: DishInstance, target: MapPick = { kind: 'dish', id:
   dish.simulation.selectCell(target.kind === 'cell' ? target.id : null);
   dish.zIndex = nextDishZ;
   dish.canvas.style.zIndex = String(nextDishZ);
+  updateDishLabel(dish);
   nextDishZ += 1;
   syncDishSelectionClasses();
   updateHud();
@@ -707,7 +761,16 @@ function clearActiveDish(): void {
 function syncDishSelectionClasses(): void {
   for (const dish of dishes) {
     dish.canvas.classList.toggle('is-selected', dish === activeDish);
+    dish.label.classList.toggle('is-selected', dish === activeDish);
   }
+}
+
+function updateDishLabel(dish: DishInstance): void {
+  const rect = dish.canvas.getBoundingClientRect();
+  dish.label.textContent = dish.name;
+  dish.label.style.left = `${rect.left + rect.width / 2}px`;
+  dish.label.style.top = `${Math.max(10, rect.top - 15)}px`;
+  dish.label.style.zIndex = String(dish.zIndex + 1);
 }
 
 function requireActiveDish(): DishInstance | null {
@@ -827,6 +890,7 @@ function deleteActiveDish(): void {
   }
   dish.renderer.dispose();
   dish.canvas.remove();
+  dish.label.remove();
   dishes = dishes.filter((item) => item !== dish);
   clearActiveDish();
   showToast('Petri dish deleted');
@@ -859,7 +923,7 @@ function goToTutorialStep(stepIndex: number, rebuildWorld: boolean): void {
   dnaButtons.forEach((button) => {
     delete button.dataset.tutorialUsed;
   });
-  if (rebuildWorld) {
+  if (rebuildWorld || !activeDish || dishes.length !== 1) {
     createTutorialWorld();
   }
   enterTutorialStep();
@@ -871,6 +935,7 @@ function createTutorialWorld(): void {
   for (const dish of dishes) {
     dish.renderer.dispose();
     dish.canvas.remove();
+    dish.label.remove();
   }
   dishes = [];
   activeDish = null;
@@ -926,11 +991,16 @@ function enterTutorialStep(): void {
     return;
   }
 
+  const view = activeDish.renderer.exportView();
   simulation.state.running = true;
+  simulation.state.tick = 0;
   simulation.state.resources = [];
   simulation.state.hazards = [];
   simulation.state.blocks = [];
+  simulation.state.cells = [cell];
+  activeDish.accumulator = 0;
   setActiveDish(activeDish, { kind: 'cell', id: cell.id });
+  activeDish.renderer.applyView(view);
 
   if (step.id === 'atp') {
     Object.assign(cell, { position: { x: 0, y: 0 }, velocity: { x: 0, y: 0 }, atp: 72, glucose: 92, oxygen: 88, aminoAcids: 76, ros: 5, oxygenMetabolism: 0.35 });
@@ -1063,7 +1133,7 @@ function renderTutorialMilestones(): void {
     button.disabled = index !== tutorialStepIndex && !tutorialCompleted.has(step.id);
     button.addEventListener('click', () => {
       if (!button.disabled) {
-        goToTutorialStep(index, true);
+        goToTutorialStep(index, false);
       }
     });
     tutorialProgress.appendChild(button);
@@ -1363,6 +1433,10 @@ function updateDishStatsHud(): void {
     dishName.textContent = activeDish ? '' : 'No dish selected';
   }
   if (dishDetail) dishDetail.innerHTML = formatDishState();
+  if (dishList) {
+    dishList.hidden = Boolean(activeDish);
+    dishList.innerHTML = activeDish ? '' : formatDishPickerList();
+  }
   setMeter(energyMeter, 0);
   setMeter(massMeter, 0);
   setMeter(oxygenMeter, 0);
@@ -1371,7 +1445,7 @@ function updateDishStatsHud(): void {
 
 function formatDishState(): string {
   if (!activeDish) {
-    return 'Add a new dish, or click any petri dish to inspect and control it.';
+    return '<div class="dish-picker"><p>Add a new dish, start the tutorial, or select an existing dish below.</p></div>';
   }
   const resources = simulation.state.resources.reduce(
     (counts, resource) => {
@@ -1398,6 +1472,32 @@ function formatDishState(): string {
     ['Radius', simulation.state.boardRadius.toFixed(1)],
   ];
   return `<span class="dish-stat-grid">${stats.map(([label, value]) => `<span class="dish-stat"><span>${label}</span><strong>${value}</strong></span>`).join('')}</span>`;
+}
+
+function formatDishPickerList(): string {
+  if (dishes.length === 0) {
+    return '<div class="dish-picker-empty">No dishes yet.</div>';
+  }
+  return dishes.map((dish) => `
+    <div class="dish-picker-row">
+      <button type="button" class="dish-picker-icon" data-select-dish="${dish.id}" aria-label="Select ${escapeHtml(dish.name)}">◯</button>
+      <input type="text" data-rename-dish="${dish.id}" value="${escapeHtml(dish.name)}" aria-label="Rename ${escapeHtml(dish.name)}" />
+      <span>${dish.simulation.state.cells.length} cells</span>
+      <span>${dish.simulation.state.running ? 'Running' : 'Paused'}</span>
+    </div>
+  `).join('');
+}
+
+function sanitizeDishName(value: string, id: number): string {
+  return value.trim().replace(/\s+/g, ' ').slice(0, 32) || `Dish ${id}`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function updateSelectedEntityHud(selectedCell: Cell | null): void {
@@ -1427,7 +1527,7 @@ function updateSelectedEntityHud(selectedCell: Cell | null): void {
     return;
   }
   if (entityName) entityName.textContent = targetLabel(inspectedTarget);
-  if (entityDetail) entityDetail.textContent = describeHoverTarget(inspectedTarget);
+  if (entityDetail) entityDetail.innerHTML = formatHoverTarget(inspectedTarget);
 }
 
 function fitEntityWindowForSelection(): void {
@@ -1445,11 +1545,78 @@ function updateHoverInfo(): void {
   }
   if (!hoveredTarget) {
     hoverName.textContent = 'Nothing under pointer';
-    hoverDetail.textContent = 'Move the cursor over the petri dish to inspect cells, resources, poison, blocks, and open agar.';
+    hoverDetail.innerHTML = '<div class="hover-fact-grid"><span class="hover-fact" data-tooltip="Move over any dish item to see a compact breakdown here."><span>Hint</span><strong>Hover a dish entity</strong></span></div>';
     return;
   }
   hoverName.textContent = targetLabel(hoveredTarget);
-  hoverDetail.textContent = describeHoverTarget(hoveredTarget);
+  hoverDetail.innerHTML = formatHoverTarget(hoveredTarget);
+}
+
+function formatHoverTarget(target: MapPick): string {
+  if (target.kind === 'cell') {
+    const cell = simulation.state.cells.find((item) => item.id === target.id);
+    if (!cell) return hoverFacts([['Status', 'Signal lost', 'The hovered cell no longer exists in this dish.']]);
+    const awareness = simulation.awarenessRadius(cell);
+    const detections = scanDetections(cell, awareness);
+    return hoverFacts([
+      ['Directive', currentDirective(cell, detections), 'What this cell is currently trying to do based on internal state, DNA, and nearby signals.'],
+      ['ATP', Math.round(cell.atp).toString(), 'Immediate energy used for movement, transport, repair, growth, and division.'],
+      ['Health', `${Math.round(cell.health * 100)}%`, 'Cell survival condition. Poison, starvation, ROS, and low materials lower it.'],
+      ['Sensing', awareness.toFixed(1), 'How far this cell can detect resources, poison, prey, and rivals.'],
+    ]);
+  }
+  if (target.kind === 'resource') {
+    const resource = simulation.state.resources.find((item) => item.id === target.id);
+    if (!resource) return hoverFacts([['Status', 'Consumed', 'This resource was consumed or moved out of range.']]);
+    return hoverFacts([
+      ['Kind', resourceLabel(resource.kind), 'The resource type determines which internal store it can refill.'],
+      ['Amount', resource.amount.toFixed(2), 'Remaining usable material in this marker.'],
+      ['Use', resourceUse(resource.kind), 'How cells benefit from this resource.'],
+      ['Size', resource.radius.toFixed(1), 'Larger markers are easier to see but may require enough cell size to ingest.'],
+    ]);
+  }
+  if (target.kind === 'hazard') {
+    const hazard = simulation.state.hazards.find((item) => item.id === target.id);
+    if (!hazard) return hoverFacts([['Status', 'Faded', 'This poison cloud is no longer present.']]);
+    return hoverFacts([
+      ['Kind', 'Poison cloud', 'Hazards damage cells that overlap them.'],
+      ['Potency', hazard.potency.toFixed(2), 'Higher potency drains more ATP, adds more ROS, and hurts health faster.'],
+      ['Radius', hazard.radius.toFixed(1), 'Cells are affected when their membrane overlaps this radius.'],
+      ['Counter', 'Caution DNA', 'Caution improves avoidance behavior around poison.'],
+    ]);
+  }
+  if (target.kind === 'block') {
+    const block = simulation.state.blocks.find((item) => item.id === target.id);
+    if (!block) return hoverFacts([['Status', 'Gone', 'This mineral block is no longer present.']]);
+    return hoverFacts([
+      ['Kind', 'Mineral block', 'A solid obstacle. Cells cannot overlap or harvest it.'],
+      ['Body', `${Math.round(block.size.x)} x ${Math.round(block.size.y)}`, 'Approximate obstacle width and height.'],
+      ['Radius', block.radius.toFixed(1), 'Collision radius used for keeping cells outside the rock.'],
+      ['Counter', 'Motility DNA', 'Motility helps cells steer around obstacles.'],
+    ]);
+  }
+  return hoverFacts([
+    ['Medium', activeDish ? activeDish.name : 'Petri dish', 'Open agar medium inside the selected petri dish.'],
+    ['Cells', simulation.state.cells.length.toString(), 'Living cells currently in this dish.'],
+    ['Resources', simulation.state.resources.length.toString(), 'Glucose, amino acid, oxygen, and light markers in this dish.'],
+    ['Poison', simulation.state.hazards.length.toString(), 'Hazard clouds currently in this dish.'],
+  ]);
+}
+
+function hoverFacts(facts: Array<[string, string, string]>): string {
+  return `<div class="hover-fact-grid">${facts.map(([label, value, tooltip]) => `<span class="hover-fact" data-tooltip="${escapeHtml(tooltip)}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></span>`).join('')}</div>`;
+}
+
+function resourceLabel(kind: ResourceKind): string {
+  if (kind === 'amino-acid') return 'Amino acids';
+  return kind[0].toUpperCase() + kind.slice(1);
+}
+
+function resourceUse(kind: ResourceKind): string {
+  if (kind === 'glucose') return 'Refills fuel';
+  if (kind === 'amino-acid') return 'Repair and growth';
+  if (kind === 'oxygen') return 'ATP production';
+  return 'Light intake';
 }
 
 function describeHoverTarget(target: MapPick): string {
@@ -1510,7 +1677,7 @@ function targetLabel(target: MapPick): string {
 }
 
 function syncWindowTitles(entityLabel: string): void {
-  const dishLabel = activeDish ? `Dish ${activeDish.id}` : 'No dish';
+  const dishLabel = activeDish ? activeDish.name : 'No dish';
   if (dishWindowTitle) {
     dishWindowTitle.textContent = `${dishLabel} | State`;
   }
@@ -1552,6 +1719,9 @@ function syncCellOnlyPanels(hasSelectedCell: boolean): void {
   }
   dishActionButtons.forEach((button) => {
     const action = button.dataset.dishAction;
+    if (action === 'tutorial') {
+      button.hidden = Boolean(activeDish);
+    }
     const requiresDish = action === 'restart' || action === 'random';
     if (requiresDish) {
       button.hidden = !activeDish;
@@ -1605,6 +1775,7 @@ function exportDish(dish: DishInstance): DishSaveData {
   const rect = dish.canvas.getBoundingClientRect();
   return {
     id: dish.id,
+    name: dish.name,
     state: dish.simulation.exportState(),
     inspectedTarget: dish.inspectedTarget,
     view: dish.renderer.exportView(),
@@ -1745,6 +1916,7 @@ function applySaveData(payload: SaveData, message: string): void {
   for (const dish of dishes) {
     dish.renderer.dispose();
     dish.canvas.remove();
+    dish.label.remove();
   }
   dishes = [];
   activeDish = null;
@@ -1771,6 +1943,7 @@ function applySaveData(payload: SaveData, message: string): void {
   for (const savedDish of savedDishes) {
     createDish({
       id: savedDish.id,
+      name: savedDish.name,
       state: savedDish.state,
       inspectedTarget: savedDish.inspectedTarget,
       view: savedDish.view,
