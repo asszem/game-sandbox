@@ -86,6 +86,9 @@ export class CellSimulation {
     for (const cell of this.state.cells) {
       this.normalizeCell(cell);
     }
+    for (const block of this.state.blocks) {
+      this.normalizeBlock(block);
+    }
     for (const resource of this.state.resources) {
       if ((resource.kind as string) === 'food') {
         resource.kind = 'glucose';
@@ -146,6 +149,7 @@ export class CellSimulation {
 
   spawnBlock(position: Vec2, width = 11, height = 8): Block {
     const block = this.createBlock({ ...position }, width, height);
+    this.keepBlockInDish(block);
     this.state.blocks.push(block);
     return block;
   }
@@ -226,7 +230,7 @@ export class CellSimulation {
         ? 3 + Math.floor(this.rng.range(0, 4))
         : clamp(Math.round(options.blockCount), 0, 24);
       for (let index = 0; index < blockCount; index += 1) {
-        this.state.blocks.push(this.createBlock(this.findOpenPoint(this.state.boardRadius - 18, 10), this.rng.range(7, 18), this.rng.range(5, 16)));
+        this.state.blocks.push(this.createPlacedBlock(this.rng.range(7, 18), this.rng.range(5, 16)));
       }
     } else {
       this.state.blocks.push(
@@ -235,6 +239,9 @@ export class CellSimulation {
         this.createBlock(vec(4, -42), 17, 6),
         this.createBlock(vec(42, 34), 10, 9),
       );
+      for (const block of this.state.blocks) {
+        this.keepBlockInDish(block);
+      }
     }
 
     const defaultCellCount = randomized ? 9 + Math.floor(this.rng.range(0, 18)) : 16;
@@ -282,13 +289,22 @@ export class CellSimulation {
       const wobble = this.rng.range(0.68, 1.18);
       vertices.push(vec(Math.cos(angle) * width * wobble, Math.sin(angle) * height * this.rng.range(0.72, 1.22)));
     }
+    const radius = vertices.reduce((max, point) => Math.max(max, length(point)), 0) + 0.4;
     return {
       id: this.nextId++,
       position,
       size: vec(width * 2, height * 2),
       vertices,
-      radius: Math.max(width, height) * 1.28,
+      radius,
     };
+  }
+
+  private createPlacedBlock(width: number, height: number): Block {
+    const block = this.createBlock(vec(), width, height);
+    const maxCenterDistance = Math.max(0, this.state.boardRadius - block.radius - 2);
+    block.position = this.findOpenPoint(maxCenterDistance, block.radius + 2);
+    this.keepBlockInDish(block);
+    return block;
   }
 
   private createCell(position: Vec2, family = 0, generation = 1): Cell {
@@ -355,6 +371,13 @@ export class CellSimulation {
     cell.rosRate ??= 0;
     cell.lightFactor ??= 0;
     cell.energy = cell.atp;
+  }
+
+  private normalizeBlock(block: Block): void {
+    if (block.vertices.length > 0) {
+      block.radius = block.vertices.reduce((max, point) => Math.max(max, length(point)), 0) + 0.4;
+    }
+    this.keepBlockInDish(block);
   }
 
   private createResource(resourceKind?: ResourceKind): Resource {
@@ -565,15 +588,17 @@ export class CellSimulation {
         const left = this.state.cells[a];
         const right = this.state.cells[b];
         const d = distance(left.position, right.position);
-        const minDistance = left.radius + right.radius;
-        if (d >= minDistance || d <= 0.01) {
+        const minDistance = this.cellCollisionRadius(left) + this.cellCollisionRadius(right);
+        if (d >= minDistance) {
           continue;
         }
 
-        const direction = normalize(sub(right.position, left.position));
+        const direction = d > 0.01
+          ? normalize(sub(right.position, left.position))
+          : normalize(vec(this.rng.signed(1) || 1, this.rng.signed(1)));
         const overlap = minDistance - d;
-        left.position = add(left.position, scale(direction, -overlap * 0.42));
-        right.position = add(right.position, scale(direction, overlap * 0.42));
+        left.position = add(left.position, scale(direction, -overlap * 0.5));
+        right.position = add(right.position, scale(direction, overlap * 0.5));
 
         const hunter = left.radius > right.radius * 1.12 ? left : right.radius > left.radius * 1.12 ? right : null;
         const prey = hunter === left ? right : hunter === right ? left : null;
@@ -602,7 +627,8 @@ export class CellSimulation {
 
   private splitCell(cell: Cell): void {
     const angle = this.rng.range(0, Math.PI * 2);
-    const offset = vec(Math.cos(angle) * cell.radius * 1.2, Math.sin(angle) * cell.radius * 1.2);
+    const offsetDistance = this.cellCollisionRadius(cell) * 1.15;
+    const offset = vec(Math.cos(angle) * offsetDistance, Math.sin(angle) * offsetDistance);
     const child = this.createCell(add(cell.position, offset), 0, cell.generation + 1);
     child.genome = this.mutateGenome(cell.genome);
     child.atp = cell.atp * 0.42;
@@ -624,9 +650,12 @@ export class CellSimulation {
     cell.glycogen *= 0.52;
     cell.mass *= 0.58;
     cell.radius = this.radiusForMass(cell);
-    this.constrainCell(cell);
-    this.constrainCell(child);
     this.state.cells.push(child);
+    this.resolveCellObstacles();
+  }
+
+  private cellCollisionRadius(cell: Cell): number {
+    return cell.radius * Math.max(1, cell.bodyLength) * 1.18 + 0.35;
   }
 
   private removeDeadCells(): void {
@@ -718,7 +747,7 @@ export class CellSimulation {
 
   private keepInDish(cell: Cell): void {
     const d = length(cell.position);
-    const max = Math.max(0, this.state.boardRadius - cell.radius);
+    const max = Math.max(0, this.state.boardRadius - this.cellCollisionRadius(cell));
     if (d > max) {
       const inward = scale(normalize(cell.position), max);
       cell.position = inward;
@@ -727,10 +756,18 @@ export class CellSimulation {
     }
   }
 
+  private keepBlockInDish(block: Block): void {
+    const max = Math.max(0, this.state.boardRadius - block.radius - 2);
+    const d = length(block.position);
+    if (d > max) {
+      block.position = d > 0.001 ? scale(normalize(block.position), max) : vec();
+    }
+  }
+
   private resolveBlocks(cell: Cell): void {
     for (const block of this.state.blocks) {
       const d = distance(cell.position, block.position);
-      const minDistance = block.radius + cell.radius;
+      const minDistance = block.radius + this.cellCollisionRadius(cell);
       if (d < minDistance) {
         const push = this.cellPushDirection(cell, block.position);
         cell.position = add(cell.position, scale(push, minDistance - d + 0.08));
@@ -740,7 +777,8 @@ export class CellSimulation {
   }
 
   private resolveCellObstacles(): void {
-    for (let pass = 0; pass < 4; pass += 1) {
+    for (let pass = 0; pass < 8; pass += 1) {
+      this.resolveCells();
       for (const cell of this.state.cells) {
         this.constrainCell(cell);
       }

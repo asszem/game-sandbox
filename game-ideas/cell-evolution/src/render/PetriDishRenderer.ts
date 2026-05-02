@@ -464,8 +464,7 @@ export class PetriDishRenderer {
         : visual.group.rotation.z;
       const stressed = cell.ros > 52 || (cell.oxygen > 70 && cell.aminoAcids < 25);
       const balanced = cell.atp > 35 && cell.atp < 105 && cell.aminoAcids > 25 && cell.oxygen > 18 && cell.oxygen < 75 && cell.ros < 35;
-      const jitter = stressed && running ? Math.sin(time * 0.08 + cell.id) * 0.18 : 0;
-      visual.group.position.set(cell.position.x + jitter, cell.position.y - jitter * 0.55, 2 + cell.id * 0.0001);
+      visual.group.position.set(cell.position.x, cell.position.y, 2 + cell.id * 0.0001);
       visual.group.scale.set(cell.radius * cell.bodyLength * pulse, cell.radius * pulse, 1);
       visual.group.userData.radius = cell.radius;
       visual.group.userData.bodyLength = cell.bodyLength;
@@ -979,6 +978,11 @@ export class PetriDishRenderer {
     for (const resource of resources) {
       active.add(resource.id);
       let mesh = this.resourceVisuals.get(resource.id);
+      if (mesh && mesh.userData.kind !== resource.kind) {
+        this.resourceLayer.remove(mesh);
+        this.resourceVisuals.delete(resource.id);
+        mesh = undefined;
+      }
       if (!mesh) {
         mesh = this.createResourceVisual(resource);
         this.resourceVisuals.set(resource.id, mesh);
@@ -1000,6 +1004,7 @@ export class PetriDishRenderer {
 
   private createResourceVisual(resource: Resource): THREE.Group {
     const group = new THREE.Group();
+    group.userData.kind = resource.kind;
     const color = RESOURCE_COLORS[resource.kind];
     const material = this.createResourceMaterial(color, resource.kind, resource.id);
 
@@ -1297,7 +1302,24 @@ export class PetriDishRenderer {
   }
 
   private pointInBlock(point: Vec2, block: Block): boolean {
-    return Math.hypot(point.x - block.position.x, point.y - block.position.y) <= block.radius;
+    const local = {
+      x: point.x - block.position.x,
+      y: point.y - block.position.y,
+    };
+    if (Math.hypot(local.x, local.y) > block.radius + 1) {
+      return false;
+    }
+    let inside = false;
+    for (let index = 0, previous = block.vertices.length - 1; index < block.vertices.length; previous = index, index += 1) {
+      const currentVertex = block.vertices[index];
+      const previousVertex = block.vertices[previous];
+      const crosses = (currentVertex.y > local.y) !== (previousVertex.y > local.y)
+        && local.x < ((previousVertex.x - currentVertex.x) * (local.y - currentVertex.y)) / (previousVertex.y - currentVertex.y) + currentVertex.x;
+      if (crosses) {
+        inside = !inside;
+      }
+    }
+    return inside;
   }
 
   private createBlockGeometry(block: Block): THREE.ShapeGeometry {

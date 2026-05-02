@@ -627,6 +627,13 @@ function bindDishEvents(dish: DishInstance): void {
     setActiveDish(dish, dish.inspectedTarget);
   });
 
+  dish.label.addEventListener('dblclick', (event) => {
+    event.preventDefault();
+    setActiveDish(dish, dish.inspectedTarget);
+    dish.renderer.resetZoom();
+    updateHud();
+  });
+
   dish.canvas.addEventListener('contextmenu', (event) => {
     event.preventDefault();
   });
@@ -1564,7 +1571,7 @@ function updateSelectedEntityHud(selectedCell: Cell | null): void {
     if (entityDetail) entityDetail.textContent = `Dish ${activeDish.id} is selected. Click an entity inside this dish to inspect it.`;
     return;
   }
-  if (entityName) entityName.textContent = targetLabel(inspectedTarget, activeDish);
+  if (entityName) entityName.hidden = true;
   if (entityDetail) entityDetail.innerHTML = formatHoverTarget(inspectedTarget, activeDish);
 }
 
