@@ -14,6 +14,12 @@ type SaveData = {
   tooltipsEnabled?: boolean;
 };
 
+type SaveSlot = {
+  name: string;
+  savedAt: number | null;
+  data: SaveData | null;
+};
+
 type GameWindow = {
   id: string;
   element: HTMLElement;
@@ -24,6 +30,8 @@ type GameWindow = {
 type DropItemKind = 'cotton-candy' | 'cat-pawn';
 
 const SAVE_KEY = 'cell-evolution-save-v1';
+const SAVE_SLOTS_KEY = 'cell-evolution-save-slots-v1';
+const SAVE_SLOT_COUNT = 5;
 
 const canvas = document.querySelector<HTMLCanvasElement>('#dish');
 if (!canvas) {
@@ -37,6 +45,8 @@ const tickReadout = document.querySelector<HTMLElement>('#tick-readout');
 const populationReadout = document.querySelector<HTMLElement>('#population-readout');
 const stateReadout = document.querySelector<HTMLElement>('#state-readout');
 const zoomReadout = document.querySelector<HTMLElement>('#zoom-readout');
+const tooltipToggle = document.querySelector<HTMLInputElement>('#tooltip-toggle');
+const tooltipStatus = document.querySelector<HTMLElement>('#tooltip-status');
 const selectedTitleTargets = document.querySelectorAll<HTMLElement>('[data-selected-title]');
 const selectedName = document.querySelector<HTMLElement>('#selected-name');
 const selectedDetail = document.querySelector<HTMLElement>('#selected-detail');
@@ -44,6 +54,10 @@ const hoverName = document.querySelector<HTMLElement>('#hover-name');
 const hoverDetail = document.querySelector<HTMLElement>('#hover-detail');
 const directiveHeading = document.querySelector<HTMLElement>('#directive-heading');
 const directiveDetail = document.querySelector<HTMLElement>('#directive-detail');
+const metabolicDashboard = document.querySelector<HTMLElement>('.metabolic-dashboard');
+const directiveIntro = document.querySelector<HTMLElement>('.directives-panel .panel-head');
+const transportControlsPanel = document.querySelector<HTMLElement>('.transport-controls');
+const dnaButtonsPanel = document.querySelector<HTMLElement>('.dna-buttons');
 const energyMeter = document.querySelector<HTMLMeterElement>('#energy-meter');
 const massMeter = document.querySelector<HTMLMeterElement>('#mass-meter');
 const oxygenMeter = document.querySelector<HTMLMeterElement>('#oxygen-meter');
@@ -51,6 +65,8 @@ const healthMeter = document.querySelector<HTMLMeterElement>('#health-meter');
 const dnaButtons = document.querySelectorAll<HTMLButtonElement>('[data-dna]');
 const transportControls = document.querySelectorAll<HTMLInputElement>('[data-control]');
 const transportOutputs = document.querySelectorAll<HTMLOutputElement>('[data-control-value]');
+const dishActions = document.querySelector<HTMLElement>('.dish-actions');
+const dishActionButtons = document.querySelectorAll<HTMLButtonElement>('[data-dish-action]');
 const dropItemButtons = document.querySelectorAll<HTMLButtonElement>('[data-drop-item]');
 const atpCore = document.querySelector<HTMLElement>('#atp-core');
 const glucoseRate = document.querySelector<HTMLElement>('#glucose-rate');
@@ -62,6 +78,10 @@ const oxygenDelta = document.querySelector<HTMLElement>('#oxygen-delta');
 const rosDelta = document.querySelector<HTMLElement>('#ros-delta');
 const toastRegion = document.querySelector<HTMLElement>('#toast-region');
 const tooltipLayer = document.querySelector<HTMLElement>('#tooltip-layer');
+const saveModal = document.querySelector<HTMLElement>('#save-modal');
+const saveModalTitle = document.querySelector<HTMLElement>('#save-modal-title');
+const saveModalClose = document.querySelector<HTMLButtonElement>('#save-modal-close');
+const saveSlotList = document.querySelector<HTMLElement>('#save-slot-list');
 const windowSystem = createWindowSystem();
 
 let accumulator = 0;
@@ -73,6 +93,7 @@ let hoveredTarget: MapPick | null = { kind: 'dish', id: null };
 let tooltipsEnabled = true;
 let activeDrop: { pointerId: number | null; kind: DropItemKind; ghost: HTMLElement } | null = null;
 let suppressDropClick = false;
+let saveModalMode: 'save' | 'load' = 'save';
 
 canvas.addEventListener('click', (event) => {
   const pick = renderer.onPointerPick(event, simulation.state);
@@ -137,12 +158,18 @@ window.addEventListener('keydown', (event) => {
     renderer.resetZoom();
     updateHud();
   }
-  if (event.code === 'KeyT') {
+  if (event.code === 'KeyH') {
     event.preventDefault();
-    tooltipsEnabled = !tooltipsEnabled;
-    hideTooltip();
-    showToast(`Tooltips ${tooltipsEnabled ? 'on' : 'off'}`);
+    setTooltipsEnabled(!tooltipsEnabled, true);
   }
+  if (event.code === 'Escape' && saveModal && !saveModal.hidden) {
+    event.preventDefault();
+    closeSaveModal();
+  }
+});
+
+tooltipToggle?.addEventListener('change', () => {
+  setTooltipsEnabled(tooltipToggle.checked, true);
 });
 
 dnaButtons.forEach((button) => {
@@ -192,6 +219,34 @@ dropItemButtons.forEach((button) => {
   });
 });
 
+dishActionButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    const action = button.dataset.dishAction;
+    if (action === 'tutorial') {
+      showToast('Tutorial placeholder');
+    }
+    if (action === 'restart') {
+      restartScenario();
+    }
+    if (action === 'random') {
+      randomScenario();
+    }
+    if (action === 'save') {
+      openSaveModal('save');
+    }
+    if (action === 'load') {
+      openSaveModal('load');
+    }
+  });
+});
+
+saveModalClose?.addEventListener('click', closeSaveModal);
+saveModal?.addEventListener('click', (event) => {
+  if (event.target === saveModal) {
+    closeSaveModal();
+  }
+});
+
 setupTooltips();
 
 function animate(time: number): void {
@@ -226,10 +281,12 @@ function updateHud(): void {
   if (zoomReadout) {
     zoomReadout.textContent = `Zoom ${renderer.getZoomPercent()}%`;
   }
+  syncTooltipToggle();
   updateHoverInfo();
 
   const selected = inspectedTarget.kind === 'cell' ? simulation.selectedCell : null;
-  syncSelectedEntityTitles(selectedEntityLabel());
+  syncCellOnlyPanels(Boolean(selected));
+  syncSelectedEntityTitles(selected ? selectedEntityLabel() : 'Petri dish');
   if (selected) {
     const awareness = simulation.awarenessRadius(selected);
     const detections = scanDetections(selected, awareness);
@@ -259,8 +316,7 @@ function updateHud(): void {
   setDnaEnabled(false);
   syncMetabolicDashboard(null);
   syncTransportControls(null);
-  updateInspectionHud();
-  updateDirectiveForNonCell();
+  updateDishStatsHud();
 }
 
 function describeCellState(
@@ -367,53 +423,7 @@ function setMeter(meter: HTMLMeterElement | null, value: number): void {
   }
 }
 
-function updateInspectionHud(): void {
-  const target = inspectedTarget;
-  if (target.kind === 'resource') {
-    const resource = simulation.state.resources.find((item) => item.id === target.id);
-    if (resource) {
-      const names = {
-        glucose: 'Glucose',
-        'amino-acid': 'Amino acids',
-        oxygen: 'Oxygen pocket',
-        light: 'Light bloom',
-      };
-      if (selectedName) selectedName.textContent = names[resource.kind];
-      if (selectedDetail) selectedDetail.textContent = describeResource(resource.kind, resource.amount);
-      setMeter(energyMeter, resource.amount);
-      setMeter(massMeter, resource.radius / 8);
-      setMeter(oxygenMeter, resource.kind === 'oxygen' ? resource.amount : 0);
-      setMeter(healthMeter, resource.kind === 'oxygen' ? 0.65 : resource.kind === 'light' ? 0.85 : 0.35);
-      return;
-    }
-  }
-
-  if (target.kind === 'hazard') {
-    const hazard = simulation.state.hazards.find((item) => item.id === target.id);
-    if (hazard) {
-      if (selectedName) selectedName.textContent = 'Poison cloud';
-      if (selectedDetail) selectedDetail.textContent = `Toxic zone · potency ${hazard.potency.toFixed(2)} · cautious cells steer away.`;
-      setMeter(energyMeter, 0);
-      setMeter(massMeter, hazard.radius / 6);
-      setMeter(oxygenMeter, 0);
-      setMeter(healthMeter, hazard.potency);
-      return;
-    }
-  }
-
-  if (target.kind === 'block') {
-    const block = simulation.state.blocks.find((item) => item.id === target.id);
-    if (block) {
-      if (selectedName) selectedName.textContent = 'Mineral block';
-      if (selectedDetail) selectedDetail.textContent = `Non-living obstacle · ${Math.round(block.size.x)} x ${Math.round(block.size.y)} · cells must route around it.`;
-      setMeter(energyMeter, 0);
-      setMeter(massMeter, Math.min(1, (block.size.x * block.size.y) / 260));
-      setMeter(oxygenMeter, 0);
-      setMeter(healthMeter, 1);
-      return;
-    }
-  }
-
+function updateDishStatsHud(): void {
   if (selectedName) selectedName.textContent = 'Petri dish medium';
   if (selectedDetail) selectedDetail.textContent = describeDishState();
   setMeter(energyMeter, 0);
@@ -477,18 +487,6 @@ function describeHoverTarget(target: MapPick): string {
   return `Open agar medium · ${simulation.state.cells.length} cells, ${simulation.state.resources.length} resources, ${simulation.state.hazards.length} poison clouds · tick ${simulation.state.tick}.`;
 }
 
-function updateDirectiveForNonCell(): void {
-  if (directiveHeading) {
-    directiveHeading.textContent = inspectedTarget.kind === 'dish' ? 'No active directive' : selectedEntityLabel();
-  }
-  if (directiveDetail) {
-    directiveDetail.textContent =
-      inspectedTarget.kind === 'cell'
-        ? directiveDetail.textContent ?? ''
-        : 'Select a living cell to micromanage transporters, mitochondria, ribosomes, and DNA directive pressure.';
-  }
-}
-
 function selectedEntityLabel(): string {
   return targetLabel(inspectedTarget);
 }
@@ -520,6 +518,24 @@ function syncSelectedEntityTitles(label: string): void {
   });
 }
 
+function syncCellOnlyPanels(hasSelectedCell: boolean): void {
+  if (metabolicDashboard) {
+    metabolicDashboard.hidden = !hasSelectedCell;
+  }
+  if (directiveIntro) {
+    directiveIntro.hidden = !hasSelectedCell;
+  }
+  if (transportControlsPanel) {
+    transportControlsPanel.hidden = !hasSelectedCell;
+  }
+  if (dnaButtonsPanel) {
+    dnaButtonsPanel.hidden = !hasSelectedCell;
+  }
+  if (dishActions) {
+    dishActions.hidden = inspectedTarget.kind !== 'dish';
+  }
+}
+
 function restartScenario(): void {
   simulation.restart();
   inspectedTarget = { kind: 'dish', id: null };
@@ -528,8 +544,21 @@ function restartScenario(): void {
   showToast('Scenario restarted');
 }
 
+function randomScenario(): void {
+  simulation.randomScenario();
+  inspectedTarget = { kind: 'dish', id: null };
+  renderer.resetZoom();
+  updateHud();
+  showToast('Random scenario started');
+}
+
 function saveGame(): void {
-  const payload: SaveData = {
+  localStorage.setItem(SAVE_KEY, JSON.stringify(createSavePayload()));
+  showToast('Game saved');
+}
+
+function createSavePayload(): SaveData {
+  return {
     version: 1,
     savedAt: Date.now(),
     simulation: simulation.exportState(),
@@ -537,8 +566,6 @@ function saveGame(): void {
     windowLayout: windowSystem.exportLayout(),
     tooltipsEnabled,
   };
-  localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
-  showToast('Game saved');
 }
 
 function loadGame(): void {
@@ -550,19 +577,150 @@ function loadGame(): void {
 
   try {
     const payload = JSON.parse(raw) as SaveData;
-    if (payload.version !== 1) {
-      showToast('Save version not supported');
-      return;
-    }
-    simulation.importState(payload.simulation);
-    inspectedTarget = payload.inspectedTarget ?? { kind: 'dish', id: null };
-    tooltipsEnabled = payload.tooltipsEnabled ?? true;
-    hideTooltip();
-    windowSystem.applyLayout(payload.windowLayout ?? {});
-    updateHud();
-    showToast('Game loaded');
+    applySaveData(payload, 'Game loaded');
   } catch {
     showToast('Could not load saved game');
+  }
+}
+
+function openSaveModal(mode: 'save' | 'load'): void {
+  if (!saveModal || !saveSlotList || !saveModalTitle) {
+    showToast('Save slots unavailable');
+    return;
+  }
+  saveModalMode = mode;
+  saveModalTitle.textContent = mode === 'save' ? 'Save game' : 'Load game';
+  renderSaveSlots();
+  saveModal.hidden = false;
+}
+
+function closeSaveModal(): void {
+  if (saveModal) {
+    saveModal.hidden = true;
+  }
+}
+
+function renderSaveSlots(): void {
+  if (!saveSlotList) {
+    return;
+  }
+  const slots = readSaveSlots();
+  saveSlotList.textContent = '';
+  slots.forEach((slot, index) => {
+    const row = document.createElement('div');
+    row.className = 'save-slot-row';
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.value = slot.name;
+    nameInput.maxLength = 32;
+    nameInput.ariaLabel = `Save slot ${index + 1} name`;
+    nameInput.addEventListener('change', () => {
+      const next = readSaveSlots();
+      next[index].name = nameInput.value.trim() || `Slot ${index + 1}`;
+      writeSaveSlots(next);
+    });
+
+    const meta = document.createElement('span');
+    meta.className = 'save-slot-meta';
+    meta.textContent = slot.savedAt ? new Date(slot.savedAt).toLocaleString() : 'Empty';
+
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.textContent = saveModalMode === 'save' ? 'Save' : 'Load';
+    action.disabled = saveModalMode === 'load' && !slot.data;
+    action.addEventListener('click', () => {
+      if (saveModalMode === 'save') {
+        saveToSlot(index, nameInput.value);
+      } else {
+        loadFromSlot(index);
+      }
+    });
+
+    row.append(nameInput, meta, action);
+    saveSlotList.appendChild(row);
+  });
+}
+
+function saveToSlot(index: number, name: string): void {
+  const slots = readSaveSlots();
+  slots[index] = {
+    name: name.trim() || `Slot ${index + 1}`,
+    savedAt: Date.now(),
+    data: createSavePayload(),
+  };
+  writeSaveSlots(slots);
+  renderSaveSlots();
+  showToast(`Saved ${slots[index].name}`);
+}
+
+function loadFromSlot(index: number): void {
+  const slot = readSaveSlots()[index];
+  if (!slot.data) {
+    showToast('Save slot is empty');
+    return;
+  }
+  applySaveData(slot.data, `Loaded ${slot.name}`);
+  closeSaveModal();
+}
+
+function readSaveSlots(): SaveSlot[] {
+  const fallback: SaveSlot[] = Array.from({ length: SAVE_SLOT_COUNT }, (_, index) => ({
+    name: `Slot ${index + 1}`,
+    savedAt: null,
+    data: null,
+  }));
+  const raw = localStorage.getItem(SAVE_SLOTS_KEY);
+  if (!raw) {
+    return fallback;
+  }
+  try {
+    const parsed = JSON.parse(raw) as Partial<SaveSlot>[];
+    return fallback.map((slot, index) => ({
+      name: parsed[index]?.name || slot.name,
+      savedAt: parsed[index]?.savedAt ?? null,
+      data: parsed[index]?.data ?? null,
+    }));
+  } catch {
+    return fallback;
+  }
+}
+
+function writeSaveSlots(slots: SaveSlot[]): void {
+  localStorage.setItem(SAVE_SLOTS_KEY, JSON.stringify(slots.slice(0, SAVE_SLOT_COUNT)));
+}
+
+function applySaveData(payload: SaveData, message: string): void {
+  if (payload.version !== 1) {
+    showToast('Save version not supported');
+    return;
+  }
+  simulation.importState(payload.simulation);
+  inspectedTarget = payload.inspectedTarget ?? { kind: 'dish', id: null };
+  setTooltipsEnabled(payload.tooltipsEnabled ?? true, false);
+  windowSystem.applyLayout(payload.windowLayout ?? {});
+  updateHud();
+  showToast(message);
+}
+
+function setTooltipsEnabled(enabled: boolean, announce: boolean): void {
+  tooltipsEnabled = enabled;
+  if (!enabled) {
+    hideTooltip();
+  }
+  syncTooltipToggle();
+  if (announce) {
+    showToast(`Hover tooltips ${tooltipsEnabled ? 'on' : 'off'}`);
+  }
+}
+
+function syncTooltipToggle(): void {
+  if (tooltipToggle) {
+    tooltipToggle.checked = tooltipsEnabled;
+  }
+  if (tooltipStatus) {
+    tooltipStatus.textContent = tooltipsEnabled ? 'On' : 'Off';
+    tooltipStatus.dataset.state = tooltipsEnabled ? 'on' : 'off';
   }
 }
 

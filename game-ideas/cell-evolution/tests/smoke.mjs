@@ -38,6 +38,7 @@ try {
   await page.locator('.toast', { hasText: 'Cotton candy dissolved into glucose' }).waitFor();
   await dragDropItem(page, 'cat-pawn', 760, 430);
   await page.locator('.toast', { hasText: 'Cat-pawn dissolved into poison' }).waitFor();
+  await exerciseSaveSlots(page);
   await page.waitForTimeout(700);
 
   const canvasPixels = await page.evaluate(() => {
@@ -84,4 +85,24 @@ async function dragDropItem(page, item, clientX, clientY) {
   await page.mouse.down();
   await page.mouse.move(clientX, clientY, { steps: 8 });
   await page.mouse.up();
+}
+
+async function exerciseSaveSlots(page) {
+  await page.locator('[data-dish-action="save"]').click();
+  await page.locator('#save-modal-title', { hasText: 'Save game' }).waitFor();
+  const firstSlot = page.locator('.save-slot-row').first();
+  await firstSlot.locator('input').fill('Smoke slot');
+  await firstSlot.getByRole('button', { name: 'Save' }).click();
+  await page.waitForFunction(() => {
+    const slots = JSON.parse(localStorage.getItem('cell-evolution-save-slots-v1') ?? '[]');
+    return slots[0]?.name === 'Smoke slot' && Boolean(slots[0]?.data);
+  });
+  await page.locator('#save-modal-close').click();
+
+  await page.locator('[data-dish-action="random"]').click();
+  await page.locator('.toast', { hasText: 'Random scenario started' }).waitFor();
+  await page.locator('[data-dish-action="load"]').click();
+  await page.locator('#save-modal-title', { hasText: 'Load game' }).waitFor();
+  await firstSlot.getByRole('button', { name: 'Load' }).click();
+  await page.locator('.toast', { hasText: 'Loaded Smoke slot' }).waitFor();
 }

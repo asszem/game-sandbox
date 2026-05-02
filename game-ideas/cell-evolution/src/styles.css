@@ -184,27 +184,50 @@ h1 {
 .status-window {
   top: 0;
   left: 0;
-  width: 335px;
+  width: 460px;
 }
 
 .status-strip {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: rgba(247, 252, 240, 0.86);
+  font-size: 12px;
+  line-height: 1.25;
 }
 
 .status-strip span {
-  display: inline-flex;
-  min-width: 74px;
-  justify-content: center;
-  border-radius: 6px;
-  padding: 7px 9px;
-  background: rgba(68, 255, 203, 0.1);
-  color: rgba(247, 252, 240, 0.92);
-  font-size: 12px;
+  white-space: nowrap;
 }
 
 #state-readout[data-state='paused'] {
+  color: #f5d994;
+}
+
+.status-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 4px;
+  color: rgba(247, 252, 240, 0.9);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.status-toggle input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #18ffc8;
+}
+
+.status-toggle strong {
+  color: #f9ff4d;
+  font-weight: 700;
+}
+
+.status-toggle strong[data-state='off'] {
   color: #f5d994;
 }
 
@@ -255,6 +278,45 @@ h3 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.dish-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.dish-actions button,
+.save-slot-row button {
+  min-height: 36px;
+  border: 1px solid rgba(68, 255, 203, 0.26);
+  border-radius: 7px;
+  background: rgba(255, 46, 189, 0.08);
+  color: #f2f8ea;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.dish-actions button:hover,
+.save-slot-row button:hover:not(:disabled) {
+  border-color: rgba(249, 255, 77, 0.64);
+  background: rgba(24, 255, 200, 0.14);
+}
+
+.dish-actions button:active,
+.save-slot-row button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.98);
+}
+
+.save-slot-row button:disabled {
+  border-color: rgba(218, 241, 221, 0.1);
+  background: rgba(226, 238, 216, 0.04);
+  color: rgba(242, 248, 234, 0.36);
+  cursor: not-allowed;
 }
 
 .drop-item-buttons {
@@ -824,7 +886,7 @@ kbd {
   position: fixed;
   right: 18px;
   bottom: 18px;
-  z-index: 5;
+  z-index: 50;
   display: grid;
   gap: 8px;
   pointer-events: none;
@@ -851,6 +913,96 @@ kbd {
 .toast-out {
   opacity: 0;
   transform: translateY(6px);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(3, 8, 11, 0.58);
+  backdrop-filter: blur(6px);
+}
+
+.modal-backdrop[hidden] {
+  display: none;
+}
+
+.save-modal {
+  width: min(560px, calc(100vw - 36px));
+  border: 1px solid rgba(213, 239, 224, 0.22);
+  border-radius: 8px;
+  background: rgba(8, 15, 24, 0.94);
+  box-shadow:
+    0 22px 60px rgba(0, 0, 0, 0.48),
+    0 0 24px rgba(68, 255, 203, 0.13);
+  color: #f7fff3;
+}
+
+.modal-titlebar {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(213, 239, 224, 0.14);
+}
+
+.modal-titlebar h2 {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.modal-close {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 1px solid rgba(68, 255, 203, 0.28);
+  border-radius: 6px;
+  background: rgba(24, 255, 200, 0.08);
+  color: #f7fff3;
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.save-slot-list {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.save-slot-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(130px, auto) 76px;
+  align-items: center;
+  gap: 10px;
+}
+
+.save-slot-row input {
+  min-width: 0;
+  height: 36px;
+  border: 1px solid rgba(68, 255, 203, 0.22);
+  border-radius: 7px;
+  padding: 0 10px;
+  background: rgba(4, 9, 16, 0.78);
+  color: #f7fff3;
+  font: inherit;
+}
+
+.save-slot-row input:focus {
+  border-color: rgba(249, 255, 77, 0.64);
+  outline: none;
+}
+
+.save-slot-meta {
+  color: rgba(235, 246, 226, 0.68);
+  font-size: 12px;
+  text-align: right;
 }
 
 @media (max-width: 760px) {
@@ -888,6 +1040,14 @@ kbd {
     top: 10px;
     left: min(360px, calc(100vw - 296px));
     width: min(286px, calc(100vw - 20px));
+  }
+
+  .save-slot-row {
+    grid-template-columns: 1fr;
+  }
+
+  .save-slot-meta {
+    text-align: left;
   }
 
 }

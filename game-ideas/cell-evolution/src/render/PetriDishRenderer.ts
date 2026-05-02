@@ -38,6 +38,9 @@ const RESOURCE_COLORS = {
   light: 0xf7ff5a,
 };
 
+const LIGHT_RESOURCE_RENDER_ORDER = 1000;
+const LIGHT_RESOURCE_Z = 10;
+
 export class PetriDishRenderer {
   readonly canvas: HTMLCanvasElement;
   private renderer: THREE.WebGLRenderer;
@@ -831,7 +834,7 @@ export class PetriDishRenderer {
         this.resourceVisuals.set(resource.id, mesh);
         this.resourceLayer.add(mesh);
       }
-      mesh.position.set(resource.position.x, resource.position.y, resource.kind === 'light' ? 0.12 : 3);
+      mesh.position.set(resource.position.x, resource.position.y, resource.kind === 'light' ? LIGHT_RESOURCE_Z : 3);
       const amountScale = 0.68 + resource.amount * 0.72;
       const lightScale = resource.kind === 'light' ? 0.75 + resource.amount * 0.45 : amountScale;
       mesh.scale.setScalar(resource.radius * lightScale);
@@ -886,11 +889,18 @@ export class PetriDishRenderer {
       group.add(glow, core);
     }
 
+    if (resource.kind === 'light') {
+      group.renderOrder = LIGHT_RESOURCE_RENDER_ORDER;
+      group.traverse((child) => {
+        child.renderOrder = LIGHT_RESOURCE_RENDER_ORDER;
+      });
+    }
+
     return group;
   }
 
   private createResourceMaterial(color: number, kind: Resource['kind'], seed: number): THREE.ShaderMaterial {
-    return this.createTimedShaderMaterial({
+    const material = this.createTimedShaderMaterial({
       transparent: true,
       uniforms: {
         uColor: { value: new THREE.Color(color) },
@@ -921,6 +931,10 @@ export class PetriDishRenderer {
         }
       `,
     });
+    if (kind === 'light') {
+      material.depthTest = false;
+    }
+    return material;
   }
 
   private createPoisonMaterial(seed: number): THREE.ShaderMaterial {

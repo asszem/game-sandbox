@@ -55,18 +55,11 @@ export class CellSimulation {
   }
 
   restart(): void {
-    this.rng = new Rng(82421);
-    this.nextId = 1;
-    this.events = [];
-    this.state.tick = 0;
-    this.state.running = true;
-    this.state.selectedCellId = null;
-    this.state.boardRadius = 92;
-    this.state.cells = [];
-    this.state.resources = [];
-    this.state.hazards = [];
-    this.state.blocks = [];
-    this.seedWorld();
+    this.resetWorld(82421, false);
+  }
+
+  randomScenario(): void {
+    this.resetWorld(Date.now() ^ Math.floor(Math.random() * 0xffffffff), true);
   }
 
   exportState(): SimulationState {
@@ -143,27 +136,52 @@ export class CellSimulation {
     }
   }
 
-  private seedWorld(): void {
-    this.state.blocks.push(
-      this.createBlock(vec(-24, 25), 15, 7),
-      this.createBlock(vec(29, -18), 8, 16),
-      this.createBlock(vec(4, -42), 17, 6),
-      this.createBlock(vec(42, 34), 10, 9),
-    );
+  private resetWorld(seed: number, randomized: boolean): void {
+    this.rng = new Rng(seed);
+    this.nextId = 1;
+    this.events = [];
+    this.state.tick = 0;
+    this.state.running = true;
+    this.state.selectedCellId = null;
+    this.state.boardRadius = randomized ? this.rng.range(84, 104) : 92;
+    this.state.cells = [];
+    this.state.resources = [];
+    this.state.hazards = [];
+    this.state.blocks = [];
+    this.seedWorld(randomized);
+  }
 
-    for (let index = 0; index < 16; index += 1) {
+  private seedWorld(randomized = false): void {
+    if (randomized) {
+      const blockCount = 3 + Math.floor(this.rng.range(0, 4));
+      for (let index = 0; index < blockCount; index += 1) {
+        this.state.blocks.push(this.createBlock(this.findOpenPoint(this.state.boardRadius - 18, 10), this.rng.range(7, 18), this.rng.range(5, 16)));
+      }
+    } else {
+      this.state.blocks.push(
+        this.createBlock(vec(-24, 25), 15, 7),
+        this.createBlock(vec(29, -18), 8, 16),
+        this.createBlock(vec(4, -42), 17, 6),
+        this.createBlock(vec(42, 34), 10, 9),
+      );
+    }
+
+    const cellCount = randomized ? 9 + Math.floor(this.rng.range(0, 18)) : 16;
+    for (let index = 0; index < cellCount; index += 1) {
       this.state.cells.push(this.createCell(this.findOpenPoint(68, 8), index % 3));
     }
 
-    for (let index = 0; index < 70; index += 1) {
+    const resourceCount = randomized ? 45 + Math.floor(this.rng.range(0, 70)) : 70;
+    for (let index = 0; index < resourceCount; index += 1) {
       this.state.resources.push(this.createResource());
     }
 
-    for (let index = 0; index < 14; index += 1) {
+    const hazardCount = randomized ? 5 + Math.floor(this.rng.range(0, 22)) : 14;
+    for (let index = 0; index < hazardCount; index += 1) {
       this.state.hazards.push({
         id: this.nextId++,
         kind: 'poison',
-        position: this.findOpenPoint(78, 6),
+        position: this.findOpenPoint(this.state.boardRadius - 14, 6),
         radius: this.rng.range(2.3, 5.8),
         potency: this.rng.range(0.45, 1),
       });
