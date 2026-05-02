@@ -23,12 +23,15 @@ export type Cell = {
   aminoAcids: number;
   oxygen: number;
   ros: number;
+  glycogen: number;
   glucoseTransport: number;
   aminoTransport: number;
   oxygenMetabolism: number;
   ribosomeActivity: number;
   atpRate: number;
   glucoseRate: number;
+  glycogenRate: number;
+  autophagyRate: number;
   aminoRate: number;
   oxygenRate: number;
   rosRate: number;

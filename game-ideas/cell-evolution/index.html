@@ -65,13 +65,15 @@
             <p id="entity-detail">Select a dish, then click a cell, resource, poison cloud, or mineral block.</p>
           </div>
           <div class="metabolic-dashboard" aria-label="metabolic engine dashboard" hidden>
-            <div class="metabolic-triangle" data-tooltip="Cell metabolism converts imported glucose and oxygen into ATP, while amino acids feed repair and growth. The animated paths show the current direction of cell-internal resource flow.">
+            <div class="metabolic-triangle" data-tooltip="Cell metabolism consumes current glucose input first, then unpacks glycogen storage, then triggers autophagy if both fuel sources are empty.">
               <svg class="metabolic-flow-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
                 <path class="flow-path flow-path-glucose" d="M 29 40 L 45 65" pathLength="100"></path>
+                <path class="flow-path flow-path-glycogen" d="M 31 33 L 38 43" pathLength="100"></path>
                 <path class="flow-path flow-path-amino" d="M 71 40 L 55 65" pathLength="100"></path>
                 <path class="flow-path flow-path-oxygen" d="M 50 34 L 50 64" pathLength="100"></path>
               </svg>
-              <div class="metabolic-node node-glucose" data-tooltip="Glucose is fuel intake, not stored inventory in this model. Imported glucose is converted into ATP immediately, with oxygen affecting yield and ROS side effects."><span>Glucose Intake</span><strong id="glucose-rate">0</strong></div>
+              <div class="metabolic-node node-glucose" data-tooltip="Glucose is immediate fuel input from food or light. Surplus glucose is packed into glycogen instead of remaining as raw glucose inside the cell."><span>Glucose Input</span><strong id="glucose-rate">0</strong></div>
+              <div class="metabolic-node node-glycogen" data-tooltip="Glycogen is compact glucose storage. Packing surplus glucose costs a little ATP; unpacking glycogen buffers the cell when environmental glucose is gone."><span>Glycogen</span><strong id="glycogen-rate">0</strong></div>
               <div class="metabolic-node node-amino" data-tooltip="Amino acids are stored structural material. The cell spends them on repair, enzymes, growth, and division rather than direct ATP fuel."><span>Amino Acids</span><strong id="amino-rate">0</strong></div>
               <div class="metabolic-node node-oxygen" data-tooltip="Oxygen is stored briefly and used by metabolism. High oxygen use makes ATP production stronger but increases ROS stress."><span>Oxygen</span><strong id="oxygen-rate">0</strong></div>
               <div class="metabolic-core" data-tooltip="ATP is adenosine triphosphate, the cell's immediate energy currency. Movement, transport, repair, antioxidant response, and division all spend ATP."><span>ATP</span><strong id="atp-core">0</strong></div>
@@ -92,10 +94,12 @@
             </div>
             <div class="tri-gauges">
               <div class="tri-gauge" data-gauge="atp" data-tooltip="ATP balance per tick. Positive means the cell is producing more energy than it spends; negative means movement, transport, and repair are consuming reserves."><span>ATP</span><div class="gauge-track"></div><strong id="atp-delta">0</strong></div>
-              <div class="tri-gauge" data-gauge="glucose" data-tooltip="Glucose intake per tick. Glucose is not stored as a separate reserve here; the cell converts it into ATP as it is transported in."><span>Glucose Intake</span><div class="gauge-track"></div><strong id="glucose-delta">0</strong></div>
+              <div class="tri-gauge" data-gauge="glucose" data-tooltip="Glucose input per tick. This includes food intake and light-driven synthesis; surplus is packed into glycogen."><span>Glucose Input</span><div class="gauge-track"></div><strong id="glucose-delta">0</strong></div>
+              <div class="tri-gauge" data-gauge="glycogen" data-tooltip="Glycogen change per tick. Positive means surplus glucose is being stored; negative means the cell is unpacking its buffer for ATP production."><span>Glycogen</span><div class="gauge-track"></div><strong id="glycogen-delta">0</strong></div>
               <div class="tri-gauge" data-gauge="amino" data-tooltip="Amino acid balance per tick. Positive means repair and growth material is increasing; negative means repair, enzyme work, or growth is spending it."><span>Amino Acids</span><div class="gauge-track"></div><strong id="amino-delta">0</strong></div>
               <div class="tri-gauge" data-gauge="oxygen" data-tooltip="Oxygen balance per tick. Oxygen is consumed by mitochondria to make ATP from glucose. Low oxygen limits efficient energy production."><span>Oxygen</span><div class="gauge-track"></div><strong id="oxygen-delta">0</strong></div>
               <div class="tri-gauge" data-gauge="ros" data-tooltip="ROS means Reactive Oxygen Species. ROS is oxidative waste from high metabolism; it damages health unless the cell spends ATP and amino acids on antioxidant repair."><span>ROS Waste</span><div class="gauge-track"></div><strong id="ros-delta">0</strong></div>
+              <div class="tri-gauge" data-gauge="autophagy" data-tooltip="Autophagy is emergency self-eating. When glucose input and glycogen are empty, the cell breaks down amino acids and mass to keep ATP from collapsing, damaging health over time."><span>Autophagy</span><div class="gauge-track"></div><strong id="autophagy-delta">0</strong></div>
             </div>
           </div>
         </div>

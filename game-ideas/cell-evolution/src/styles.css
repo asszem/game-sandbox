@@ -150,6 +150,25 @@ h1 {
   font-weight: 700;
 }
 
+.cell-stat-warning {
+  border-color: rgba(245, 217, 148, 0.48);
+  background: rgba(245, 217, 148, 0.09);
+}
+
+.cell-stat-warning strong {
+  color: #f5d994;
+}
+
+.cell-stat-danger {
+  border-color: rgba(255, 93, 122, 0.62);
+  background: rgba(255, 93, 122, 0.13);
+  box-shadow: inset 0 0 18px rgba(255, 93, 122, 0.06);
+}
+
+.cell-stat-danger strong {
+  color: #ff5d7a;
+}
+
 .game-window {
   position: fixed;
   z-index: 3;
@@ -540,7 +559,7 @@ h3 {
 
 .metabolic-triangle {
   position: relative;
-  height: 224px;
+  height: 238px;
   border: 1px solid rgba(68, 255, 203, 0.16);
   border-radius: 8px;
   background:
@@ -572,6 +591,12 @@ h3 {
   width: 60px;
   height: 60px;
   padding: 7px;
+}
+
+.node-glycogen {
+  width: 50px;
+  height: 50px;
+  padding: 6px;
 }
 
 .metabolic-core {
@@ -614,6 +639,14 @@ h3 {
   transform: translate(-50%, -50%);
   border-color: rgba(255, 230, 46, 0.78);
   box-shadow: 0 0 18px rgba(255, 230, 46, 0.3);
+}
+
+.node-glycogen {
+  left: 36%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  border-color: rgba(245, 217, 148, 0.78);
+  box-shadow: 0 0 18px rgba(245, 217, 148, 0.26);
 }
 
 .node-amino {
@@ -659,6 +692,13 @@ h3 {
   animation-duration: var(--glucose-speed);
 }
 
+.flow-path-glycogen {
+  color: rgba(245, 217, 148, 0.86);
+  stroke: currentColor;
+  stroke-width: max(2px, calc(var(--glucose-flow) * 0.65));
+  animation-duration: var(--glucose-speed);
+}
+
 .flow-path-amino {
   color: rgba(97, 255, 189, 0.82);
   stroke: currentColor;
@@ -677,6 +717,14 @@ h3 {
   filter:
     drop-shadow(0 0 5px currentColor)
     drop-shadow(0 0 9px rgba(255, 102, 46, 0.45));
+}
+
+.metabolic-dashboard.is-autophagy .node-glycogen,
+.metabolic-dashboard.is-autophagy .tri-gauge[data-gauge='autophagy'] {
+  border-color: rgba(255, 93, 122, 0.62);
+  box-shadow:
+    0 0 18px rgba(255, 93, 122, 0.22),
+    inset 0 0 14px rgba(255, 93, 122, 0.08);
 }
 
 @keyframes metabolic-flow {
@@ -785,7 +833,7 @@ h3 {
 
 .tri-gauges {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -856,12 +904,14 @@ h3 {
   border-color: rgba(255, 122, 46, 0.28);
 }
 
-.tri-gauge[data-gauge='ros'] .gauge-track {
+.tri-gauge[data-gauge='ros'] .gauge-track,
+.tri-gauge[data-gauge='autophagy'] .gauge-track {
   background:
     linear-gradient(90deg, rgba(24, 255, 200, 0.16), rgba(247, 255, 243, 0.12) 49%, rgba(247, 255, 243, 0.42) 50%, rgba(247, 255, 243, 0.12) 51%, rgba(255, 122, 46, 0.28));
 }
 
-.tri-gauge[data-gauge='ros'][data-flow='bad'] .gauge-track::after {
+.tri-gauge[data-gauge='ros'][data-flow='bad'] .gauge-track::after,
+.tri-gauge[data-gauge='autophagy'][data-flow='bad'] .gauge-track::after {
   color: #ff7a2e;
   background: linear-gradient(90deg, #ff7a2e, #ff2ebd);
 }

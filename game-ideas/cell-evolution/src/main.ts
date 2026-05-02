@@ -111,13 +111,16 @@ const deleteDishButton = document.querySelector<HTMLButtonElement>('[data-dish-a
 const dropItemButtons = document.querySelectorAll<HTMLButtonElement>('[data-drop-item]');
 const atpCore = document.querySelector<HTMLElement>('#atp-core');
 const glucoseRate = document.querySelector<HTMLElement>('#glucose-rate');
+const glycogenRate = document.querySelector<HTMLElement>('#glycogen-rate');
 const aminoRate = document.querySelector<HTMLElement>('#amino-rate');
 const oxygenRate = document.querySelector<HTMLElement>('#oxygen-rate');
 const atpDelta = document.querySelector<HTMLElement>('#atp-delta');
 const glucoseDelta = document.querySelector<HTMLElement>('#glucose-delta');
+const glycogenDelta = document.querySelector<HTMLElement>('#glycogen-delta');
 const aminoDelta = document.querySelector<HTMLElement>('#amino-delta');
 const oxygenDelta = document.querySelector<HTMLElement>('#oxygen-delta');
 const rosDelta = document.querySelector<HTMLElement>('#ros-delta');
+const autophagyDelta = document.querySelector<HTMLElement>('#autophagy-delta');
 const toastRegion = document.querySelector<HTMLElement>('#toast-region');
 const tooltipLayer = document.querySelector<HTMLElement>('#tooltip-layer');
 const saveModal = document.querySelector<HTMLElement>('#save-modal');
@@ -681,9 +684,11 @@ function describeCellState(
   const strongest = Object.entries(cell.genome).sort((a, b) => b[1] - a[1])[0];
   return [
     `ATP ${Math.round(cell.atp)}`,
+    `glycogen ${Math.round(cell.glycogen)}`,
     `amino acids ${Math.round(cell.aminoAcids)}`,
     `oxygen ${Math.round(cell.oxygen)}`,
     `ROS ${Math.round(cell.ros)}`,
+    cell.autophagyRate > 0 ? `autophagy ${cell.autophagyRate.toFixed(2)}/tick` : 'autophagy off',
     `Gen ${cell.generation}`,
     `dominant DNA ${strongest[0]} ${strongest[1].toFixed(2)}`,
     `sensor range ${awareness.toFixed(1)}`,
@@ -698,10 +703,24 @@ function formatCellState(
   awareness: number,
 ): string {
   const strongest = Object.entries(cell.genome).sort((a, b) => b[1] - a[1])[0];
+  const healthPercent = Math.round(cell.health * 100);
+  const healthState = cell.health <= 0.25 || cell.atp <= 5 || cell.mass <= 0.28
+    ? 'danger'
+    : cell.health <= 0.45 || cell.atp <= 15 || cell.ros >= 45
+      ? 'warning'
+      : 'stable';
   const stats = [
+    [
+      'Health',
+      `${healthPercent}%`,
+      'Health is normalized from 0% to 100%. A cell dies when health reaches 0%, ATP falls below -10, or mass falls below 0.16. To save it: avoid poison, lower ROS by reducing mitochondria if needed, import amino acids for repair, and find glucose/oxygen for ATP.',
+      healthState,
+    ],
     ['ATP', Math.round(cell.atp).toString(), 'ATP is adenosine triphosphate, the immediate energy reserve used for movement, transport, repair, and division.'],
     ['Amino', Math.round(cell.aminoAcids).toString(), 'Amino acids are building material for repair proteins, enzymes, growth, and daughter-cell structure.'],
-    ['Glucose', `${cell.glucoseRate.toFixed(2)}/tick`, 'Glucose is fuel intake, not stored as a separate reserve in this model. The cell converts imported glucose into ATP immediately.'],
+    ['Glucose', `${cell.glucoseRate.toFixed(2)}/tick`, 'Glucose is immediate fuel input from food or light. Surplus is packed into glycogen instead of staying as raw glucose, which would create osmotic pressure.'],
+    ['Glycogen', Math.round(cell.glycogen).toString(), 'Glycogen is compact glucose storage. The cell unpacks it when current glucose input is not enough, before resorting to autophagy.'],
+    ['Autophagy', `${cell.autophagyRate.toFixed(2)}/tick`, 'Autophagy is emergency self-eating: when glucose input and glycogen are empty, the cell breaks down amino acids and mass for fuel, hurting health.', cell.autophagyRate > 0 ? 'danger' : undefined],
     ['Oxygen', Math.round(cell.oxygen).toString(), 'Oxygen lets mitochondria turn glucose into ATP efficiently. More oxygen metabolism can also create ROS waste.'],
     ['ROS', Math.round(cell.ros).toString(), 'ROS means Reactive Oxygen Species: oxidative waste from metabolism that damages health unless repaired with ATP and amino acids.'],
     ['Gen', cell.generation.toString(), 'Generation counts how many divisions separate this cell from the starting population.'],
@@ -710,7 +729,7 @@ function formatCellState(
     ['DNA', `${strongest[0]} ${strongest[1].toFixed(2)}`, 'Dominant DNA is the strongest current trait shaping behavior, metabolism, sensing, and division priorities.'],
     ['Nearby', `${detections.resources} molecules · ${detections.hazards} poison · ${detections.prey} prey · ${detections.rivals} rivals`, 'Nearby signals are what the cell can currently sense and use for movement, feeding, avoidance, or hunting decisions.'],
   ];
-  return `<span class="cell-stat-grid">${stats.map(([label, value, tooltip]) => `<span class="cell-stat" data-tooltip="${tooltip}"><span>${label}</span><strong>${value}</strong></span>`).join('')}</span>`;
+  return `<span class="cell-stat-grid">${stats.map(([label, value, tooltip, state]) => `<span class="cell-stat${state ? ` cell-stat-${state}` : ''}" data-tooltip="${tooltip}"><span>${label}</span><strong>${value}</strong></span>`).join('')}</span>`;
 }
 
 function describeCellDirective(
@@ -1420,13 +1439,16 @@ function syncTransportControls(cell: Cell | null): void {
 function syncMetabolicDashboard(cell: Cell | null): void {
   setText(atpCore, cell ? String(Math.round(cell.atp)) : '0');
   setText(glucoseRate, cell ? `${cell.glucoseRate.toFixed(2)}/t` : '0');
+  setText(glycogenRate, cell ? String(Math.round(cell.glycogen)) : '0');
   setText(aminoRate, cell ? String(Math.round(cell.aminoAcids)) : '0');
   setText(oxygenRate, cell ? String(Math.round(cell.oxygen)) : '0');
   setDelta(atpDelta, cell?.atpRate ?? 0);
   setDelta(glucoseDelta, cell?.glucoseRate ?? 0);
+  setDelta(glycogenDelta, cell?.glycogenRate ?? 0);
   setDelta(aminoDelta, cell?.aminoRate ?? 0);
   setDelta(oxygenDelta, cell?.oxygenRate ?? 0);
   setDelta(rosDelta, cell?.rosRate ?? 0, true);
+  setDelta(autophagyDelta, cell?.autophagyRate ?? 0, true);
 
   const root = document.querySelector<HTMLElement>('.metabolic-dashboard');
   if (root && cell) {
@@ -1437,6 +1459,7 @@ function syncMetabolicDashboard(cell: Cell | null): void {
     root.style.setProperty('--amino-speed', `${Math.round(1250 - cell.aminoTransport * 560)}ms`);
     root.style.setProperty('--oxygen-speed', `${Math.round(1200 - cell.oxygenMetabolism * 650)}ms`);
     root.classList.toggle('is-toxic', cell.ros > 45);
+    root.classList.toggle('is-autophagy', cell.autophagyRate > 0);
   } else if (root) {
     root.style.setProperty('--glucose-flow', '3px');
     root.style.setProperty('--amino-flow', '3px');
@@ -1445,6 +1468,7 @@ function syncMetabolicDashboard(cell: Cell | null): void {
     root.style.setProperty('--amino-speed', '1100ms');
     root.style.setProperty('--oxygen-speed', '1100ms');
     root.classList.remove('is-toxic');
+    root.classList.remove('is-autophagy');
   }
 }
 
