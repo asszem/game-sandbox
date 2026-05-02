@@ -117,8 +117,8 @@ async function exerciseHoverWithoutSelection(page) {
   const firstDish = await dishCenter(page, 0);
   await page.mouse.move(firstDish.x, firstDish.y);
   await page.waitForFunction(() => {
-    const title = document.querySelector('#hover-name')?.textContent ?? '';
-    return title.startsWith('Dish ');
+    const title = document.querySelector('#hover-window-title')?.textContent ?? '';
+    return title.startsWith('Hover Info | Dish ');
   });
 }
 

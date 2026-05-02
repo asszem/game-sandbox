@@ -156,8 +156,9 @@ export class CellSimulation {
 
   spawnCell(position: Vec2, generation = 0): Cell {
     const cell = this.createCell({ ...position }, this.state.cells.length % 3, generation);
+    cell.position = this.findCellSpawnPoint(cell, position, true) ?? this.clampPointToCellBounds(position, this.cellCollisionRadius(cell));
     this.state.cells.push(cell);
-    this.constrainCell(cell);
+    this.resolveCellObstacles();
     return cell;
   }
 
@@ -249,8 +250,15 @@ export class CellSimulation {
       ? defaultCellCount
       : clamp(Math.round(options.cellCount), 1, 80);
     for (let index = 0; index < cellCount; index += 1) {
-      this.state.cells.push(this.createCell(this.findOpenPoint(68, 8), index % 3));
+      const cell = this.createCell(vec(), index % 3);
+      const spawnPoint = this.findCellSpawnPoint(cell);
+      if (!spawnPoint) {
+        break;
+      }
+      cell.position = spawnPoint;
+      this.state.cells.push(cell);
     }
+    this.resolveCellObstacles();
 
     if (options.resourceCounts) {
       for (const kind of RESOURCE_KINDS) {
@@ -656,6 +664,82 @@ export class CellSimulation {
 
   private cellCollisionRadius(cell: Cell): number {
     return cell.radius * Math.max(1, cell.bodyLength) * 1.18 + 0.35;
+  }
+
+  private findCellSpawnPoint(cell: Cell, preferred?: Vec2, allowFallback = false): Vec2 | null {
+    const collisionRadius = this.cellCollisionRadius(cell);
+    const maxCenterDistance = Math.max(0, this.state.boardRadius - collisionRadius);
+    if (preferred) {
+      const clampedPreferred = this.clampPointToCellBounds(preferred, collisionRadius);
+      if (this.isCellSpawnPointOpen(clampedPreferred, cell)) {
+        return clampedPreferred;
+      }
+      for (let attempt = 0; attempt < 48; attempt += 1) {
+        const angle = this.rng.range(0, Math.PI * 2);
+        const spread = Math.sqrt(this.rng.next()) * (collisionRadius + 18);
+        const point = this.clampPointToCellBounds(add(preferred, vec(Math.cos(angle) * spread, Math.sin(angle) * spread)), collisionRadius);
+        if (this.isCellSpawnPointOpen(point, cell)) {
+          return point;
+        }
+      }
+    }
+    for (let attempt = 0; attempt < 220; attempt += 1) {
+      const point = this.randomDishPoint(maxCenterDistance);
+      if (this.isCellSpawnPointOpen(point, cell)) {
+        return point;
+      }
+    }
+    return allowFallback ? this.leastCrowdedCellSpawnPoint(cell, maxCenterDistance) : null;
+  }
+
+  private isCellSpawnPointOpen(point: Vec2, cell: Cell): boolean {
+    const collisionRadius = this.cellCollisionRadius(cell);
+    if (length(point) > this.state.boardRadius - collisionRadius) {
+      return false;
+    }
+    for (const block of this.state.blocks) {
+      if (distance(point, block.position) < block.radius + collisionRadius + 0.6) {
+        return false;
+      }
+    }
+    for (const other of this.state.cells) {
+      if (distance(point, other.position) < collisionRadius + this.cellCollisionRadius(other) + 0.6) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private leastCrowdedCellSpawnPoint(cell: Cell, maxCenterDistance: number): Vec2 {
+    let best = this.randomDishPoint(maxCenterDistance);
+    let bestScore = -Infinity;
+    for (let attempt = 0; attempt < 220; attempt += 1) {
+      const point = this.randomDishPoint(maxCenterDistance);
+      const score = this.cellSpawnClearanceScore(point, cell);
+      if (score > bestScore) {
+        best = point;
+        bestScore = score;
+      }
+    }
+    return best;
+  }
+
+  private cellSpawnClearanceScore(point: Vec2, cell: Cell): number {
+    const collisionRadius = this.cellCollisionRadius(cell);
+    let score = this.state.boardRadius - collisionRadius - length(point);
+    for (const block of this.state.blocks) {
+      score = Math.min(score, distance(point, block.position) - block.radius - collisionRadius);
+    }
+    for (const other of this.state.cells) {
+      score = Math.min(score, distance(point, other.position) - this.cellCollisionRadius(other) - collisionRadius);
+    }
+    return score;
+  }
+
+  private clampPointToCellBounds(point: Vec2, collisionRadius: number): Vec2 {
+    const max = Math.max(0, this.state.boardRadius - collisionRadius);
+    const d = length(point);
+    return d > max ? scale(normalize(point), max) : { ...point };
   }
 
   private removeDeadCells(): void {

@@ -122,7 +122,7 @@ const entityWindowTitle = document.querySelector<HTMLElement>('#entity-window-ti
 const entityName = document.querySelector<HTMLElement>('#entity-name');
 const entityDetail = document.querySelector<HTMLElement>('#entity-detail');
 const directivesWindowTitle = document.querySelector<HTMLElement>('#directives-window-title');
-const hoverName = document.querySelector<HTMLElement>('#hover-name');
+const hoverWindowTitle = document.querySelector<HTMLElement>('#hover-window-title');
 const hoverDetail = document.querySelector<HTMLElement>('#hover-detail');
 const directiveHeading = document.querySelector<HTMLElement>('#directive-heading');
 const directiveDetail = document.querySelector<HTMLElement>('#directive-detail');
@@ -1585,17 +1585,17 @@ function fitEntityWindowForSelection(): void {
 }
 
 function updateHoverInfo(): void {
-  if (!hoverName || !hoverDetail) {
+  if (!hoverWindowTitle || !hoverDetail) {
     return;
   }
   const sourceDish = hoveredDish ?? activeDish;
   if (!hoveredTarget || !sourceDish) {
-    hoverName.textContent = 'Nothing under pointer';
+    hoverWindowTitle.textContent = 'Hover Info | No dish | Nothing';
     hoverDetail.innerHTML = '<div class="hover-fact-grid"><span class="hover-fact" data-tooltip="Move over any dish item to see a compact breakdown here."><span>Hint</span><strong>Hover a dish entity</strong></span></div>';
     return;
   }
   const label = targetLabel(hoveredTarget, sourceDish);
-  hoverName.textContent = hoveredTarget.kind === 'dish' ? sourceDish.name : `${sourceDish.name} | ${label}`;
+  hoverWindowTitle.textContent = `Hover Info | ${sourceDish.name} | ${label}`;
   hoverDetail.innerHTML = formatHoverTarget(hoveredTarget, sourceDish);
 }
 
