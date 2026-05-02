@@ -221,14 +221,15 @@ export class CellSimulation {
       velocity: vec(this.rng.signed(0.08), this.rng.signed(0.08)),
       radius: this.rng.range(2.7, 4.2),
       bodyLength: this.rng.range(1.45, 2.25),
-      energy: this.rng.range(45, 85),
+      energy: 80,
       mass: this.rng.range(0.45, 1.05),
       health: 1,
-      atp: this.rng.range(38, 78),
-      aminoAcids: this.rng.range(35, 75),
-      oxygen: this.rng.range(18, 56),
-      ros: this.rng.range(4, 18),
-      glycogen: this.rng.range(18, 42),
+      atp: 80,
+      glucose: 60,
+      aminoAcids: 70,
+      oxygen: 50,
+      ros: 5,
+      glycogen: 30,
       glucoseTransport: this.rng.range(0.35, 0.65),
       aminoTransport: this.rng.range(0.35, 0.65),
       oxygenMetabolism: this.rng.range(0.3, 0.6),
@@ -249,6 +250,7 @@ export class CellSimulation {
 
   private normalizeCell(cell: Cell): void {
     cell.atp ??= cell.energy ?? 50;
+    cell.glucose ??= 60;
     cell.aminoAcids ??= Math.max(15, (cell.mass ?? 0.6) * 55);
     cell.oxygen ??= 35;
     cell.ros ??= 10;
@@ -285,6 +287,7 @@ export class CellSimulation {
 
   private updateCell(cell: Cell): void {
     const beforeAtp = cell.atp;
+    const beforeGlucose = cell.glucose;
     const beforeAmino = cell.aminoAcids;
     const beforeOxygen = cell.oxygen;
     const beforeRos = cell.ros;
@@ -311,38 +314,54 @@ export class CellSimulation {
     this.applyHazards(cell);
 
     const lightFactor = this.localLight(cell.position);
-    const photosynthesisGlucose = Math.max(0, lightFactor) * (0.025 + cell.genome.harvest * 0.03);
-    cell.glucoseRate += photosynthesisGlucose;
+    const photosynthesisGlucose = Math.max(0, lightFactor) * (0.35 + cell.genome.harvest * 0.25);
+    cell.glucose += photosynthesisGlucose;
     cell.oxygen = clamp(cell.oxygen + lightFactor * 0.018, 0, 100);
-    const oxygenEfficiency = 0.45 + (cell.oxygen / 100) * (0.65 + cell.oxygenMetabolism * 2.2);
-    const glucoseDemand = 0.035 + cell.oxygenMetabolism * 0.115 + Math.min(0.08, length(cell.velocity) * 0.12);
-    let glucoseUsed = Math.min(cell.glucoseRate, glucoseDemand);
-    const glucoseSurplus = Math.max(0, cell.glucoseRate - glucoseUsed);
-    if (glucoseSurplus > 0 && cell.glycogen < 100 && cell.atp > 1) {
-      const packed = Math.min(glucoseSurplus, (100 - cell.glycogen) / 18);
-      cell.glycogen += packed * 18;
-      cell.atp -= packed * 0.32;
+
+    if (cell.glucose > 80 && cell.glycogen < 200 && cell.atp > 1) {
+      const glucoseToPack = Math.min(cell.glucose - 80, (200 - cell.glycogen) * 2);
+      cell.glucose -= glucoseToPack;
+      cell.glycogen += glucoseToPack / 2;
+      cell.atp -= glucoseToPack / 2;
     }
-    if (glucoseUsed < glucoseDemand && cell.glycogen > 0) {
-      const unpacked = Math.min((glucoseDemand - glucoseUsed), cell.glycogen / 18);
-      cell.glycogen -= unpacked * 18;
-      glucoseUsed += unpacked;
+
+    if (cell.glucose < 1 && cell.glycogen > 0) {
+      const glucoseNeeded = 1 - cell.glucose;
+      const glycogenToUnpack = Math.min(cell.glycogen, glucoseNeeded / 2);
+      cell.glycogen -= glycogenToUnpack;
+      cell.glucose += glycogenToUnpack * 2;
     }
-    if (glucoseUsed < glucoseDemand && cell.aminoAcids > 0) {
-      const autophagyAmino = Math.min(cell.aminoAcids, (glucoseDemand - glucoseUsed) * 15);
+
+    const glucoseUsed = Math.min(cell.glucose, 1);
+    if (glucoseUsed > 0) {
+      const oxygenNeeded = glucoseUsed * 0.5;
+      const oxygenUsed = Math.min(cell.oxygen, oxygenNeeded);
+      const oxygenRatio = oxygenNeeded > 0 ? oxygenUsed / oxygenNeeded : 0;
+      cell.glucose -= glucoseUsed;
+      cell.oxygen -= oxygenUsed;
+      cell.atp += 2 * glucoseUsed * oxygenRatio * (0.7 + cell.oxygenMetabolism * 0.6);
+      cell.ros += 0.1 * glucoseUsed * oxygenRatio;
+    }
+
+    if (cell.atp >= 1 && cell.aminoAcids >= 0.2) {
+      cell.atp -= 1;
+      cell.aminoAcids -= 0.2;
+      cell.health = clamp(cell.health + 0.002, 0, 1);
+    } else {
+      cell.health -= 0.012;
+    }
+
+    if (cell.glucose <= 0.01 && cell.glycogen <= 0.01 && cell.aminoAcids > 0) {
+      const autophagyAmino = Math.min(cell.aminoAcids, 2);
       cell.aminoAcids -= autophagyAmino;
-      cell.mass -= autophagyAmino * 0.0016;
-      cell.health -= autophagyAmino * 0.0009;
+      cell.mass -= autophagyAmino * 0.002;
+      cell.health -= autophagyAmino * 0.003;
+      cell.atp += autophagyAmino * 0.8;
       cell.autophagyRate = autophagyAmino;
-      glucoseUsed += autophagyAmino / 15;
     }
-    const atpGenerated = glucoseUsed * (10 + cell.oxygen * 0.12) * oxygenEfficiency;
-    cell.atp += atpGenerated;
-    cell.oxygen = Math.max(0, cell.oxygen - glucoseUsed * (0.18 + cell.oxygenMetabolism * 0.28));
-    cell.ros += glucoseUsed * (cell.oxygen / 100) * (0.42 + cell.oxygenMetabolism * 0.55);
+
     const movementCost = length(cell.velocity) * (0.28 + cell.genome.motility * 0.12) * Math.pow(cell.radius / 3.2, 1.45) * (0.85 + cell.oxygenMetabolism * 0.35);
-    const basalCost = 0.055 + Math.pow(cell.radius / 4.4, 1.25) * 0.06;
-    cell.atp -= basalCost + movementCost;
+    cell.atp -= movementCost;
     const repairBudget = Math.min(cell.atp, cell.aminoAcids, 0.06 + cell.ribosomeActivity * 0.16);
     if (cell.ros > 18 && repairBudget > 0) {
       cell.ros -= repairBudget * (0.55 + cell.ribosomeActivity * 0.65);
@@ -361,14 +380,16 @@ export class CellSimulation {
     cell.health -= Math.max(0, cell.ros - 45) * 0.0008;
     cell.mass = clamp(cell.mass, 0.18, 2.4);
     cell.radius = this.radiusForMass(cell);
-    cell.atp = clamp(cell.atp, -12, 130);
-    cell.aminoAcids = clamp(cell.aminoAcids, 0, 130);
+    cell.atp = clamp(cell.atp, -12, 100);
+    cell.glucose = clamp(cell.glucose, 0, 100);
+    cell.aminoAcids = clamp(cell.aminoAcids, 0, 100);
     cell.oxygen = clamp(cell.oxygen, 0, 100);
     cell.ros = clamp(cell.ros, 0, 100);
-    cell.glycogen = clamp(cell.glycogen, 0, 100);
+    cell.glycogen = clamp(cell.glycogen, 0, 200);
     cell.energy = cell.atp;
-    cell.health = clamp(cell.health + (cell.atp > 15 && cell.aminoAcids > 12 ? 0.002 : -0.01), 0, 1);
+    cell.health = clamp(cell.health + (cell.atp > 15 && cell.aminoAcids > 12 && cell.ros < 35 ? 0.001 : -0.006), 0, 1);
     cell.atpRate = cell.atp - beforeAtp;
+    cell.glucoseRate = cell.glucose - beforeGlucose;
     cell.glycogenRate = cell.glycogen - beforeGlycogen;
     cell.aminoRate = cell.aminoAcids - beforeAmino;
     cell.oxygenRate = cell.oxygen - beforeOxygen;
@@ -496,6 +517,7 @@ export class CellSimulation {
     child.genome = this.mutateGenome(cell.genome);
     child.atp = cell.atp * 0.42;
     child.energy = child.atp;
+    child.glucose = cell.glucose * 0.42;
     child.aminoAcids = cell.aminoAcids * 0.42;
     child.oxygen = cell.oxygen * 0.5;
     child.ros = cell.ros * 0.35;
@@ -505,6 +527,7 @@ export class CellSimulation {
     child.radius = this.radiusForMass(child);
     cell.atp *= 0.48;
     cell.energy = cell.atp;
+    cell.glucose *= 0.52;
     cell.aminoAcids *= 0.52;
     cell.oxygen *= 0.55;
     cell.ros *= 0.65;
@@ -585,7 +608,7 @@ export class CellSimulation {
     cell.atp -= transportCost;
     const uptake = consumedAmount * (0.7 + cell.genome.harvest * 0.55);
     if (resource.kind === 'glucose') {
-      cell.glucoseRate += uptake;
+      cell.glucose += uptake * 18;
     }
     if (resource.kind === 'amino-acid') {
       cell.aminoAcids += uptake * 22;

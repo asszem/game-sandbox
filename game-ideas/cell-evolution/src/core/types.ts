@@ -20,6 +20,7 @@ export type Cell = {
   mass: number;
   health: number;
   atp: number;
+  glucose: number;
   aminoAcids: number;
   oxygen: number;
   ros: number;

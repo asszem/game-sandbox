@@ -650,8 +650,8 @@ function updateHud(): void {
     if (directiveDetail) {
       directiveDetail.textContent = describeCellDirective(selected, detections, awareness);
     }
-    setMeter(energyMeter, selected.atp / 130);
-    setMeter(massMeter, selected.aminoAcids / 130);
+    setMeter(energyMeter, selected.atp / 100);
+    setMeter(massMeter, selected.aminoAcids / 100);
     setMeter(oxygenMeter, selected.oxygen / 100);
     setMeter(healthMeter, selected.health);
     syncMetabolicDashboard(selected);
@@ -684,6 +684,7 @@ function describeCellState(
   const strongest = Object.entries(cell.genome).sort((a, b) => b[1] - a[1])[0];
   return [
     `ATP ${Math.round(cell.atp)}`,
+    `glucose ${Math.round(cell.glucose)}`,
     `glycogen ${Math.round(cell.glycogen)}`,
     `amino acids ${Math.round(cell.aminoAcids)}`,
     `oxygen ${Math.round(cell.oxygen)}`,
@@ -713,14 +714,14 @@ function formatCellState(
     [
       'Health',
       `${healthPercent}%`,
-      'Health is normalized from 0% to 100%. A cell dies when health reaches 0%, ATP falls below -10, or mass falls below 0.16. To save it: avoid poison, lower ROS by reducing mitochondria if needed, import amino acids for repair, and find glucose/oxygen for ATP.',
+      'Health is normalized from 0% to 100%. A cell dies when health reaches 0%, ATP falls below -10, or mass falls below 0.16. To save it: avoid poison, lower ROS by reducing mitochondria if needed, import amino acids for repair, and refill glucose or glycogen for ATP.',
       healthState,
     ],
     ['ATP', Math.round(cell.atp).toString(), 'ATP is adenosine triphosphate, the immediate energy reserve used for movement, transport, repair, and division.'],
     ['Amino', Math.round(cell.aminoAcids).toString(), 'Amino acids are building material for repair proteins, enzymes, growth, and daughter-cell structure.'],
-    ['Glucose', `${cell.glucoseRate.toFixed(2)}/tick`, 'Glucose is immediate fuel input from food or light. Surplus is packed into glycogen instead of staying as raw glucose, which would create osmotic pressure.'],
-    ['Glycogen', Math.round(cell.glycogen).toString(), 'Glycogen is compact glucose storage. The cell unpacks it when current glucose input is not enough, before resorting to autophagy.'],
-    ['Autophagy', `${cell.autophagyRate.toFixed(2)}/tick`, 'Autophagy is emergency self-eating: when glucose input and glycogen are empty, the cell breaks down amino acids and mass for fuel, hurting health.', cell.autophagyRate > 0 ? 'danger' : undefined],
+    ['Glucose', Math.round(cell.glucose).toString(), 'Glucose is immediate fuel measured 0 to 100. The cell burns it first with oxygen to make ATP; surplus above 80 is packed into glycogen.'],
+    ['Glycogen', Math.round(cell.glycogen).toString(), 'Glycogen is compact glucose storage measured 0 to 200. The cell unpacks it when immediate glucose is low, before resorting to autophagy.'],
+    ['Autophagy', `${cell.autophagyRate.toFixed(2)}/tick`, 'Autophagy is emergency self-eating: when glucose and glycogen are empty, the cell breaks down amino acids and mass for fuel, hurting health.', cell.autophagyRate > 0 ? 'danger' : undefined],
     ['Oxygen', Math.round(cell.oxygen).toString(), 'Oxygen lets mitochondria turn glucose into ATP efficiently. More oxygen metabolism can also create ROS waste.'],
     ['ROS', Math.round(cell.ros).toString(), 'ROS means Reactive Oxygen Species: oxidative waste from metabolism that damages health unless repaired with ATP and amino acids.'],
     ['Gen', cell.generation.toString(), 'Generation counts how many divisions separate this cell from the starting population.'],
@@ -1331,7 +1332,6 @@ function finishDropItem(clientX: number, clientY: number): void {
     cancelActiveDrop();
     return;
   }
-  setActiveDish(targetDish, { kind: 'dish', id: null });
   const position = targetDish.renderer.screenToWorld(clientX, clientY);
   const insideDish = distance(position, { x: 0, y: 0 }) <= targetDish.simulation.state.boardRadius - 2;
   if (!insideDish) {
@@ -1438,7 +1438,7 @@ function syncTransportControls(cell: Cell | null): void {
 
 function syncMetabolicDashboard(cell: Cell | null): void {
   setText(atpCore, cell ? String(Math.round(cell.atp)) : '0');
-  setText(glucoseRate, cell ? `${cell.glucoseRate.toFixed(2)}/t` : '0');
+  setText(glucoseRate, cell ? String(Math.round(cell.glucose)) : '0');
   setText(glycogenRate, cell ? String(Math.round(cell.glycogen)) : '0');
   setText(aminoRate, cell ? String(Math.round(cell.aminoAcids)) : '0');
   setText(oxygenRate, cell ? String(Math.round(cell.oxygen)) : '0');

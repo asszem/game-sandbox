@@ -72,15 +72,15 @@
                 <path class="flow-path flow-path-amino" d="M 71 40 L 55 65" pathLength="100"></path>
                 <path class="flow-path flow-path-oxygen" d="M 50 34 L 50 64" pathLength="100"></path>
               </svg>
-              <div class="metabolic-node node-glucose" data-tooltip="Glucose is immediate fuel input from food or light. Surplus glucose is packed into glycogen instead of remaining as raw glucose inside the cell."><span>Glucose Input</span><strong id="glucose-rate">0</strong></div>
+              <div class="metabolic-node node-glucose" data-tooltip="Glucose is immediate fuel, measured 0 to 100. The cell uses it first each tick; if glucose rises above 80, surplus is packed into glycogen."><span>Glucose</span><strong id="glucose-rate">0</strong></div>
               <div class="metabolic-node node-glycogen" data-tooltip="Glycogen is compact glucose storage. Packing surplus glucose costs a little ATP; unpacking glycogen buffers the cell when environmental glucose is gone."><span>Glycogen</span><strong id="glycogen-rate">0</strong></div>
               <div class="metabolic-node node-amino" data-tooltip="Amino acids are stored structural material. The cell spends them on repair, enzymes, growth, and division rather than direct ATP fuel."><span>Amino Acids</span><strong id="amino-rate">0</strong></div>
               <div class="metabolic-node node-oxygen" data-tooltip="Oxygen is stored briefly and used by metabolism. High oxygen use makes ATP production stronger but increases ROS stress."><span>Oxygen</span><strong id="oxygen-rate">0</strong></div>
               <div class="metabolic-core" data-tooltip="ATP is adenosine triphosphate, the cell's immediate energy currency. Movement, transport, repair, antioxidant response, and division all spend ATP."><span>ATP</span><strong id="atp-core">0</strong></div>
             </div>
             <div class="channel-controls" aria-label="cell metabolism controls">
-              <label data-tooltip="Glucose transport controls fuel intake through membrane channels. Higher values ingest glucose faster when touching glucose, generating ATP sooner but spending transport energy and exhausting nearby food.">
-                <span>Glucose intake <output data-control-value="glucoseTransport">50%</output></span>
+              <label data-tooltip="Glucose transport controls fuel intake through membrane channels. Higher values refill the glucose buffer faster when touching glucose, but spend transport energy and exhaust nearby food.">
+                <span>Glucose import <output data-control-value="glucoseTransport">50%</output></span>
                 <input data-control="glucoseTransport" type="range" min="0" max="100" value="50" />
               </label>
               <label data-tooltip="Amino-acid transport controls import of repair and growth material. Higher values build reserves faster, but still cost ATP to operate.">
@@ -94,7 +94,7 @@
             </div>
             <div class="tri-gauges">
               <div class="tri-gauge" data-gauge="atp" data-tooltip="ATP balance per tick. Positive means the cell is producing more energy than it spends; negative means movement, transport, and repair are consuming reserves."><span>ATP</span><div class="gauge-track"></div><strong id="atp-delta">0</strong></div>
-              <div class="tri-gauge" data-gauge="glucose" data-tooltip="Glucose input per tick. This includes food intake and light-driven synthesis; surplus is packed into glycogen."><span>Glucose Input</span><div class="gauge-track"></div><strong id="glucose-delta">0</strong></div>
+              <div class="tri-gauge" data-gauge="glucose" data-tooltip="Glucose buffer change per tick. Negative means the cell is burning immediate fuel; positive means food or light is refilling it."><span>Glucose</span><div class="gauge-track"></div><strong id="glucose-delta">0</strong></div>
               <div class="tri-gauge" data-gauge="glycogen" data-tooltip="Glycogen change per tick. Positive means surplus glucose is being stored; negative means the cell is unpacking its buffer for ATP production."><span>Glycogen</span><div class="gauge-track"></div><strong id="glycogen-delta">0</strong></div>
               <div class="tri-gauge" data-gauge="amino" data-tooltip="Amino acid balance per tick. Positive means repair and growth material is increasing; negative means repair, enzyme work, or growth is spending it."><span>Amino Acids</span><div class="gauge-track"></div><strong id="amino-delta">0</strong></div>
               <div class="tri-gauge" data-gauge="oxygen" data-tooltip="Oxygen balance per tick. Oxygen is consumed by mitochondria to make ATP from glucose. Low oxygen limits efficient energy production."><span>Oxygen</span><div class="gauge-track"></div><strong id="oxygen-delta">0</strong></div>
