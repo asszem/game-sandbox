@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cell Evolution</title>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="dish"></canvas>
+      <section class="hud hud-top" aria-label="simulation status">
+        <div class="game-window status-window" data-window-id="status" aria-label="simulation status window">
+          <div class="window-titlebar">
+            <h2>Status</h2>
+            <button class="window-collapse" type="button" aria-label="Collapse Status">▾</button>
+          </div>
+          <div class="window-body status-strip">
+            <span id="tick-readout">Tick 0</span>
+            <span id="population-readout">0 cells</span>
+            <span id="state-readout">Running</span>
+            <span id="zoom-readout">Zoom 100%</span>
+          </div>
+          <span class="window-resize" aria-hidden="true"></span>
+        </div>
+      </section>
+      <aside class="hud game-window state-panel" data-window-id="state" aria-label="selected entity state window">
+        <div class="window-titlebar">
+          <h2><span data-selected-title>Petri dish</span> / State</h2>
+          <button class="window-collapse" type="button" aria-label="Collapse State">▾</button>
+        </div>
+        <div class="window-body">
+          <div class="panel-head">
+            <h3 id="selected-name">No cell selected</h3>
+            <p id="selected-detail">Click a cell to inspect and infuse DNA.</p>
+          </div>
+          <div class="stat-grid">
+            <label data-tooltip="ATP is the cell's immediate energy currency. Movement, molecule transport, repair, antioxidant response, and division slow down when ATP is low.">ATP <meter id="energy-meter" min="0" max="1" value="0"></meter></label>
+            <label data-tooltip="Amino acids are structural material. The cell spends them to maintain membrane integrity, synthesize enzymes, repair damage, grow, and divide.">Amino Acids <meter id="mass-meter" min="0" max="1" value="0"></meter></label>
+            <label data-tooltip="Oxygen improves ATP yield from glucose, but high oxygen metabolism creates ROS that must be repaired with ATP and amino acids.">Oxygen <meter id="oxygen-meter" min="0" max="1" value="0"></meter></label>
+            <label>Health <meter id="health-meter" min="0" max="1" value="0"></meter></label>
+          </div>
+          <div class="metabolic-dashboard" aria-label="metabolic engine dashboard">
+            <div class="metabolic-triangle">
+              <div class="flow flow-glucose"></div>
+              <div class="flow flow-amino"></div>
+              <div class="flow flow-oxygen"></div>
+              <div class="metabolic-node node-glucose"><span>Glucose</span><strong id="glucose-rate">0</strong></div>
+              <div class="metabolic-node node-amino"><span>Amino</span><strong id="amino-rate">0</strong></div>
+              <div class="metabolic-node node-oxygen"><span>Oxygen</span><strong id="oxygen-rate">0</strong></div>
+              <div class="metabolic-core"><span>ATP</span><strong id="atp-core">0</strong></div>
+            </div>
+            <div class="tri-gauges">
+              <div class="tri-gauge" data-gauge="atp"><span>ATP</span><strong id="atp-delta">0</strong></div>
+              <div class="tri-gauge" data-gauge="amino"><span>Amino</span><strong id="amino-delta">0</strong></div>
+              <div class="tri-gauge" data-gauge="oxygen"><span>Oxygen</span><strong id="oxygen-delta">0</strong></div>
+              <div class="tri-gauge" data-gauge="ros"><span>ROS</span><strong id="ros-delta">0</strong></div>
+            </div>
+          </div>
+        </div>
+        <span class="window-resize" aria-hidden="true"></span>
+      </aside>
+      <aside class="hud game-window directives-panel" data-window-id="directives" aria-label="selected entity directives window">
+        <div class="window-titlebar">
+          <h2><span data-selected-title>Petri dish</span> / Directives</h2>
+          <button class="window-collapse" type="button" aria-label="Collapse Directives">▾</button>
+        </div>
+        <div class="window-body">
+          <div class="panel-head">
+            <h3 id="directive-heading">No active directive</h3>
+            <p id="directive-detail">Select a cell to influence membrane transport and DNA directives.</p>
+          </div>
+          <div class="transport-controls" aria-label="membrane transport controls">
+            <label>
+              <span data-tooltip="Controls glucose membrane transporters. Higher values pull glucose into the cell faster and make ATP sooner, but can drain nearby glucose supplies quickly and costs ATP to operate.">Glucose channels <output data-control-value="glucoseTransport">50%</output></span>
+              <input data-control="glucoseTransport" type="range" min="0" max="100" value="50" />
+            </label>
+            <label>
+              <span data-tooltip="Controls amino-acid transporters. Higher values import repair and growth material faster, but spend ATP and can exhaust local amino-acid clusters.">Amino Acids channels <output data-control-value="aminoTransport">50%</output></span>
+              <input data-control="aminoTransport" type="range" min="0" max="100" value="50" />
+            </label>
+            <label>
+              <span data-tooltip="Controls oxygen-driven metabolic rate. Higher values make the cell move and generate ATP more aggressively, but consume oxygen and create ROS wear that needs ATP and amino acids to repair.">Mitochondria <output data-control-value="oxygenMetabolism">50%</output></span>
+              <input data-control="oxygenMetabolism" type="range" min="0" max="100" value="50" />
+            </label>
+            <label>
+              <span data-tooltip="Controls ribosome allocation. Higher values prioritize repair and antioxidant response; lower values conserve amino acids for growth and size increase.">Ribosomes repair <output data-control-value="ribosomeActivity">50%</output></span>
+              <input data-control="ribosomeActivity" type="range" min="0" max="100" value="50" />
+            </label>
+          </div>
+          <div class="dna-buttons" role="group" aria-label="DNA traits">
+            <button data-dna="motility" data-tooltip="Adds motility DNA: increases acceleration and turn response, improves pursuit/avoidance, and raises movement energy cost.">Motility</button>
+            <button data-dna="split" data-tooltip="Adds split DNA: lowers hesitation before mitosis, so high-energy cells divide sooner and pass mutated traits to offspring.">Split</button>
+            <button data-dna="harvest" data-tooltip="Adds harvest DNA: increases attraction to food, water, and light, improves resource digestion, and lets cells ingest larger resources.">Harvest</button>
+            <button data-dna="predator" data-tooltip="Adds predator DNA: makes the cell chase smaller cells, attack harder on contact, and gain more energy from prey.">Predator</button>
+            <button data-dna="caution" data-tooltip="Adds caution DNA: expands hazard awareness, strengthens poison avoidance, and makes echo-sensing more defensive.">Caution</button>
+          </div>
+        </div>
+        <span class="window-resize" aria-hidden="true"></span>
+      </aside>
+      <aside class="hud game-window hover-info-window" data-window-id="hover-info" aria-label="hovered board entity info window">
+        <div class="window-titlebar">
+          <h2>Hover Info</h2>
+          <button class="window-collapse" type="button" aria-label="Collapse Hover Info">▾</button>
+        </div>
+        <div class="window-body">
+          <div class="panel-head">
+            <h3 id="hover-name">Petri dish medium</h3>
+            <p id="hover-detail">Hover over any cell, molecule, poison cloud, mineral block, or open agar to identify it.</p>
+          </div>
+        </div>
+        <span class="window-resize" aria-hidden="true"></span>
+      </aside>
+      <aside class="hud game-window shortcuts-window is-collapsed" data-window-id="shortcuts" aria-label="keyboard shortcuts window">
+        <div class="window-titlebar">
+          <h2>Shortcuts</h2>
+          <button class="window-collapse" type="button" aria-label="Collapse Shortcuts">▾</button>
+        </div>
+        <div class="window-body shortcut-list">
+          <div><kbd>Space</kbd><span>Start or stop ticks</span></div>
+          <div><kbd>R</kbd><span>Restart scenario</span></div>
+          <div><kbd>F5</kbd><span>Save to browser</span></div>
+          <div><kbd>F9</kbd><span>Load from browser</span></div>
+          <div><kbd>Num 0</kbd><span>Reset zoom to 100%</span></div>
+          <div><kbd>T</kbd><span>Toggle tooltips</span></div>
+          <div><kbd>Mouse</kbd><span>Click, drag, zoom dish</span></div>
+        </div>
+        <span class="window-resize" aria-hidden="true"></span>
+      </aside>
+      <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+      <div id="tooltip-layer" class="tooltip-layer" role="tooltip" hidden></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
