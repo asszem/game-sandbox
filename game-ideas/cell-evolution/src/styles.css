@@ -551,6 +551,10 @@ h3 {
   margin-top: 0;
 }
 
+.selected-dish-actions {
+  margin-top: 10px;
+}
+
 .dish-actions button,
 .game-actions button,
 .save-slot-row button {

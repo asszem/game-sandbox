@@ -1,6 +1,7 @@
 import './styles.css';
 import { CellSimulation } from './core/simulation';
 import type { Cell, DNAKey, ResourceKind, SimulationState, Vec2 } from './core/types';
+import { isRangeControlTarget, isTypingTarget, pulseButton } from './hud/dom';
 import { createToastRegion } from './hud/toasts';
 import { hideTooltip, setupTooltips, syncTooltipToggle } from './hud/tooltips';
 import { createWindowSystem, type WindowLayout } from './hud/windows';
@@ -140,10 +141,10 @@ const healthMeter = document.querySelector<HTMLMeterElement>('#health-meter');
 const dnaButtons = document.querySelectorAll<HTMLButtonElement>('[data-dna]');
 const transportControls = document.querySelectorAll<HTMLInputElement>('[data-control]');
 const transportOutputs = document.querySelectorAll<HTMLOutputElement>('[data-control-value]');
-const dishActions = document.querySelector<HTMLElement>('.dish-actions');
 const dishActionButtons = document.querySelectorAll<HTMLButtonElement>('[data-dish-action]');
 const addDishButton = document.querySelector<HTMLButtonElement>('[data-dish-action="add"]');
 const deleteDishButton = document.querySelector<HTMLButtonElement>('[data-dish-action="delete"]');
+const selectedDishActions = document.querySelector<HTMLElement>('.selected-dish-actions');
 const dropItemButtons = document.querySelectorAll<HTMLButtonElement>('[data-drop-item]');
 const atpCore = document.querySelector<HTMLElement>('#atp-core');
 const glucoseRate = document.querySelector<HTMLElement>('#glucose-rate');
@@ -1767,6 +1768,9 @@ function syncCellOnlyPanels(hasSelectedCell: boolean): void {
   if (dnaButtonsPanel) {
     dnaButtonsPanel.hidden = !hasSelectedCell;
   }
+  if (selectedDishActions) {
+    selectedDishActions.hidden = !activeDish;
+  }
   if (addDishButton) {
     addDishButton.hidden = false;
   }
@@ -2385,21 +2389,6 @@ function setText(element: HTMLElement | null, value: string): void {
   if (element) {
     element.textContent = value;
   }
-}
-
-function pulseButton(button: HTMLButtonElement): void {
-  button.classList.remove('pulsed');
-  requestAnimationFrame(() => {
-    button.classList.add('pulsed');
-  });
-}
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
-}
-
-function isRangeControlTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLInputElement && target.type === 'range';
 }
 
 function clamp(value: number, min: number, max: number): number {

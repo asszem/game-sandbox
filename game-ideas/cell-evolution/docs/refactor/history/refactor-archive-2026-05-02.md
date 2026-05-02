@@ -17,3 +17,21 @@ No behavior changes intended.
 ### Verification
 - `npm run build` - pass
 - `npm test` - pass
+
+## HUD DOM helper extraction - input target and button pulse helpers
+
+### Motivation
+`src/main.ts` still contains generic DOM helpers unrelated to game orchestration. Moving them to `src/hud/` keeps input utility code reusable and reduces app bootstrap noise.
+
+### Old files changed
+- `src/main.ts` - moved typing-target checks, range-target checks, and button pulse helper.
+
+### New files created
+- `src/hud/dom.ts` - generic DOM input and button helpers.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
