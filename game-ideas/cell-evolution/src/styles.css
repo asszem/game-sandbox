@@ -122,14 +122,16 @@ h1 {
   font-size: 12px;
 }
 
-.cell-stat-grid {
+.cell-stat-grid,
+.dish-stat-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 2px;
 }
 
-.cell-stat {
+.cell-stat,
+.dish-stat {
   display: inline-flex;
   min-height: 24px;
   align-items: baseline;
@@ -141,11 +143,18 @@ h1 {
   line-height: 1.1;
 }
 
-.cell-stat span {
+.dish-stat {
+  min-width: 74px;
+  justify-content: space-between;
+}
+
+.cell-stat span,
+.dish-stat span {
   color: rgba(235, 246, 226, 0.58);
 }
 
-.cell-stat strong {
+.cell-stat strong,
+.dish-stat strong {
   color: #f7fff3;
   font-weight: 700;
 }

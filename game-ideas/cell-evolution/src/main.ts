@@ -831,14 +831,14 @@ function setMeter(meter: HTMLMeterElement | null, value: number): void {
 function updateDishStatsHud(): void {
   syncWindowTitles(selectedEntityLabel());
   if (dishName) dishName.textContent = activeDish ? `Dish ${activeDish.id}` : 'No dish selected';
-  if (dishDetail) dishDetail.textContent = describeDishState();
+  if (dishDetail) dishDetail.innerHTML = formatDishState();
   setMeter(energyMeter, 0);
   setMeter(massMeter, 0);
   setMeter(oxygenMeter, 0);
   setMeter(healthMeter, 0);
 }
 
-function describeDishState(): string {
+function formatDishState(): string {
   if (!activeDish) {
     return 'Add another dish, or click any petri dish to inspect and control it.';
   }
@@ -854,7 +854,21 @@ function describeDishState(): string {
   const avgAtp = simulation.state.cells.length
     ? simulation.state.cells.reduce((total, cell) => total + cell.atp, 0) / simulation.state.cells.length
     : 0;
-  return `Board radius ${simulation.state.boardRadius} · ${simulation.state.cells.length} cells · biomass ${livingMass.toFixed(1)} · average ATP ${avgAtp.toFixed(0)} · ${simulation.state.resources.length} resources (${resources.glucose} glucose, ${resources['amino-acid']} amino acids, ${resources.oxygen} oxygen, ${resources.light} light) · ${simulation.state.hazards.length} poison clouds · ${simulation.state.blocks.length} mineral blocks · tick ${simulation.state.tick}.`;
+  const stats = [
+    ['Cells', simulation.state.cells.length.toString()],
+    ['Biomass', livingMass.toFixed(1)],
+    ['Avg ATP', avgAtp.toFixed(0)],
+    ['Resources', simulation.state.resources.length.toString()],
+    ['Glucose', resources.glucose.toString()],
+    ['Amino', resources['amino-acid'].toString()],
+    ['Oxygen', resources.oxygen.toString()],
+    ['Light', resources.light.toString()],
+    ['Poison', simulation.state.hazards.length.toString()],
+    ['Blocks', simulation.state.blocks.length.toString()],
+    ['Radius', simulation.state.boardRadius.toString()],
+    ['Tick', simulation.state.tick.toString()],
+  ];
+  return `<span class="dish-stat-grid">${stats.map(([label, value]) => `<span class="dish-stat"><span>${label}</span><strong>${value}</strong></span>`).join('')}</span>`;
 }
 
 function updateSelectedEntityHud(selectedCell: Cell | null): void {
@@ -969,19 +983,19 @@ function targetLabel(target: MapPick): string {
 function syncWindowTitles(entityLabel: string): void {
   const dishLabel = activeDish ? `Dish ${activeDish.id}` : 'No dish';
   if (dishWindowTitle) {
-    dishWindowTitle.textContent = `${dishLabel} / State`;
+    dishWindowTitle.textContent = `${dishLabel} | State`;
   }
   if (entityWindowTitle) {
     entityWindowTitle.textContent = activeDish && inspectedTarget.kind === 'cell'
-      ? `${dishLabel} / ${entityLabel} Metabolism`
+      ? `${dishLabel} | ${entityLabel} Metabolism`
       : activeDish
-        ? `${dishLabel} / ${entityLabel}`
-        : 'No dish / Entity';
+        ? `${dishLabel} | ${entityLabel}`
+        : 'No dish | Entity';
   }
   if (directivesWindowTitle) {
     directivesWindowTitle.textContent = activeDish && inspectedTarget.kind === 'cell'
-      ? `${dishLabel} / ${entityLabel} Metabolism`
-      : `${dishLabel} / Directives`;
+      ? `${dishLabel} | ${entityLabel} Metabolism`
+      : `${dishLabel} | Directives`;
   }
 }
 
@@ -1012,6 +1026,10 @@ function syncCellOnlyPanels(hasSelectedCell: boolean): void {
     const requiresNoDish = action === 'tutorial' || action === 'save' || action === 'load';
     if (requiresNoDish) {
       button.hidden = Boolean(activeDish);
+    }
+    const requiresDish = action === 'restart' || action === 'random';
+    if (requiresDish) {
+      button.hidden = !activeDish;
     }
   });
 }
