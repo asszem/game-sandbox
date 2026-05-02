@@ -97,6 +97,32 @@ export class CellSimulation {
     this.nextId = this.findNextId();
   }
 
+  dropCottonCandy(position: Vec2): void {
+    for (let index = 0; index < 18; index += 1) {
+      const point = this.scatterPoint(position, 8.5);
+      this.state.resources.push({
+        id: this.nextId++,
+        kind: 'glucose',
+        position: point,
+        amount: this.rng.range(0.52, 1),
+        radius: this.rng.range(1.2, 3.4),
+      });
+    }
+  }
+
+  dropCatPawn(position: Vec2): void {
+    for (let index = 0; index < 7; index += 1) {
+      const point = this.scatterPoint(position, 9.5);
+      this.state.hazards.push({
+        id: this.nextId++,
+        kind: 'poison',
+        position: point,
+        radius: this.rng.range(2.4, 5.5),
+        potency: this.rng.range(0.48, 0.95),
+      });
+    }
+  }
+
   awarenessRadius(cell: Cell): number {
     return 16 + cell.radius * 3.4 + cell.genome.caution * 16;
   }
@@ -610,6 +636,19 @@ export class CellSimulation {
     const angle = this.rng.range(0, Math.PI * 2);
     const distanceFromCenter = Math.sqrt(this.rng.next()) * radius;
     return vec(Math.cos(angle) * distanceFromCenter, Math.sin(angle) * distanceFromCenter);
+  }
+
+  private scatterPoint(center: Vec2, radius: number): Vec2 {
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      const angle = this.rng.range(0, Math.PI * 2);
+      const spread = Math.sqrt(this.rng.next()) * radius;
+      const point = add(center, vec(Math.cos(angle) * spread, Math.sin(angle) * spread));
+      if (length(point) <= this.state.boardRadius - 4 && !this.state.blocks.some((block) => this.pointNearBlock(point, block, 1.2))) {
+        return point;
+      }
+    }
+    const max = this.state.boardRadius - 5;
+    return length(center) > max ? scale(normalize(center), max) : center;
   }
 
   private findNextId(): number {

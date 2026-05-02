@@ -34,6 +34,10 @@ try {
   await page.mouse.move(700, 430, { steps: 5 });
   await page.mouse.up();
   await page.mouse.wheel(0, -250);
+  await dragDropItem(page, 'cotton-candy', 720, 390);
+  await page.locator('.toast', { hasText: 'Cotton candy dissolved into glucose' }).waitFor();
+  await dragDropItem(page, 'cat-pawn', 760, 430);
+  await page.locator('.toast', { hasText: 'Cat-pawn dissolved into poison' }).waitFor();
   await page.waitForTimeout(700);
 
   const canvasPixels = await page.evaluate(() => {
@@ -68,4 +72,16 @@ async function waitForServer() {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   throw new Error(`Vite server did not start:\n${logs.join('\n')}`);
+}
+
+async function dragDropItem(page, item, clientX, clientY) {
+  const button = page.locator(`[data-drop-item="${item}"]`);
+  const box = await button.boundingBox();
+  if (!box) {
+    throw new Error(`Drop item button not visible: ${item}`);
+  }
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(clientX, clientY, { steps: 8 });
+  await page.mouse.up();
 }

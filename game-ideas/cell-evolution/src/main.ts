@@ -21,6 +21,8 @@ type GameWindow = {
   collapseButton: HTMLButtonElement | null;
 };
 
+type DropItemKind = 'cotton-candy' | 'cat-pawn';
+
 const SAVE_KEY = 'cell-evolution-save-v1';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#dish');
@@ -49,6 +51,7 @@ const healthMeter = document.querySelector<HTMLMeterElement>('#health-meter');
 const dnaButtons = document.querySelectorAll<HTMLButtonElement>('[data-dna]');
 const transportControls = document.querySelectorAll<HTMLInputElement>('[data-control]');
 const transportOutputs = document.querySelectorAll<HTMLOutputElement>('[data-control-value]');
+const dropItemButtons = document.querySelectorAll<HTMLButtonElement>('[data-drop-item]');
 const atpCore = document.querySelector<HTMLElement>('#atp-core');
 const glucoseRate = document.querySelector<HTMLElement>('#glucose-rate');
 const aminoRate = document.querySelector<HTMLElement>('#amino-rate');
@@ -68,6 +71,8 @@ const tickMs = 150;
 let inspectedTarget: MapPick = { kind: 'dish', id: null };
 let hoveredTarget: MapPick | null = { kind: 'dish', id: null };
 let tooltipsEnabled = true;
+let activeDrop: { pointerId: number | null; kind: DropItemKind; ghost: HTMLElement } | null = null;
+let suppressDropClick = false;
 
 canvas.addEventListener('click', (event) => {
   const pick = renderer.onPointerPick(event, simulation.state);
@@ -160,6 +165,30 @@ transportControls.forEach((control) => {
     }
     cell[key] = Number(control.value) / 100;
     updateHud();
+  });
+});
+
+dropItemButtons.forEach((button) => {
+  button.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    const kind = button.dataset.dropItem as DropItemKind | undefined;
+    if (!kind) {
+      return;
+    }
+    suppressDropClick = true;
+    beginDropItem(kind, event.clientX, event.clientY, event.pointerId);
+  });
+  button.addEventListener('click', () => {
+    if (suppressDropClick) {
+      suppressDropClick = false;
+      return;
+    }
+    const kind = button.dataset.dropItem as DropItemKind | undefined;
+    if (!kind || activeDrop) {
+      return;
+    }
+    const rect = button.getBoundingClientRect();
+    beginDropItem(kind, rect.left + rect.width / 2, rect.top + rect.height / 2, null);
   });
 });
 
@@ -549,6 +578,98 @@ function showToast(message: string): void {
     toast.classList.add('toast-out');
     window.setTimeout(() => toast.remove(), 220);
   }, 1800);
+}
+
+function beginDropItem(kind: DropItemKind, clientX: number, clientY: number, pointerId: number | null): void {
+  cancelActiveDrop();
+  hideTooltip();
+  const ghost = document.createElement('div');
+  ghost.className = `drop-ghost ${kind}`;
+  ghost.setAttribute('aria-hidden', 'true');
+  ghost.appendChild(createDropIcon(kind));
+  document.body.appendChild(ghost);
+  activeDrop = { pointerId, kind, ghost };
+  positionDropGhost(clientX, clientY);
+  window.addEventListener('pointermove', handleDropPointerMove);
+  window.addEventListener('pointerup', handleDropPointerUp);
+  window.addEventListener('keydown', handleDropKeyDown);
+}
+
+function handleDropPointerMove(event: PointerEvent): void {
+  if (!activeDrop || (activeDrop.pointerId !== null && activeDrop.pointerId !== event.pointerId)) {
+    return;
+  }
+  positionDropGhost(event.clientX, event.clientY);
+}
+
+function handleDropPointerUp(event: PointerEvent): void {
+  if (!activeDrop || (activeDrop.pointerId !== null && activeDrop.pointerId !== event.pointerId)) {
+    return;
+  }
+  finishDropItem(event.clientX, event.clientY);
+}
+
+function handleDropKeyDown(event: KeyboardEvent): void {
+  if (event.code === 'Escape') {
+    cancelActiveDrop();
+  }
+}
+
+function finishDropItem(clientX: number, clientY: number): void {
+  if (!activeDrop) {
+    return;
+  }
+  const { kind, ghost } = activeDrop;
+  const position = renderer.screenToWorld(clientX, clientY);
+  const insideDish = distance(position, { x: 0, y: 0 }) <= simulation.state.boardRadius - 2;
+  if (!insideDish) {
+    showToast('Drop inside the petri dish');
+    cancelActiveDrop();
+    return;
+  }
+
+  ghost.classList.add('is-dissolving');
+  window.setTimeout(() => ghost.remove(), 360);
+  removeDropListeners();
+  activeDrop = null;
+
+  if (kind === 'cotton-candy') {
+    simulation.dropCottonCandy(position);
+    showToast('Cotton candy dissolved into glucose');
+  } else {
+    simulation.dropCatPawn(position);
+    showToast('Cat-pawn dissolved into poison');
+  }
+  updateHud();
+}
+
+function cancelActiveDrop(): void {
+  if (!activeDrop) {
+    return;
+  }
+  activeDrop.ghost.remove();
+  activeDrop = null;
+  removeDropListeners();
+}
+
+function removeDropListeners(): void {
+  window.removeEventListener('pointermove', handleDropPointerMove);
+  window.removeEventListener('pointerup', handleDropPointerUp);
+  window.removeEventListener('keydown', handleDropKeyDown);
+}
+
+function positionDropGhost(clientX: number, clientY: number): void {
+  if (!activeDrop) {
+    return;
+  }
+  activeDrop.ghost.style.left = `${clientX}px`;
+  activeDrop.ghost.style.top = `${clientY}px`;
+}
+
+function createDropIcon(kind: DropItemKind): HTMLElement {
+  const icon = document.createElement('span');
+  icon.className = `drop-item-icon ${kind === 'cotton-candy' ? 'cotton-candy-icon' : 'cat-pawn-icon'}`;
+  return icon;
 }
 
 function describeResource(kind: string, amount: number): string {

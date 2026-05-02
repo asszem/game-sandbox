@@ -1192,7 +1192,7 @@ export class PetriDishRenderer {
     this.dragStart = null;
   };
 
-  private screenToWorld(clientX: number, clientY: number): Vec2 {
+  screenToWorld(clientX: number, clientY: number): Vec2 {
     const rect = this.canvas.getBoundingClientRect();
     this.pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
     this.pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
