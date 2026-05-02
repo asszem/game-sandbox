@@ -46,6 +46,7 @@ async function runSmoke() {
     await page.keyboard.press('Space');
     await exerciseDishLifecycle(page);
     await exerciseSaveSlot(page);
+    await exerciseTutorial(page);
     await page.waitForTimeout(250);
 
     const canvasPixels = await page.evaluate(() => {
@@ -174,6 +175,29 @@ async function exerciseSaveSlot(page) {
     return slots[0]?.name === 'Smoke slot' && slots[0]?.data?.dishes?.length === 2;
   });
   await clickBySelector(page, '#save-modal-close');
+}
+
+async function exerciseTutorial(page) {
+  await page.evaluate(() => {
+    const layer = document.querySelector('#dish-layer');
+    layer?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  });
+  await clickBySelector(page, '[data-dish-action="tutorial"]');
+  await page.locator('#tutorial-title', { hasText: 'Tutorial | 1/7' }).waitFor();
+  await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length === 1);
+  await page.waitForFunction(() => document.querySelector('#population-readout')?.textContent === '1 cells');
+  await page.evaluate(() => {
+    const control = document.querySelector('[data-control="oxygenMetabolism"]');
+    if (!(control instanceof HTMLInputElement)) {
+      throw new Error('Missing ATP production tutorial control');
+    }
+    control.value = '90';
+    control.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.waitForFunction(() => document.querySelector('#tutorial-goal')?.getAttribute('data-state') === 'complete', null, { timeout: 10_000 });
+  await clickBySelector(page, '#tutorial-next');
+  await page.locator('#tutorial-title', { hasText: 'Tutorial | 2/7' }).waitFor();
+  await page.waitForFunction(() => (document.querySelector('#dish-detail')?.textContent ?? '').includes('Glucose1'));
 }
 
 async function clickBySelector(page, selector) {

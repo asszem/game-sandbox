@@ -394,6 +394,91 @@ h1 {
   width: 244px;
 }
 
+.tutorial-window {
+  top: 204px;
+  right: 18px;
+  width: min(360px, calc(100vw - 24px));
+  height: 330px;
+}
+
+.tutorial-body {
+  display: grid;
+  gap: 10px;
+}
+
+.tutorial-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tutorial-progress button {
+  width: 28px;
+  height: 26px;
+  border: 1px solid rgba(68, 255, 203, 0.22);
+  border-radius: 6px;
+  background: rgba(4, 9, 16, 0.62);
+  color: rgba(247, 255, 243, 0.76);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.tutorial-progress button:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
+.tutorial-progress button.is-current {
+  border-color: rgba(249, 255, 77, 0.72);
+  background: rgba(249, 255, 77, 0.14);
+  color: #f9ff4d;
+}
+
+.tutorial-progress button.is-complete {
+  border-color: rgba(24, 255, 200, 0.48);
+  background: rgba(24, 255, 200, 0.1);
+  color: #18ffc8;
+}
+
+.tutorial-goal {
+  padding: 9px 10px;
+  border: 1px solid rgba(249, 255, 77, 0.24);
+  border-radius: 7px;
+  background: rgba(249, 255, 77, 0.08);
+  color: rgba(247, 255, 243, 0.84);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.tutorial-goal[data-state='complete'] {
+  border-color: rgba(24, 255, 200, 0.42);
+  background: rgba(24, 255, 200, 0.08);
+  color: #18ffc8;
+}
+
+.tutorial-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tutorial-actions button {
+  min-height: 32px;
+  border: 1px solid rgba(68, 255, 203, 0.24);
+  border-radius: 7px;
+  background: rgba(24, 255, 200, 0.1);
+  color: #f7fff3;
+  cursor: pointer;
+  font: inherit;
+  padding: 0 10px;
+}
+
+.tutorial-actions button:disabled {
+  cursor: default;
+  opacity: 0.48;
+}
+
 .panel-head {
   margin-bottom: 12px;
 }
@@ -1964,6 +2049,13 @@ kbd {
     top: 10px;
     left: min(360px, calc(100vw - 296px));
     width: min(286px, calc(100vw - 20px));
+  }
+
+  .tutorial-window {
+    top: 214px;
+    left: 10px;
+    right: auto;
+    width: auto;
   }
 
   .save-slot-row {

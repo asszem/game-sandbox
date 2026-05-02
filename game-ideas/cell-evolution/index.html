@@ -199,6 +199,25 @@
         </div>
         <span class="window-resize" aria-hidden="true"></span>
       </aside>
+      <aside class="hud game-window tutorial-window" data-window-id="tutorial" aria-label="tutorial window" hidden>
+        <div class="window-titlebar">
+          <h2 id="tutorial-title">Tutorial</h2>
+          <button class="window-collapse" type="button" aria-label="Collapse Tutorial">▾</button>
+        </div>
+        <div class="window-body tutorial-body">
+          <div class="tutorial-progress" id="tutorial-progress" aria-label="tutorial milestones"></div>
+          <div class="panel-head">
+            <h3 id="tutorial-step-title">Tutorial</h3>
+            <p id="tutorial-step-detail">Start tutorial to learn the basics.</p>
+          </div>
+          <div class="tutorial-goal" id="tutorial-goal">Goal: start the tutorial.</div>
+          <div class="tutorial-actions">
+            <button id="tutorial-next" type="button" disabled>Next</button>
+            <button id="tutorial-exit" type="button">Exit tutorial</button>
+          </div>
+        </div>
+        <span class="window-resize" aria-hidden="true"></span>
+      </aside>
       <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
       <div id="tooltip-layer" class="tooltip-layer" role="tooltip" hidden></div>
       <div id="new-dish-modal" class="modal-backdrop" hidden>

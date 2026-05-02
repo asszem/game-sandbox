@@ -123,6 +123,40 @@ export class CellSimulation {
     }
   }
 
+  spawnResource(kind: ResourceKind, position: Vec2, amount = 0.9): Resource {
+    const resource = this.createResource(kind);
+    resource.position = { ...position };
+    resource.origin = kind === 'light' ? { ...position } : undefined;
+    resource.amount = clamp(amount, 0.05, 1);
+    this.state.resources.push(resource);
+    return resource;
+  }
+
+  spawnHazard(position: Vec2, potency = 0.7): Hazard {
+    const hazard: Hazard = {
+      id: this.nextId++,
+      kind: 'poison',
+      position: { ...position },
+      radius: this.rng.range(3.2, 5.4),
+      potency: clamp(potency, 0.1, 1),
+    };
+    this.state.hazards.push(hazard);
+    return hazard;
+  }
+
+  spawnBlock(position: Vec2, width = 11, height = 8): Block {
+    const block = this.createBlock({ ...position }, width, height);
+    this.state.blocks.push(block);
+    return block;
+  }
+
+  spawnCell(position: Vec2, generation = 0): Cell {
+    const cell = this.createCell({ ...position }, this.state.cells.length % 3, generation);
+    this.state.cells.push(cell);
+    this.constrainCell(cell);
+    return cell;
+  }
+
   awarenessRadius(cell: Cell): number {
     return this.sensingProfile(cell).radius;
   }

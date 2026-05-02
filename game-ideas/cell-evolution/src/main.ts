@@ -1,6 +1,6 @@
 import './styles.css';
 import { CellSimulation } from './core/simulation';
-import type { Cell, DNAKey, SimulationState } from './core/types';
+import type { Cell, DNAKey, ResourceKind, SimulationState, Vec2 } from './core/types';
 import { MapPick, PetriDishRenderer, RendererView } from './render/PetriDishRenderer';
 
 type WindowLayout = Record<string, { left: number; top: number; width: number; height: number; collapsed: boolean }>;
@@ -70,9 +70,17 @@ type NewDishSetup = {
   hazardCount?: number;
   blockCount?: number;
 };
+type TutorialStepId = 'atp' | 'glucose' | 'amino' | 'light' | 'poison' | 'rock' | 'directives';
+type TutorialStep = {
+  id: TutorialStepId;
+  title: string;
+  detail: string;
+  goal: string;
+};
 
 const SAVE_KEY = 'cell-evolution-save-v1';
 const SAVE_SLOTS_KEY = 'cell-evolution-save-slots-v1';
+const TUTORIAL_PROGRESS_KEY = 'cell-evolution-tutorial-progress-v1';
 const SAVE_SLOT_COUNT = 5;
 const MIN_DISH_SIZE = 320;
 const MAX_DISH_SIZE = 760;
@@ -153,6 +161,14 @@ const newDishResourceSliders = document.querySelectorAll<HTMLInputElement>('[dat
 const newDishEnvironmentSliders = document.querySelectorAll<HTMLInputElement>('[data-new-dish-environment]');
 const newDishCancel = document.querySelector<HTMLButtonElement>('#new-dish-cancel');
 const newDishCreate = document.querySelector<HTMLButtonElement>('#new-dish-create');
+const tutorialWindow = document.querySelector<HTMLElement>('.tutorial-window');
+const tutorialTitle = document.querySelector<HTMLElement>('#tutorial-title');
+const tutorialProgress = document.querySelector<HTMLElement>('#tutorial-progress');
+const tutorialStepTitle = document.querySelector<HTMLElement>('#tutorial-step-title');
+const tutorialStepDetail = document.querySelector<HTMLElement>('#tutorial-step-detail');
+const tutorialGoal = document.querySelector<HTMLElement>('#tutorial-goal');
+const tutorialNext = document.querySelector<HTMLButtonElement>('#tutorial-next');
+const tutorialExit = document.querySelector<HTMLButtonElement>('#tutorial-exit');
 const saveModal = document.querySelector<HTMLElement>('#save-modal');
 const saveModalTitle = document.querySelector<HTMLElement>('#save-modal-title');
 const saveModalClose = document.querySelector<HTMLButtonElement>('#save-modal-close');
@@ -168,6 +184,56 @@ let activeDrop: { pointerId: number | null; kind: DropItemKind; ghost: HTMLEleme
 let suppressDropClick = false;
 let saveModalMode: 'save' | 'load' = 'save';
 let fittedEntityTargetKey = '';
+let tutorialMode = false;
+let tutorialStepIndex = 0;
+let tutorialEnteredStep: TutorialStepId | null = null;
+let tutorialGoalMet = false;
+let tutorialCompleted = readCompletedTutorialMilestones();
+
+const tutorialSteps: TutorialStep[] = [
+  {
+    id: 'atp',
+    title: 'Milestone 1: ATP, glucose, oxygen',
+    detail: 'ATP is the cell energy currency. Glucose is fuel. Oxygen makes glucose produce more ATP, but aggressive ATP production also creates ROS waste.',
+    goal: 'Select the cell, raise ATP production rate to at least 75%, and reach 92 ATP.',
+  },
+  {
+    id: 'glucose',
+    title: 'Milestone 2: harvest glucose',
+    detail: 'Glucose molecules are yellow board markers. Fuel uptake controls how fast the membrane imports glucose when the cell touches it.',
+    goal: 'Harvest the dropped glucose until cell glucose reaches 45.',
+  },
+  {
+    id: 'amino',
+    title: 'Milestone 3: harvest amino acids',
+    detail: 'Amino acids are green protein material. They repair damage, support receptors, and let cells grow or divide later.',
+    goal: 'Harvest the dropped amino-acid cluster until amino acids reach 45.',
+  },
+  {
+    id: 'light',
+    title: 'Milestone 4: use light',
+    detail: 'Light blooms are environmental energy fields. Sitting in light gives a light intake factor that slowly supports glucose and oxygen.',
+    goal: 'Move into the light bloom and get light intake above 0.20.',
+  },
+  {
+    id: 'poison',
+    title: 'Milestone 5: avoid poison',
+    detail: 'Poison damages health, drains ATP, and raises ROS. Caution DNA strengthens avoidance and makes the cell react sooner.',
+    goal: 'Add Caution DNA and keep the cell outside the poison cloud.',
+  },
+  {
+    id: 'rock',
+    title: 'Milestone 6: avoid rock',
+    detail: 'Rocks are mineral blocks. They cannot be harvested, and cells must route around them instead of overlapping them.',
+    goal: 'Add Motility DNA and keep the cell clear of the rock.',
+  },
+  {
+    id: 'directives',
+    title: 'Milestone 7: read directives',
+    detail: 'Directives summarize what a selected cell is trying to do based on internal state, nearby signals, DNA, and transport settings.',
+    goal: 'Spawn neighbors, select a cell, then add any DNA directive.',
+  },
+];
 
 dishLayerElement.addEventListener('pointerdown', (event) => {
   if (event.target === dishLayerElement) {
@@ -254,6 +320,9 @@ dnaButtons.forEach((button) => {
       return;
     }
     simulation.infuseDNA(button.dataset.dna as DNAKey);
+    if (tutorialMode) {
+      button.dataset.tutorialUsed = 'true';
+    }
     pulseButton(button);
     updateHud();
   });
@@ -305,7 +374,7 @@ dishActionButtons.forEach((button) => {
       deleteActiveDish();
     }
     if (action === 'tutorial') {
-      showToast('Tutorial placeholder');
+      startTutorial(0);
     }
     if (action === 'restart') {
       restartScenario();
@@ -349,6 +418,12 @@ newDishEnvironmentSliders.forEach((slider) => {
     syncRangeOutput(slider);
   });
 });
+tutorialNext?.addEventListener('click', () => {
+  if (tutorialGoalMet) {
+    goToTutorialStep(Math.min(tutorialStepIndex + 1, tutorialSteps.length - 1), true);
+  }
+});
+tutorialExit?.addEventListener('click', exitTutorial);
 
 saveModalClose?.addEventListener('click', closeSaveModal);
 saveModal?.addEventListener('click', (event) => {
@@ -757,6 +832,257 @@ function deleteActiveDish(): void {
   showToast('Petri dish deleted');
 }
 
+function startTutorial(stepIndex = 0): void {
+  tutorialMode = true;
+  if (tutorialWindow) {
+    tutorialWindow.hidden = false;
+  }
+  goToTutorialStep(stepIndex, true);
+  showToast('Tutorial started');
+}
+
+function exitTutorial(): void {
+  tutorialMode = false;
+  tutorialEnteredStep = null;
+  tutorialGoalMet = false;
+  if (tutorialWindow) {
+    tutorialWindow.hidden = true;
+  }
+  updateTutorialPanel();
+  showToast('Tutorial closed');
+}
+
+function goToTutorialStep(stepIndex: number, rebuildWorld: boolean): void {
+  tutorialStepIndex = clamp(stepIndex, 0, tutorialSteps.length - 1);
+  tutorialGoalMet = false;
+  tutorialEnteredStep = null;
+  dnaButtons.forEach((button) => {
+    delete button.dataset.tutorialUsed;
+  });
+  if (rebuildWorld) {
+    createTutorialWorld();
+  }
+  enterTutorialStep();
+  updateTutorialPanel();
+}
+
+function createTutorialWorld(): void {
+  cancelActiveDrop();
+  for (const dish of dishes) {
+    dish.renderer.dispose();
+    dish.canvas.remove();
+  }
+  dishes = [];
+  activeDish = null;
+  nextDishId = 1;
+  nextDishZ = 1;
+  const size = Math.min(560, Math.max(430, Math.round(window.innerWidth * 0.36)));
+  const dish = createDish({
+    left: clamp(window.innerWidth - size - 64, 350, Math.max(350, window.innerWidth - size - 24)),
+    top: clamp(window.innerHeight - size - 44, 106, Math.max(106, window.innerHeight - size - 24)),
+    size,
+    select: true,
+    setup: {
+      cellCount: 1,
+      resourceCounts: { glucose: 0, 'amino-acid': 0, oxygen: 0, light: 0 },
+      hazardCount: 0,
+      blockCount: 0,
+    },
+  });
+  const cell = dish.simulation.state.cells[0];
+  if (cell) {
+    Object.assign(cell, {
+      position: { x: 0, y: 0 },
+      velocity: { x: 0, y: 0 },
+      atp: 72,
+      energy: 72,
+      glucose: 92,
+      oxygen: 88,
+      aminoAcids: 76,
+      glycogen: 18,
+      ros: 5,
+      health: 1,
+      glucoseTransport: 0.35,
+      aminoTransport: 0.35,
+      oxygenMetabolism: 0.35,
+      ribosomeActivity: 0.5,
+    });
+    setActiveDish(dish, { kind: 'cell', id: cell.id });
+  } else {
+    setActiveDish(dish, { kind: 'dish', id: null });
+  }
+  dish.renderer.resetZoom();
+  updateHud();
+}
+
+function enterTutorialStep(): void {
+  const step = tutorialSteps[tutorialStepIndex];
+  if (!tutorialMode || tutorialEnteredStep === step.id) {
+    return;
+  }
+  tutorialEnteredStep = step.id;
+  const cell = tutorialCell();
+  if (!activeDish || !cell) {
+    return;
+  }
+
+  simulation.state.running = true;
+  simulation.state.resources = [];
+  simulation.state.hazards = [];
+  simulation.state.blocks = [];
+  setActiveDish(activeDish, { kind: 'cell', id: cell.id });
+
+  if (step.id === 'atp') {
+    Object.assign(cell, { position: { x: 0, y: 0 }, velocity: { x: 0, y: 0 }, atp: 72, glucose: 92, oxygen: 88, aminoAcids: 76, ros: 5, oxygenMetabolism: 0.35 });
+  }
+  if (step.id === 'glucose') {
+    Object.assign(cell, { position: { x: -6, y: 0 }, velocity: { x: 0, y: 0 }, atp: 82, glucose: 18, oxygen: 75, aminoAcids: 70, glucoseTransport: 0.35 });
+    spawnTutorialResource('glucose', { x: 6, y: 0 }, 'Glucose dropped');
+  }
+  if (step.id === 'amino') {
+    Object.assign(cell, { position: { x: -6, y: 0 }, velocity: { x: 0, y: 0 }, atp: 86, glucose: 72, oxygen: 70, aminoAcids: 18, aminoTransport: 0.35 });
+    spawnTutorialResource('amino-acid', { x: 6, y: 0 }, 'Amino-acid cluster dropped');
+  }
+  if (step.id === 'light') {
+    Object.assign(cell, { position: { x: -12, y: 0 }, velocity: { x: 0, y: 0 }, atp: 80, glucose: 45, oxygen: 55, aminoAcids: 65 });
+    spawnTutorialResource('light', { x: 4, y: 0 }, 'Light source dropped');
+  }
+  if (step.id === 'poison') {
+    Object.assign(cell, { position: { x: -12, y: 0 }, velocity: { x: 0, y: 0 }, atp: 84, glucose: 70, oxygen: 70, aminoAcids: 72 });
+    simulation.spawnHazard({ x: 10, y: 0 }, 0.7);
+    showToast('Poison cloud dropped');
+  }
+  if (step.id === 'rock') {
+    Object.assign(cell, { position: { x: -14, y: 0 }, velocity: { x: 0, y: 0 }, atp: 86, glucose: 72, oxygen: 70, aminoAcids: 72 });
+    simulation.spawnBlock({ x: 6, y: 0 }, 8, 7);
+    spawnTutorialResource('glucose', { x: 23, y: 0 }, 'Rock and glucose dropped');
+  }
+  if (step.id === 'directives') {
+    Object.assign(cell, { position: { x: -10, y: 0 }, velocity: { x: 0, y: 0 }, atp: 88, glucose: 75, oxygen: 70, aminoAcids: 74 });
+    const neighbor = simulation.spawnCell({ x: 10, y: 0 }, 0);
+    neighbor.radius = Math.max(2.4, cell.radius * 0.82);
+    const rival = simulation.spawnCell({ x: 20, y: -7 }, 0);
+    rival.radius = Math.max(cell.radius * 1.02, 3.2);
+    showToast('Neighbor cells dropped');
+  }
+}
+
+function spawnTutorialResource(kind: ResourceKind, position: Vec2, message: string): void {
+  simulation.spawnResource(kind, position, 1);
+  showToast(message);
+}
+
+function tutorialCell(): Cell | null {
+  return activeDish?.simulation.state.cells[0] ?? null;
+}
+
+function updateTutorialProgress(): void {
+  if (!tutorialMode) {
+    return;
+  }
+  enterTutorialStep();
+  const step = tutorialSteps[tutorialStepIndex];
+  const complete = isTutorialStepComplete(step);
+  if (complete && !tutorialGoalMet) {
+    tutorialGoalMet = true;
+    tutorialCompleted.add(step.id);
+    writeCompletedTutorialMilestones();
+    showToast(`${step.title} complete`);
+  }
+  updateTutorialPanel();
+}
+
+function isTutorialStepComplete(step: TutorialStep): boolean {
+  const cell = tutorialCell();
+  if (!cell || !activeDish) {
+    return false;
+  }
+  if (step.id === 'atp') {
+    return cell.oxygenMetabolism >= 0.75 && cell.atp >= 92;
+  }
+  if (step.id === 'glucose') {
+    return cell.glucose >= 45;
+  }
+  if (step.id === 'amino') {
+    return cell.aminoAcids >= 45;
+  }
+  if (step.id === 'light') {
+    return cell.lightFactor > 0.2;
+  }
+  if (step.id === 'poison') {
+    const hazard = simulation.state.hazards[0];
+    return Boolean(hazard)
+      && cell.genome.caution > 0.55
+      && distance(cell.position, hazard.position) > cell.radius + hazard.radius + 1;
+  }
+  if (step.id === 'rock') {
+    const block = simulation.state.blocks[0];
+    return Boolean(block)
+      && cell.genome.motility > 0.55
+      && distance(cell.position, block.position) > cell.radius + block.radius + 1;
+  }
+  return inspectedTarget.kind === 'cell' && Array.from(dnaButtons).some((button) => button.dataset.tutorialUsed === 'true');
+}
+
+function updateTutorialPanel(): void {
+  if (!tutorialWindow || !tutorialMode) {
+    return;
+  }
+  const step = tutorialSteps[tutorialStepIndex];
+  if (tutorialTitle) {
+    tutorialTitle.textContent = `Tutorial | ${tutorialStepIndex + 1}/${tutorialSteps.length}`;
+  }
+  if (tutorialStepTitle) {
+    tutorialStepTitle.textContent = step.title;
+  }
+  if (tutorialStepDetail) {
+    tutorialStepDetail.textContent = step.detail;
+  }
+  if (tutorialGoal) {
+    tutorialGoal.textContent = `${tutorialGoalMet ? 'Complete' : 'Goal'}: ${step.goal}`;
+    tutorialGoal.dataset.state = tutorialGoalMet ? 'complete' : 'active';
+  }
+  if (tutorialNext) {
+    tutorialNext.disabled = !tutorialGoalMet || tutorialStepIndex >= tutorialSteps.length - 1;
+    tutorialNext.textContent = tutorialStepIndex >= tutorialSteps.length - 1 ? 'Done' : 'Next';
+  }
+  renderTutorialMilestones();
+}
+
+function renderTutorialMilestones(): void {
+  if (!tutorialProgress) {
+    return;
+  }
+  tutorialProgress.textContent = '';
+  tutorialSteps.forEach((step, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = String(index + 1);
+    button.title = step.title;
+    button.className = index === tutorialStepIndex ? 'is-current' : tutorialCompleted.has(step.id) ? 'is-complete' : '';
+    button.disabled = index !== tutorialStepIndex && !tutorialCompleted.has(step.id);
+    button.addEventListener('click', () => {
+      if (!button.disabled) {
+        goToTutorialStep(index, true);
+      }
+    });
+    tutorialProgress.appendChild(button);
+  });
+}
+
+function readCompletedTutorialMilestones(): Set<TutorialStepId> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(TUTORIAL_PROGRESS_KEY) ?? '[]') as TutorialStepId[];
+    return new Set(parsed);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeCompletedTutorialMilestones(): void {
+  localStorage.setItem(TUTORIAL_PROGRESS_KEY, JSON.stringify([...tutorialCompleted]));
+}
+
 function animate(time: number): void {
   const delta = Math.min(80, time - lastTime);
   lastTime = time;
@@ -773,6 +1099,7 @@ function animate(time: number): void {
     dish.renderer.render(dish.simulation.state, dish.worldTime, dish.simulation.drainEvents(), dish.inspectedTarget);
   }
 
+  updateTutorialProgress();
   updateHud();
   requestAnimationFrame(animate);
 }
@@ -1225,10 +1552,6 @@ function syncCellOnlyPanels(hasSelectedCell: boolean): void {
   }
   dishActionButtons.forEach((button) => {
     const action = button.dataset.dishAction;
-    const requiresNoDish = action === 'tutorial';
-    if (requiresNoDish) {
-      button.hidden = Boolean(activeDish);
-    }
     const requiresDish = action === 'restart' || action === 'random';
     if (requiresDish) {
       button.hidden = !activeDish;
