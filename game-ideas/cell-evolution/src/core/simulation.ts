@@ -423,13 +423,13 @@ export class CellSimulation {
 
     const glucoseUsed = Math.min(cell.glucose, 1);
     if (glucoseUsed > 0) {
-      const oxygenNeeded = glucoseUsed * 0.5;
+      const oxygenNeeded = glucoseUsed * (0.28 + cell.oxygenMetabolism * 0.42);
       const oxygenUsed = Math.min(cell.oxygen, oxygenNeeded);
       const oxygenRatio = oxygenNeeded > 0 ? oxygenUsed / oxygenNeeded : 0;
       cell.glucose -= glucoseUsed;
       cell.oxygen -= oxygenUsed;
       cell.atp += 2 * glucoseUsed * oxygenRatio * (0.7 + cell.oxygenMetabolism * 0.6);
-      cell.ros += 0.1 * glucoseUsed * oxygenRatio;
+      cell.ros += (0.06 + cell.oxygenMetabolism * 0.12) * glucoseUsed * oxygenRatio;
     }
 
     if (cell.atp >= 1 && cell.aminoAcids >= 0.2) {
