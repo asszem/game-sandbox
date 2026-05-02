@@ -17,10 +17,12 @@ game-ideas/cell-evolution/
     main.ts
     app/
       backdrop.ts
+      dish-layout.ts
       drop-tools.ts
       new-dish.ts
       save-load.ts
       tutorial.ts
+      tutorial-scenarios.ts
     core/
       environment-scan.ts
       metabolism.ts
@@ -34,6 +36,7 @@ game-ideas/cell-evolution/
       directives-panel.ts
       dom.ts
       entity-panel.ts
+      game-panel.ts
       hover-info.ts
       metabolism-panel.ts
       state-panel.ts
@@ -84,7 +87,8 @@ Current oversized files:
 
 Already split:
 - HUD utilities, windows, panel formatting, hover info, directives, metabolism display
-- App helpers for backdrop, drop tools, new dish modal, save/load, and tutorial UI
+- Game panel HUD totals and visibility helpers
+- App helpers for backdrop, dish layout, drop tools, new dish modal, save/load, tutorial UI, and tutorial scenario setup
 - CSS into `src/styles/*` imported by `src/styles/index.css`
 - Renderer texture, shader, cell geometry, dish material, resource marker, hazard material, and mineral block helpers
 - Core sensing, metabolism, resource transport, and environment scan helpers
@@ -110,9 +114,11 @@ src/
     bootstrap.ts              # app startup, animation loop, global keyboard/pointer orchestration
     dishes.ts                 # DishInstance lifecycle, create/select/delete/position labels
     backdrop.ts               # microscope backdrop DOM/rendering helper
+    dish-layout.ts            # dish sizing, viewport placement, floating labels
     new-dish.ts               # new dish modal option parsing/rendering
     save-load.ts              # SaveData, slots, import/export, localStorage
     tutorial.ts               # tutorial state, milestones, scenario setup
+    tutorial-scenarios.ts     # tutorial step world/cell setup helpers
     drop-tools.ts             # drag/drop item tools and ghost UI
   core/
     environment-scan.ts        # nearby resource/hazard/cell pull vector
@@ -126,6 +132,7 @@ src/
   hud/
     state-panel.ts            # dish state formatting and dish picker list
     entity-panel.ts           # selected cell/resource/hazard/block detail formatting
+    game-panel.ts             # Game window totals and action visibility
     metabolism-panel.ts       # metabolism stores, rates, sliders, chart/dashboard formatting
     directives-panel.ts       # current directive and DNA/transport control display
     hover-info.ts             # hover title/detail formatting
@@ -178,9 +185,9 @@ CSS is already split. Keep importing from `src/styles/index.css` and preserve ca
 1. Extract pure utility/UI helpers from `src/main.ts`:
    - Done: `hud/toasts.ts`, `hud/tooltips.ts`, `hud/windows.ts`, `hud/dom.ts`
 2. Extract formatting-only HUD modules:
-   - Done: `hud/hover-info.ts`, `hud/state-panel.ts`, `hud/entity-panel.ts`, `hud/directives-panel.ts`, `hud/metabolism-panel.ts`
+   - Done: `hud/hover-info.ts`, `hud/state-panel.ts`, `hud/entity-panel.ts`, `hud/game-panel.ts`, `hud/directives-panel.ts`, `hud/metabolism-panel.ts`
 3. Extract app domains from `src/main.ts`:
-   - Done: `app/backdrop.ts`, `app/save-load.ts`, `app/tutorial.ts`, `app/drop-tools.ts`, `app/new-dish.ts`
+   - Done: `app/backdrop.ts`, `app/dish-layout.ts`, `app/save-load.ts`, `app/tutorial.ts`, `app/tutorial-scenarios.ts`, `app/drop-tools.ts`, `app/new-dish.ts`
    - Remaining: `app/dishes.ts` / dish lifecycle extraction from `src/main.ts`
 4. Done: split CSS by panel/domain while preserving visual output.
 5. Continue splitting `src/render/PetriDishRenderer.ts` through narrow render helpers.

@@ -471,3 +471,57 @@ No behavior changes intended.
 ### Verification
 - `npm run build` - pass
 - `npm test` - pass
+
+## Tutorial scenario extraction - step setup helpers
+
+### Motivation
+Tutorial step setup mixed UI orchestration with scenario-specific cell tuning and resource spawning. Moving the scenario setup into an app helper keeps `src/main.ts` focused on tutorial flow and active-dish wiring.
+
+### Old files changed
+- `src/main.ts` - delegated tutorial step setup and tutorial offset calculation.
+
+### New files created
+- `src/app/tutorial-scenarios.ts` - tutorial cell/resource/hazard/block setup per step.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Dish layout extraction - sizing placement and labels
+
+### Motivation
+Dish sizing, viewport placement, label positioning, and resize calculations were embedded in app orchestration. Moving them into an app layout helper keeps `src/main.ts` focused on dish lifecycle events.
+
+### Old files changed
+- `src/main.ts` - delegated dish size, placement, label, and resize calculations.
+
+### New files created
+- `src/app/dish-layout.ts` - dish layout constants and viewport placement helpers.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Game panel HUD extraction - stats and visibility
+
+### Motivation
+Game panel totals and action visibility are HUD presentation logic rather than app orchestration. Moving them to a HUD helper keeps `src/main.ts` focused on state flow.
+
+### Old files changed
+- `src/main.ts` - delegated Game panel stat rendering and cell-only panel visibility.
+
+### New files created
+- `src/hud/game-panel.ts` - Game panel totals and action/panel visibility helpers.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
