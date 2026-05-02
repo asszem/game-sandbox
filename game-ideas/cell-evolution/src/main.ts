@@ -82,9 +82,13 @@ const stateReadout = document.querySelector<HTMLElement>('#state-readout');
 const zoomReadout = document.querySelector<HTMLElement>('#zoom-readout');
 const tooltipToggle = document.querySelector<HTMLInputElement>('#tooltip-toggle');
 const tooltipStatus = document.querySelector<HTMLElement>('#tooltip-status');
-const selectedTitleTargets = document.querySelectorAll<HTMLElement>('[data-selected-title]');
-const selectedName = document.querySelector<HTMLElement>('#selected-name');
-const selectedDetail = document.querySelector<HTMLElement>('#selected-detail');
+const dishWindowTitle = document.querySelector<HTMLElement>('#dish-window-title');
+const dishName = document.querySelector<HTMLElement>('#dish-name');
+const dishDetail = document.querySelector<HTMLElement>('#dish-detail');
+const entityWindowTitle = document.querySelector<HTMLElement>('#entity-window-title');
+const entityName = document.querySelector<HTMLElement>('#entity-name');
+const entityDetail = document.querySelector<HTMLElement>('#entity-detail');
+const directivesWindowTitle = document.querySelector<HTMLElement>('#directives-window-title');
 const hoverName = document.querySelector<HTMLElement>('#hover-name');
 const hoverDetail = document.querySelector<HTMLElement>('#hover-detail');
 const directiveHeading = document.querySelector<HTMLElement>('#directive-heading');
@@ -598,9 +602,14 @@ function updateHud(): void {
     syncTooltipToggle();
     updateHoverInfo();
     syncCellOnlyPanels(false);
-    syncSelectedEntityTitles('No dish selected');
-    if (selectedName) selectedName.textContent = 'No dish selected';
-    if (selectedDetail) selectedDetail.textContent = 'Add another dish, or click any petri dish to inspect and control it.';
+    updateDishStatsHud();
+    updateSelectedEntityHud(null);
+    if (directiveHeading) {
+      directiveHeading.textContent = 'No cell selected';
+    }
+    if (directiveDetail) {
+      directiveDetail.textContent = 'Select a dish, then select a cell to influence membrane transport and DNA directives.';
+    }
     return;
   }
 
@@ -622,17 +631,13 @@ function updateHud(): void {
 
   const selected = inspectedTarget.kind === 'cell' ? simulation.selectedCell : null;
   syncCellOnlyPanels(Boolean(selected));
-  syncSelectedEntityTitles(selected ? selectedEntityLabel() : `Petri dish ${activeDish.id}`);
+  syncWindowTitles(selectedEntityLabel());
+  updateDishStatsHud();
   if (selected) {
     const awareness = simulation.awarenessRadius(selected);
     const detections = scanDetections(selected, awareness);
     const directive = currentDirective(selected, detections);
-    if (selectedName) {
-      selectedName.textContent = `Cell ${selected.id}`;
-    }
-    if (selectedDetail) {
-      selectedDetail.textContent = describeCellState(selected, detections, awareness);
-    }
+    updateSelectedEntityHud(selected);
     if (directiveHeading) {
       directiveHeading.textContent = directive;
     }
@@ -652,7 +657,15 @@ function updateHud(): void {
   setDnaEnabled(false);
   syncMetabolicDashboard(null);
   syncTransportControls(null);
-  updateDishStatsHud();
+  updateSelectedEntityHud(null);
+  if (directiveHeading) {
+    directiveHeading.textContent = 'No cell selected';
+  }
+  if (directiveDetail) {
+    directiveDetail.textContent = activeDish
+      ? `Select a cell in dish ${activeDish.id} to influence membrane transport and DNA directives.`
+      : 'Select a dish, then select a cell to influence membrane transport and DNA directives.';
+  }
 }
 
 function describeCellState(
@@ -760,8 +773,9 @@ function setMeter(meter: HTMLMeterElement | null, value: number): void {
 }
 
 function updateDishStatsHud(): void {
-  if (selectedName) selectedName.textContent = activeDish ? `Petri dish ${activeDish.id}` : 'No dish selected';
-  if (selectedDetail) selectedDetail.textContent = describeDishState();
+  syncWindowTitles(selectedEntityLabel());
+  if (dishName) dishName.textContent = activeDish ? `Dish ${activeDish.id}` : 'No dish selected';
+  if (dishDetail) dishDetail.textContent = describeDishState();
   setMeter(energyMeter, 0);
   setMeter(massMeter, 0);
   setMeter(oxygenMeter, 0);
@@ -769,6 +783,9 @@ function updateDishStatsHud(): void {
 }
 
 function describeDishState(): string {
+  if (!activeDish) {
+    return 'Add another dish, or click any petri dish to inspect and control it.';
+  }
   const resources = simulation.state.resources.reduce(
     (counts, resource) => {
       counts[resource.kind] += 1;
@@ -782,6 +799,28 @@ function describeDishState(): string {
     ? simulation.state.cells.reduce((total, cell) => total + cell.atp, 0) / simulation.state.cells.length
     : 0;
   return `Board radius ${simulation.state.boardRadius} · ${simulation.state.cells.length} cells · biomass ${livingMass.toFixed(1)} · average ATP ${avgAtp.toFixed(0)} · ${simulation.state.resources.length} resources (${resources.glucose} glucose, ${resources['amino-acid']} amino acids, ${resources.oxygen} oxygen, ${resources.light} light) · ${simulation.state.hazards.length} poison clouds · ${simulation.state.blocks.length} mineral blocks · tick ${simulation.state.tick}.`;
+}
+
+function updateSelectedEntityHud(selectedCell: Cell | null): void {
+  if (!activeDish) {
+    if (entityName) entityName.textContent = 'No entity selected';
+    if (entityDetail) entityDetail.textContent = 'Select a dish, then click a cell, resource, poison cloud, or mineral block.';
+    return;
+  }
+  if (selectedCell) {
+    const awareness = simulation.awarenessRadius(selectedCell);
+    const detections = scanDetections(selectedCell, awareness);
+    if (entityName) entityName.textContent = `Cell ${selectedCell.id}`;
+    if (entityDetail) entityDetail.textContent = describeCellState(selectedCell, detections, awareness);
+    return;
+  }
+  if (inspectedTarget.kind === 'dish') {
+    if (entityName) entityName.textContent = 'No entity selected';
+    if (entityDetail) entityDetail.textContent = `Dish ${activeDish.id} is selected. Click an entity inside this dish to inspect it.`;
+    return;
+  }
+  if (entityName) entityName.textContent = targetLabel(inspectedTarget);
+  if (entityDetail) entityDetail.textContent = describeHoverTarget(inspectedTarget);
 }
 
 function updateHoverInfo(): void {
@@ -824,6 +863,12 @@ function describeHoverTarget(target: MapPick): string {
 }
 
 function selectedEntityLabel(): string {
+  if (!activeDish) {
+    return 'Entity';
+  }
+  if (inspectedTarget.kind === 'dish') {
+    return 'No entity selected';
+  }
   return targetLabel(inspectedTarget);
 }
 
@@ -848,10 +893,19 @@ function targetLabel(target: MapPick): string {
   return 'Petri dish';
 }
 
-function syncSelectedEntityTitles(label: string): void {
-  selectedTitleTargets.forEach((target) => {
-    target.textContent = label;
-  });
+function syncWindowTitles(entityLabel: string): void {
+  const dishLabel = activeDish ? `Dish ${activeDish.id}` : 'No dish';
+  if (dishWindowTitle) {
+    dishWindowTitle.textContent = `${dishLabel} / State`;
+  }
+  if (entityWindowTitle) {
+    entityWindowTitle.textContent = activeDish ? `${dishLabel} / ${entityLabel}` : 'No dish / Entity';
+  }
+  if (directivesWindowTitle) {
+    directivesWindowTitle.textContent = activeDish && inspectedTarget.kind === 'cell'
+      ? `${dishLabel} / ${entityLabel} Directives`
+      : `${dishLabel} / Directives`;
+  }
 }
 
 function syncCellOnlyPanels(hasSelectedCell: boolean): void {
@@ -868,7 +922,7 @@ function syncCellOnlyPanels(hasSelectedCell: boolean): void {
     dnaButtonsPanel.hidden = !hasSelectedCell;
   }
   if (dishActions) {
-    dishActions.hidden = hasSelectedCell;
+    dishActions.hidden = false;
   }
   if (addDishButton) {
     addDishButton.hidden = Boolean(activeDish);
@@ -1434,7 +1488,7 @@ function createWindowSystem() {
 
   for (const gameWindow of windows) {
     setupWindow(gameWindow);
-    setCollapsed(gameWindow, gameWindow.element.classList.contains('is-collapsed'));
+    setCollapsed(gameWindow, gameWindow.element.classList.contains('is-collapsed'), false);
   }
 
   return {
@@ -1462,7 +1516,7 @@ function createWindowSystem() {
         gameWindow.element.style.top = `${clamp(saved.top, 8, window.innerHeight - 32)}px`;
         gameWindow.element.style.width = `${Math.max(180, saved.width)}px`;
         gameWindow.element.style.height = saved.collapsed ? 'auto' : `${Math.max(44, saved.height)}px`;
-        setCollapsed(gameWindow, saved.collapsed);
+        setCollapsed(gameWindow, saved.collapsed, false);
       }
     },
   };
@@ -1520,12 +1574,27 @@ function setupWindow(gameWindow: GameWindow): void {
   });
 }
 
-function setCollapsed(gameWindow: GameWindow, collapsed: boolean): void {
+function setCollapsed(gameWindow: GameWindow, collapsed: boolean, fitOnExpand = true): void {
   gameWindow.element.classList.toggle('is-collapsed', collapsed);
+  if (!collapsed && fitOnExpand) {
+    fitWindowHeightToContent(gameWindow);
+  }
   if (gameWindow.collapseButton) {
     gameWindow.collapseButton.textContent = collapsed ? '▸' : '▾';
     gameWindow.collapseButton.setAttribute('aria-expanded', String(!collapsed));
   }
+}
+
+function fitWindowHeightToContent(gameWindow: GameWindow): void {
+  const titlebar = gameWindow.element.querySelector<HTMLElement>('.window-titlebar');
+  const body = gameWindow.body;
+  if (!titlebar || !body) {
+    return;
+  }
+  const rect = gameWindow.element.getBoundingClientRect();
+  const desiredHeight = Math.ceil(titlebar.offsetHeight + body.scrollHeight + 2);
+  const maxHeight = Math.max(72, window.innerHeight - rect.top - 8);
+  gameWindow.element.style.height = `${clamp(desiredHeight, 72, maxHeight)}px`;
 }
 
 function clamp(value: number, min: number, max: number): number {

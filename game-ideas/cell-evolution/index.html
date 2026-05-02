@@ -32,15 +32,15 @@
           <span class="window-resize" aria-hidden="true"></span>
         </div>
       </section>
-      <aside class="hud game-window state-panel" data-window-id="state" aria-label="selected entity state window">
+      <aside class="hud game-window state-panel" data-window-id="state" aria-label="selected dish state window">
         <div class="window-titlebar">
-          <h2><span data-selected-title>Petri dish</span> / State</h2>
+          <h2 id="dish-window-title">No dish / State</h2>
           <button class="window-collapse" type="button" aria-label="Collapse State">▾</button>
         </div>
         <div class="window-body">
           <div class="panel-head">
-            <h3 id="selected-name">No cell selected</h3>
-            <p id="selected-detail">Click a cell to inspect and infuse DNA.</p>
+            <h3 id="dish-name">No dish selected</h3>
+            <p id="dish-detail">Add another dish, or click any petri dish to inspect and control it.</p>
           </div>
           <div class="dish-actions" aria-label="petri dish actions">
             <button type="button" data-dish-action="add">Add another dish</button>
@@ -50,6 +50,19 @@
             <button type="button" data-dish-action="random">Random scenario</button>
             <button type="button" data-dish-action="save">Save</button>
             <button type="button" data-dish-action="load">Load</button>
+          </div>
+        </div>
+        <span class="window-resize" aria-hidden="true"></span>
+      </aside>
+      <aside class="hud game-window entity-panel" data-window-id="entity" aria-label="selected entity info window">
+        <div class="window-titlebar">
+          <h2 id="entity-window-title">No dish / Entity</h2>
+          <button class="window-collapse" type="button" aria-label="Collapse Entity Info">▾</button>
+        </div>
+        <div class="window-body">
+          <div class="panel-head">
+            <h3 id="entity-name">No entity selected</h3>
+            <p id="entity-detail">Select a dish, then click a cell, resource, poison cloud, or mineral block.</p>
           </div>
           <div class="metabolic-dashboard" aria-label="metabolic engine dashboard" hidden>
             <div class="metabolic-triangle">
@@ -76,7 +89,7 @@
       </aside>
       <aside class="hud game-window directives-panel is-collapsed" data-window-id="directives" aria-label="selected entity directives window">
         <div class="window-titlebar">
-          <h2><span data-selected-title>Petri dish</span> / Directives</h2>
+          <h2 id="directives-window-title">No dish / Directives</h2>
           <button class="window-collapse" type="button" aria-label="Collapse Directives">▾</button>
         </div>
         <div class="window-body">

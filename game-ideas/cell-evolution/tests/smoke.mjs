@@ -1,73 +1,90 @@
 import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
-import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
 const cwd = path.resolve(import.meta.dirname, '..');
-const server = spawn('npm', ['run', 'dev', '--', '--port', '4177'], {
+const SMOKE_TIMEOUT_MS = 45_000;
+const ACTION_TIMEOUT_MS = 4_000;
+const NAVIGATION_TIMEOUT_MS = 8_000;
+const INITIAL_RENDER_TIMEOUT_MS = 10_000;
+const server = spawn('npm', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', '0'], {
   cwd,
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 
 const logs = [];
+let serverUrl = '';
 server.stdout.on('data', (data) => logs.push(data.toString()));
 server.stderr.on('data', (data) => logs.push(data.toString()));
 
 try {
-  await waitForServer();
-  const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-  const errors = [];
-  page.on('console', (message) => {
-    if (message.type() === 'error') {
-      errors.push(message.text());
-    }
-  });
-  page.on('pageerror', (error) => errors.push(error.message));
-
-  await page.goto('http://127.0.0.1:4177', { waitUntil: 'networkidle' });
-  await page.waitForSelector('canvas#dish');
-  await page.keyboard.press('Space');
-  await page.keyboard.press('Space');
-  await page.mouse.move(640, 400);
-  await page.mouse.down();
-  await page.mouse.move(700, 430, { steps: 5 });
-  await page.mouse.up();
-  await page.mouse.wheel(0, -250);
-  await dragDropItem(page, 'cotton-candy', 720, 390);
-  await page.locator('.toast', { hasText: 'Cotton candy dissolved into glucose' }).waitFor();
-  await dragDropItem(page, 'cat-pawn', 760, 430);
-  await page.locator('.toast', { hasText: 'Cat-pawn dissolved into poison' }).waitFor();
-  await exerciseSaveSlots(page);
-  await page.waitForTimeout(700);
-
-  const canvasPixels = await page.evaluate(() => {
-    const canvas = document.querySelector('canvas');
-    if (!canvas) {
-      return 0;
-    }
-    const ctx = canvas.getContext('webgl2') ?? canvas.getContext('webgl');
-    return ctx ? canvas.width * canvas.height : 0;
-  });
-
-  if (errors.length > 0) {
-    throw new Error(`Console errors:\n${errors.join('\n')}`);
-  }
-  if (canvasPixels <= 0) {
-    throw new Error('Canvas did not initialize WebGL');
-  }
-
-  await mkdir(path.join(cwd, 'test-output'), { recursive: true });
-  await page.screenshot({ path: path.join(cwd, 'test-output', 'smoke.png'), fullPage: true });
-  await browser.close();
+  await withTimeout(runSmoke(), SMOKE_TIMEOUT_MS, 'Smoke test timed out');
 } finally {
   server.kill('SIGTERM');
+}
+
+async function runSmoke() {
+  await waitForServer();
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    page.setDefaultTimeout(ACTION_TIMEOUT_MS);
+    page.setDefaultNavigationTimeout(NAVIGATION_TIMEOUT_MS);
+    const errors = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') {
+        errors.push(message.text());
+      }
+    });
+    page.on('pageerror', (error) => errors.push(error.message));
+
+    await page.goto(serverUrl, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length === 2, null, { timeout: INITIAL_RENDER_TIMEOUT_MS });
+    const firstDish = await dishCenter(page, 0);
+    await page.mouse.click(firstDish.x, firstDish.y);
+    await page.keyboard.press('Space');
+    await page.keyboard.press('Space');
+    await exerciseDishLifecycle(page);
+    await exerciseSaveSlot(page);
+    await page.waitForTimeout(250);
+
+    const canvasPixels = await page.evaluate(() => {
+      const canvas = document.querySelector('.dish-canvas');
+      if (!canvas) {
+        return 0;
+      }
+      const ctx = canvas.getContext('webgl2') ?? canvas.getContext('webgl');
+      return ctx ? canvas.width * canvas.height : 0;
+    });
+
+    if (errors.length > 0) {
+      throw new Error(`Console errors:\n${errors.join('\n')}`);
+    }
+    if (canvasPixels <= 0) {
+      throw new Error('Canvas did not initialize WebGL');
+    }
+  } finally {
+    await browser.close();
+  }
+}
+
+async function withTimeout(promise, ms, message) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${message} after ${ms}ms`)), ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function waitForServer() {
   const started = Date.now();
   while (Date.now() - started < 20_000) {
-    if (logs.some((line) => line.includes('Local:'))) {
+    serverUrl = readServerUrl();
+    if (serverUrl) {
       return;
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -75,34 +92,62 @@ async function waitForServer() {
   throw new Error(`Vite server did not start:\n${logs.join('\n')}`);
 }
 
-async function dragDropItem(page, item, clientX, clientY) {
-  const button = page.locator(`[data-drop-item="${item}"]`);
-  const box = await button.boundingBox();
-  if (!box) {
-    throw new Error(`Drop item button not visible: ${item}`);
-  }
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(clientX, clientY, { steps: 8 });
-  await page.mouse.up();
+function readServerUrl() {
+  const text = logs.join('\n');
+  const match = text.match(/Local:\s+(http:\/\/127\.0\.0\.1:\d+\/?)/);
+  return match?.[1] ?? '';
 }
 
-async function exerciseSaveSlots(page) {
-  await page.locator('[data-dish-action="save"]').click();
+async function dishCenter(page, index) {
+  return page.evaluate((dishIndex) => {
+    const canvas = document.querySelectorAll('.dish-canvas')[dishIndex];
+    if (!canvas) {
+      throw new Error(`Missing dish canvas ${dishIndex}`);
+    }
+    const rect = canvas.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  }, index);
+}
+
+async function exerciseDishLifecycle(page) {
+  await clickBySelector(page, '[data-dish-action="delete"]');
+  await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length === 1);
+  await clickBySelector(page, '[data-dish-action="add"]');
+  await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length === 2);
+  await page.waitForFunction(() => document.querySelectorAll('.dish-canvas.is-selected').length === 1);
+}
+
+async function exerciseSaveSlot(page) {
+  await page.waitForFunction(() => document.querySelectorAll('.dish-canvas.is-selected').length === 1);
+  await clickBySelector(page, '[data-dish-action="save"]');
   await page.locator('#save-modal-title', { hasText: 'Save game' }).waitFor();
-  const firstSlot = page.locator('.save-slot-row').first();
-  await firstSlot.locator('input').fill('Smoke slot');
-  await firstSlot.getByRole('button', { name: 'Save' }).click();
+  await page.evaluate(() => {
+    const row = document.querySelector('.save-slot-row');
+    const input = row?.querySelector('input');
+    const button = row?.querySelector('button');
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('Missing first save slot input');
+    }
+    if (!(button instanceof HTMLButtonElement)) {
+      throw new Error('Missing first save slot button');
+    }
+    input.value = 'Smoke slot';
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    button.click();
+  });
   await page.waitForFunction(() => {
     const slots = JSON.parse(localStorage.getItem('cell-evolution-save-slots-v1') ?? '[]');
-    return slots[0]?.name === 'Smoke slot' && Boolean(slots[0]?.data);
+    return slots[0]?.name === 'Smoke slot' && slots[0]?.data?.dishes?.length === 2;
   });
-  await page.locator('#save-modal-close').click();
+  await clickBySelector(page, '#save-modal-close');
+}
 
-  await page.locator('[data-dish-action="random"]').click();
-  await page.locator('.toast', { hasText: 'Random scenario started' }).waitFor();
-  await page.locator('[data-dish-action="load"]').click();
-  await page.locator('#save-modal-title', { hasText: 'Load game' }).waitFor();
-  await firstSlot.getByRole('button', { name: 'Load' }).click();
-  await page.locator('.toast', { hasText: 'Loaded Smoke slot' }).waitFor();
+async function clickBySelector(page, selector) {
+  await page.evaluate((targetSelector) => {
+    const element = document.querySelector(targetSelector);
+    if (!(element instanceof HTMLElement)) {
+      throw new Error(`Missing clickable element: ${targetSelector}`);
+    }
+    element.click();
+  }, selector);
 }

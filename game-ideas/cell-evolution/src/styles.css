@@ -85,9 +85,9 @@ button {
 }
 
 .hud-top {
-  top: 16px;
-  left: 18px;
-  right: 18px;
+  top: 3px;
+  left: 5px;
+  right: 8px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -258,35 +258,42 @@ h1 {
 }
 
 .state-panel {
-  top: 122px;
-  left: 0;
-  width: min(386px, calc(100vw - 16px));
-  height: min(520px, calc(100vh - 130px));
+  top: 126px;
+  left: 5px;
+  width: min(418px, calc(100vw - 16px));
+  height: 318px;
+}
+
+.entity-panel {
+  top: 453px;
+  left: 14px;
+  width: min(520px, calc(100vw - 22px));
+  height: min(448px, calc(100vh - 461px));
 }
 
 .directives-panel {
-  top: 122px;
-  left: 397px;
+  top: 54px;
+  left: 481px;
   width: min(386px, calc(100vw - 405px));
   height: min(520px, calc(100vh - 130px));
 }
 
 .hover-info-window {
-  top: 654px;
-  left: 0;
-  width: min(386px, calc(100vw - 16px));
+  top: 10px;
+  right: 253px;
+  width: min(382px, calc(100vw - 16px));
   height: 190px;
 }
 
 .shortcuts-window {
-  top: 0;
-  left: 353px;
+  top: 11px;
+  left: 481px;
   width: 286px;
 }
 
 .drop-items-window {
-  top: 0;
-  right: 18px;
+  top: 3px;
+  right: 8px;
   width: 244px;
 }
 
@@ -1050,6 +1057,12 @@ kbd {
     width: auto;
   }
 
+  .entity-panel {
+    top: 394px;
+    left: 10px;
+    width: auto;
+  }
+
   .directives-panel {
     top: 500px;
     left: 10px;
@@ -1059,6 +1072,7 @@ kbd {
   .hover-info-window {
     top: 654px;
     left: 10px;
+    right: auto;
     width: auto;
   }
 

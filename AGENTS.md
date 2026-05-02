@@ -42,6 +42,10 @@ Keep modules small and purpose-driven. Keep files under 400-500 lines; above tha
 
 Add focused tests for gameplay systems when behavior can be verified without a browser. Use `*.test.ts` or `*.spec.ts` under the active idea's `tests/` folder or next to the module. For browser-facing changes, include a smoke test that loads the game, checks for console errors, and verifies the canvas or UI renders.
 
+Smoke tests must fail fast. Keep explicit browser/action timeouts short enough that a stuck UI interaction does not run for minutes; prefer a total smoke-test cap around one minute or less unless the user asks for a long soak.
+
+When the user asks to delegate testing, run verification in a sub-agent so the main agent can keep implementing or reviewing non-overlapping work. Keep delegated test tasks read-only unless explicitly assigned a separate implementation scope.
+
 ## Commit & Pull Request Guidelines
 
 There is no existing commit history, so use concise imperative messages, for example `Add arena dash movement` or `Fix card tactics preload errors`. Keep each commit focused.
