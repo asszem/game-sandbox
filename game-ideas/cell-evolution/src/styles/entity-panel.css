@@ -1,0 +1,56 @@
+.cell-stat-grid,
+.dish-stat-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.cell-stat,
+.dish-stat {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: baseline;
+  gap: 4px;
+  padding: 4px 7px;
+  border: 1px solid rgba(213, 239, 224, 0.12);
+  border-radius: 6px;
+  background: rgba(4, 9, 16, 0.48);
+  line-height: 1.1;
+}
+
+.dish-stat {
+  min-width: 74px;
+  justify-content: space-between;
+}
+
+.cell-stat span,
+.dish-stat span {
+  color: rgba(235, 246, 226, 0.58);
+}
+
+.cell-stat strong,
+.dish-stat strong {
+  color: #f7fff3;
+  font-weight: 700;
+}
+
+.cell-stat-warning {
+  border-color: rgba(245, 217, 148, 0.48);
+  background: rgba(245, 217, 148, 0.09);
+}
+
+.cell-stat-warning strong {
+  color: #f5d994;
+}
+
+.cell-stat-danger {
+  border-color: rgba(255, 93, 122, 0.62);
+  background: rgba(255, 93, 122, 0.13);
+  box-shadow: inset 0 0 18px rgba(255, 93, 122, 0.06);
+}
+
+.cell-stat-danger strong {
+  color: #ff5d7a;
+}
+

@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import type { Block, Cell, Hazard, Resource, SimulationEvent, SimulationState, Vec2 } from '../core/types';
+import { createTimedShaderMaterial, noiseShaderChunk, updateTimedMaterials } from './shaders';
+import { createDishTexture, createMicroscopeBackdropTexture } from './textures';
 
 type CellVisual = {
   group: THREE.Group;
@@ -144,7 +146,7 @@ export class PetriDishRenderer {
   }
 
   render(state: SimulationState, time: number, events: SimulationEvent[] = [], selectedTarget: MapPick = { kind: 'dish', id: null }): void {
-    this.updateTimedMaterials(time);
+    updateTimedMaterials(this.timedMaterials, time);
     this.spawnEffects(events, time);
     this.syncResources(state.resources, time);
     this.syncHazards(state.hazards, time);
@@ -234,7 +236,7 @@ export class PetriDishRenderer {
 
     const backPlate = new THREE.Mesh(
       new THREE.PlaneGeometry(2, 2),
-      new THREE.MeshBasicMaterial({ map: this.createMicroscopeBackdropTexture(), color: 0x9fc9c5, depthWrite: false, depthTest: false }),
+      new THREE.MeshBasicMaterial({ map: createMicroscopeBackdropTexture(), color: 0x9fc9c5, depthWrite: false, depthTest: false }),
     );
     backPlate.position.set(0, 0, 0);
     this.backgroundScene.add(backPlate);
@@ -251,7 +253,7 @@ export class PetriDishRenderer {
       new THREE.RingGeometry(91.8, 96.8, 160),
       this.createDishRimMaterial(),
     );
-    const grid = this.createDishTexture();
+    const grid = createDishTexture();
     const dishVeins = new THREE.Mesh(
       new THREE.CircleGeometry(91.2, 160),
       new THREE.MeshBasicMaterial({ map: grid, transparent: true, opacity: 0.18, depthWrite: false }),
@@ -262,134 +264,14 @@ export class PetriDishRenderer {
     this.scene.add(ambient, key, this.board);
   }
 
-  private createDishTexture(): THREE.CanvasTexture {
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      return new THREE.CanvasTexture(canvas);
-    }
-    ctx.fillStyle = '#153d43';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    for (let i = 0; i < 160; i += 1) {
-      const hue = 145 + Math.random() * 115;
-      ctx.strokeStyle = `hsla(${hue}, 95%, 63%, ${0.035 + Math.random() * 0.07})`;
-      ctx.lineWidth = 1 + Math.random() * 2;
-      ctx.beginPath();
-      const x = Math.random() * canvas.width;
-      const y = Math.random() * canvas.height;
-      ctx.ellipse(x, y, 20 + Math.random() * 95, 2 + Math.random() * 8, Math.random() * Math.PI, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    return new THREE.CanvasTexture(canvas);
-  }
-
-  private createTimedShaderMaterial(options: {
-    transparent: boolean;
-    uniforms: Record<string, THREE.IUniform>;
-    fragmentShader: string;
-    opacity?: number;
-  }): THREE.ShaderMaterial {
-    const material = new THREE.ShaderMaterial({
-      transparent: options.transparent,
-      depthWrite: false,
-      uniforms: {
-        uTime: { value: 0 },
-        ...options.uniforms,
-      },
-      vertexShader: `
-        varying vec2 vLocal;
-        void main() {
-          vLocal = position.xy;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: options.fragmentShader,
-    });
-    material.opacity = options.opacity ?? 1;
-    this.timedMaterials.push(material);
-    return material;
-  }
-
-  private updateTimedMaterials(time: number): void {
-    for (const material of this.timedMaterials) {
-      if (material.uniforms.uTime) {
-        material.uniforms.uTime.value = time * 0.001;
-      }
-    }
-  }
-
-  private noiseShaderChunk(): string {
-    return `
-      float hash(vec2 p) {
-        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-      }
-      float noise(vec2 p) {
-        vec2 i = floor(p);
-        vec2 f = fract(p);
-        vec2 u = f * f * (3.0 - 2.0 * f);
-        return mix(
-          mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
-          mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
-          u.y
-        );
-      }
-      float fbm(vec2 p) {
-        float v = 0.0;
-        float a = 0.5;
-        for (int i = 0; i < 4; i++) {
-          v += a * noise(p);
-          p = mat2(1.62, -1.08, 1.08, 1.62) * p + 11.7;
-          a *= 0.52;
-        }
-        return v;
-      }
-    `;
-  }
-
-  private createMicroscopeBackdropTexture(): THREE.CanvasTexture {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 640;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      return new THREE.CanvasTexture(canvas);
-    }
-    const gradient = ctx.createRadialGradient(512, 320, 40, 512, 320, 560);
-    gradient.addColorStop(0, '#274d4f');
-    gradient.addColorStop(0.58, '#142c31');
-    gradient.addColorStop(1, '#071217');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    for (let index = 0; index < 90; index += 1) {
-      ctx.strokeStyle = `rgba(184, 238, 220, ${0.018 + Math.random() * 0.035})`;
-      ctx.lineWidth = 1 + Math.random() * 2.2;
-      ctx.beginPath();
-      const x = Math.random() * canvas.width;
-      const y = Math.random() * canvas.height;
-      ctx.ellipse(x, y, 80 + Math.random() * 260, 8 + Math.random() * 26, Math.random() * Math.PI, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    for (let index = 0; index < 3500; index += 1) {
-      const value = 80 + Math.random() * 90;
-      ctx.fillStyle = `rgba(${value}, ${value + 22}, ${value + 16}, ${Math.random() * 0.04})`;
-      ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 1, 1);
-    }
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    return texture;
-  }
-
   private createDishBaseMaterial(): THREE.ShaderMaterial {
-    return this.createTimedShaderMaterial({
+    return createTimedShaderMaterial(this.timedMaterials, {
       transparent: false,
       uniforms: {},
       fragmentShader: `
         precision highp float;
         varying vec2 vLocal;
-        ${this.noiseShaderChunk()}
+        ${noiseShaderChunk()}
         void main() {
           vec2 p = vLocal / 96.0;
           float r = length(p);
@@ -403,14 +285,14 @@ export class PetriDishRenderer {
   }
 
   private createAgarMaterial(): THREE.ShaderMaterial {
-    return this.createTimedShaderMaterial({
+    return createTimedShaderMaterial(this.timedMaterials, {
       transparent: true,
       uniforms: {},
       fragmentShader: `
         precision highp float;
         uniform float uTime;
         varying vec2 vLocal;
-        ${this.noiseShaderChunk()}
+        ${noiseShaderChunk()}
         void main() {
           vec2 p = vLocal / 91.5;
           float r = length(p);
@@ -427,14 +309,14 @@ export class PetriDishRenderer {
   }
 
   private createDishRimMaterial(): THREE.ShaderMaterial {
-    return this.createTimedShaderMaterial({
+    return createTimedShaderMaterial(this.timedMaterials, {
       transparent: true,
       uniforms: {},
       fragmentShader: `
         precision highp float;
         uniform float uTime;
         varying vec2 vLocal;
-        ${this.noiseShaderChunk()}
+        ${noiseShaderChunk()}
         void main() {
           vec2 p = vLocal / 96.0;
           float r = length(p);
@@ -1055,7 +937,7 @@ export class PetriDishRenderer {
   }
 
   private createResourceMaterial(color: number, kind: Resource['kind'], seed: number): THREE.ShaderMaterial {
-    const material = this.createTimedShaderMaterial({
+    const material = createTimedShaderMaterial(this.timedMaterials, {
       transparent: true,
       uniforms: {
         uColor: { value: new THREE.Color(color) },
@@ -1069,7 +951,7 @@ export class PetriDishRenderer {
         uniform vec3 uColor;
         uniform float uKind;
         varying vec2 vLocal;
-        ${this.noiseShaderChunk()}
+        ${noiseShaderChunk()}
         void main() {
           vec2 p = vLocal;
           float r = length(p);
@@ -1093,7 +975,7 @@ export class PetriDishRenderer {
   }
 
   private createPoisonMaterial(seed: number): THREE.ShaderMaterial {
-    return this.createTimedShaderMaterial({
+    return createTimedShaderMaterial(this.timedMaterials, {
       transparent: true,
       uniforms: {
         uSeed: { value: seed * 0.047 },
@@ -1103,7 +985,7 @@ export class PetriDishRenderer {
         uniform float uTime;
         uniform float uSeed;
         varying vec2 vLocal;
-        ${this.noiseShaderChunk()}
+        ${noiseShaderChunk()}
         void main() {
           vec2 p = vLocal;
           float r = length(p);
@@ -1228,7 +1110,7 @@ export class PetriDishRenderer {
   }
 
   private createMineralMaterial(seed: number): THREE.ShaderMaterial {
-    const material = this.createTimedShaderMaterial({
+    const material = createTimedShaderMaterial(this.timedMaterials, {
       transparent: true,
       uniforms: {
         uSeed: { value: seed * 0.037 },
@@ -1238,7 +1120,7 @@ export class PetriDishRenderer {
         uniform float uTime;
         uniform float uSeed;
         varying vec2 vLocal;
-        ${this.noiseShaderChunk()}
+        ${noiseShaderChunk()}
         void main() {
           vec2 p = vLocal * 0.09;
           float grain = fbm(p * 22.0 + uSeed);

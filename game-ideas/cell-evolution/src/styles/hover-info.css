@@ -1,0 +1,43 @@
+.hover-fact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.hover-fact {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  min-height: 42px;
+  padding: 6px 7px;
+  border: 1px solid rgba(213, 239, 224, 0.12);
+  border-radius: 7px;
+  background: rgba(4, 9, 16, 0.5);
+  cursor: help;
+}
+
+.hover-fact span {
+  color: rgba(235, 246, 226, 0.58);
+  font-size: 9px;
+  line-height: 1.1;
+}
+
+.hover-fact strong {
+  min-width: 0;
+  color: #f7fff3;
+  font-size: 11px;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.hover-info-window .window-body {
+  padding: 6px 10px 10px;
+}
+
+.hover-info-window .panel-head {
+  margin: 0;
+}
+
+.entity-panel .hover-fact-grid {
+  margin-top: 8px;
+}

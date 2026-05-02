@@ -1,0 +1,147 @@
+.drop-item-buttons {
+  display: grid;
+  gap: 7px;
+}
+
+.drop-item-buttons button {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(68, 255, 203, 0.26);
+  border-radius: 7px;
+  background: rgba(8, 15, 24, 0.62);
+  color: #f2f8ea;
+  cursor: grab;
+  text-align: left;
+  transition:
+    transform 120ms ease,
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.drop-item-buttons button:hover {
+  border-color: rgba(249, 255, 77, 0.64);
+  background: rgba(24, 255, 200, 0.14);
+}
+
+.drop-item-buttons button:active {
+  cursor: grabbing;
+  transform: translateY(1px) scale(0.98);
+}
+
+.drop-item-icon {
+  position: relative;
+  display: block;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+}
+
+.drop-item-buttons .drop-item-icon {
+  width: 26px;
+  height: 26px;
+  transform: scale(0.82);
+  transform-origin: center;
+}
+
+.cotton-candy-icon::before,
+.cotton-candy-icon::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+}
+
+.cotton-candy-icon::before {
+  left: 4px;
+  top: 2px;
+  width: 24px;
+  height: 22px;
+  background:
+    radial-gradient(circle at 28% 42%, #ffe4f0 0 18%, transparent 19%),
+    radial-gradient(circle at 55% 26%, #ffc0de 0 26%, transparent 27%),
+    radial-gradient(circle at 70% 58%, #ff8fc4 0 24%, transparent 25%),
+    radial-gradient(circle at 34% 66%, #ffd4e8 0 28%, transparent 29%),
+    #f791c0;
+  box-shadow:
+    0 0 12px rgba(255, 143, 196, 0.48),
+    inset 0 -4px 8px rgba(255, 93, 122, 0.22);
+}
+
+.cotton-candy-icon::after {
+  left: 14px;
+  top: 20px;
+  width: 4px;
+  height: 13px;
+  border-radius: 999px;
+  background: linear-gradient(#ffeab5, #d68d44);
+  transform: rotate(-12deg);
+}
+
+.cat-pawn-icon::before,
+.cat-pawn-icon::after {
+  content: "";
+  position: absolute;
+}
+
+.cat-pawn-icon::before {
+  left: 8px;
+  top: 12px;
+  width: 16px;
+  height: 14px;
+  border-radius: 48% 48% 54% 54%;
+  background: #ff5d7a;
+  box-shadow:
+    -8px -6px 0 -3px #f9ff4d,
+    -3px -10px 0 -4px #65ffbd,
+    3px -10px 0 -4px #65ffbd,
+    8px -6px 0 -3px #f9ff4d,
+    0 0 14px rgba(255, 93, 122, 0.55);
+}
+
+.cat-pawn-icon::after {
+  left: 12px;
+  top: 16px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(8, 15, 24, 0.42);
+  box-shadow:
+    -10px -8px 0 -2px rgba(8, 15, 24, 0.34),
+    -4px -12px 0 -3px rgba(8, 15, 24, 0.34),
+    4px -12px 0 -3px rgba(8, 15, 24, 0.34),
+    10px -8px 0 -2px rgba(8, 15, 24, 0.34);
+}
+
+.drop-ghost {
+  position: fixed;
+  z-index: 30;
+  display: grid;
+  width: 74px;
+  height: 74px;
+  place-items: center;
+  border: 1px solid rgba(247, 255, 243, 0.3);
+  border-radius: 50%;
+  background: rgba(8, 15, 24, 0.42);
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.36),
+    0 0 24px rgba(24, 255, 200, 0.16);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.drop-ghost .drop-item-icon {
+  width: 54px;
+  height: 54px;
+  transform: scale(1.5);
+}
+
+.drop-ghost.is-dissolving {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(1.6) rotate(14deg);
+  transition:
+    opacity 340ms ease,
+    transform 340ms ease;
+}
+

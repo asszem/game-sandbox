@@ -1,0 +1,207 @@
+.status-window {
+  top: 12px;
+  left: 12px;
+  width: 500px;
+}
+
+.status-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+  color: rgba(247, 252, 240, 0.86);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.status-strip span {
+  white-space: nowrap;
+}
+
+#state-readout[data-state='paused'] {
+  color: #f5d994;
+}
+
+.status-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 4px;
+  color: rgba(247, 252, 240, 0.9);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.status-toggle input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #18ffc8;
+}
+
+.status-toggle strong {
+  color: #f9ff4d;
+  font-weight: 700;
+}
+
+.status-toggle strong[data-state='off'] {
+  color: #f5d994;
+}
+
+.game-controls {
+  display: grid;
+  gap: 10px;
+}
+
+.game-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.game-status-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  color: rgba(247, 252, 240, 0.72);
+  font-size: 11px;
+}
+
+.game-status-strip span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 6px 7px;
+  border: 1px solid rgba(68, 255, 203, 0.18);
+  border-radius: 6px;
+  background: rgba(4, 9, 16, 0.52);
+}
+
+.game-status-strip strong {
+  color: #f9ff4d;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dish-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 0;
+}
+
+.selected-dish-actions {
+  margin-top: 10px;
+}
+
+.dish-actions button,
+.game-actions button,
+.save-slot-row button {
+  min-height: 30px;
+  border: 1px solid rgba(68, 255, 203, 0.26);
+  border-radius: 6px;
+  padding: 0 8px;
+  background: rgba(255, 46, 189, 0.08);
+  color: #f2f8ea;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.dish-actions button:hover,
+.game-actions button:hover,
+.save-slot-row button:hover:not(:disabled) {
+  border-color: rgba(249, 255, 77, 0.64);
+  background: rgba(24, 255, 200, 0.14);
+}
+
+.dish-actions button:active,
+.game-actions button:active,
+.save-slot-row button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.98);
+}
+
+#dish-detail {
+  margin-top: 3px;
+  color: rgba(235, 246, 226, 0.68);
+  font-size: 12px;
+}
+
+.dish-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.dish-picker p {
+  margin: 0;
+}
+
+.dish-picker-list {
+  display: grid;
+  gap: 6px;
+}
+
+#dish-list {
+  margin-top: 0;
+}
+
+.dish-picker-row {
+  display: grid;
+  grid-template-columns: 30px minmax(90px, 1fr) auto auto;
+  align-items: center;
+  gap: 7px;
+  padding: 7px;
+  border: 1px solid rgba(213, 239, 224, 0.12);
+  border-radius: 7px;
+  background: rgba(4, 9, 16, 0.5);
+}
+
+.dish-picker-icon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 1px solid rgba(68, 255, 203, 0.3);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(142, 197, 171, 0.32), rgba(4, 9, 16, 0.8));
+  color: #f9ff4d;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.dish-picker-row input {
+  min-width: 0;
+  height: 28px;
+  border: 1px solid rgba(68, 255, 203, 0.18);
+  border-radius: 6px;
+  padding: 0 8px;
+  background: rgba(4, 9, 16, 0.72);
+  color: #f7fff3;
+  font: inherit;
+  font-size: 12px;
+}
+
+.dish-picker-row input:focus {
+  border-color: rgba(249, 255, 77, 0.64);
+  outline: none;
+}
+
+.dish-picker-row span {
+  color: rgba(235, 246, 226, 0.62);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.dish-picker-empty {
+  color: rgba(235, 246, 226, 0.56);
+}
+.save-slot-row button:disabled {
+  border-color: rgba(218, 241, 221, 0.1);
+  background: rgba(226, 238, 216, 0.04);
+  color: rgba(242, 248, 234, 0.36);
+  cursor: not-allowed;
+}

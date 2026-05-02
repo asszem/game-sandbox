@@ -1,0 +1,132 @@
+.store-icon {
+  position: relative;
+  display: block;
+  width: 30px;
+  height: 30px;
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+.icon-glucose {
+  color: #ffe62e;
+}
+
+.icon-glucose::before,
+.icon-glucose::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.icon-glucose::before {
+  left: 7px;
+  top: 7px;
+  width: 16px;
+  height: 16px;
+  box-shadow:
+    -6px 0 0 -3px currentColor,
+    6px 0 0 -3px currentColor,
+    0 -6px 0 -3px currentColor,
+    0 6px 0 -3px currentColor;
+}
+
+.icon-glucose::after {
+  left: 12px;
+  top: 12px;
+  width: 6px;
+  height: 6px;
+  background: rgba(4, 9, 16, 0.62);
+}
+
+.icon-glycogen {
+  color: #f5d994;
+}
+
+.icon-glycogen::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow:
+    10px 0 0 currentColor,
+    5px 8px 0 currentColor,
+    -1px 15px 0 -1px currentColor,
+    11px 15px 0 -1px currentColor,
+    18px 8px 0 -1px currentColor;
+}
+
+.icon-oxygen {
+  color: #36d7ff;
+}
+
+.icon-oxygen::before,
+.icon-oxygen::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  background: rgba(54, 215, 255, 0.16);
+}
+
+.icon-oxygen::before {
+  left: 4px;
+}
+
+.icon-oxygen::after {
+  right: 4px;
+}
+
+.icon-amino {
+  color: #61ffbd;
+}
+
+.icon-amino::before,
+.icon-amino::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.icon-amino::before {
+  left: 4px;
+  top: 13px;
+  width: 22px;
+  height: 5px;
+  transform: rotate(-24deg);
+  box-shadow:
+    -3px -6px 0 -1px currentColor,
+    7px 6px 0 -1px currentColor,
+    14px -4px 0 -1px currentColor;
+}
+
+.icon-amino::after {
+  left: 11px;
+  top: 5px;
+  width: 8px;
+  height: 8px;
+  background: rgba(4, 9, 16, 0.58);
+  border: 2px solid currentColor;
+}
+
+.icon-atp {
+  color: #f9ff4d;
+}
+
+.icon-atp::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 3px;
+  width: 11px;
+  height: 24px;
+  background: currentColor;
+  clip-path: polygon(46% 0, 100% 0, 66% 38%, 100% 38%, 32% 100%, 45% 54%, 0 54%);
+}

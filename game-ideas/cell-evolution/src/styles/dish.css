@@ -1,0 +1,90 @@
+#microscope-backdrop {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  pointer-events: none;
+}
+
+#dish-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+}
+
+.dish-canvas {
+  display: block;
+  position: absolute;
+  width: min(560px, 42vw);
+  height: min(560px, 42vw);
+  min-width: 360px;
+  min-height: 360px;
+  border: 3px solid rgba(142, 197, 171, 0.82);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px rgba(5, 11, 17, 0.88),
+    0 0 22px rgba(24, 255, 200, 0.18),
+    inset 0 0 18px rgba(247, 255, 243, 0.1);
+  cursor: grab;
+  touch-action: none;
+}
+
+.dish-canvas.is-selected {
+  outline: 1px solid rgba(249, 255, 77, 0.34);
+  outline-offset: 10px;
+}
+
+.dish-canvas:active {
+  cursor: grabbing;
+}
+
+.dish-label {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  max-width: 220px;
+  min-height: 26px;
+  overflow: hidden;
+  border: 1px solid rgba(213, 239, 224, 0.3);
+  border-radius: 999px;
+  padding: 5px 12px 6px;
+  background:
+    linear-gradient(180deg, rgba(10, 22, 28, 0.92), rgba(4, 9, 16, 0.84)),
+    rgba(4, 9, 16, 0.92);
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.34),
+    0 0 16px rgba(68, 255, 203, 0.14);
+  color: #f7fff3;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.1;
+  pointer-events: auto;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+  white-space: nowrap;
+}
+
+.dish-label::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 7px;
+  border: 1px solid rgba(249, 255, 77, 0.74);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(249, 255, 77, 0.8), rgba(24, 255, 200, 0.24));
+  box-shadow: 0 0 10px rgba(249, 255, 77, 0.34);
+  vertical-align: -1px;
+}
+
+.dish-label.is-selected {
+  border-color: rgba(249, 255, 77, 0.62);
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.34),
+    0 0 18px rgba(249, 255, 77, 0.2);
+  color: #f9ff4d;
+}

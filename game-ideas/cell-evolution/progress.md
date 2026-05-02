@@ -26,3 +26,9 @@ Notes:
 - Moved Glycogen below Glucose in the metabolic triangle and enlarged it so the label stays on one line.
 - Renamed channel sliders to Fuel uptake, Repair material uptake, and ATP production rate; colored them yellow, green, and blue to match glucose/amino/oxygen flow. Cell stat display now uses "Amino Acids".
 - Verification: `npm run build`, `npm test`, and Playwright DOM/style checks passed.
+- Current refactor pass: extracted HUD utilities/windows, dish state picker formatting, and selected-cell entity panel helpers from `src/main.ts`.
+- Verification during refactor: `npm run build` and `npm test` passed after each completed slice.
+- Continued refactor: extracted hover info, metabolism panel, save slots, new dish setup, tutorial panel/progress, drop tools, directive controls, and split `src/styles.css` into `src/styles/*`.
+- Verification: `npm run build`, `npm test`, web-game client, and a full-page Playwright screenshot check passed after the CSS split.
+- Continued renderer prep: extracted procedural textures to `src/render/textures.ts` and shared shader helpers to `src/render/shaders.ts`.
+- Current largest files after this pass: `src/main.ts`, `src/render/PetriDishRenderer.ts`, and `src/core/simulation.ts`.

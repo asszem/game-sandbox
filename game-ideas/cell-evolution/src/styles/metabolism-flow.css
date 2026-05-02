@@ -1,0 +1,290 @@
+.metabolic-dashboard.is-paused .conversion-flow {
+  animation-play-state: paused;
+}
+
+@keyframes conversion-flow {
+  from {
+    background-position-x: 18px;
+  }
+  to {
+    background-position-x: 0;
+  }
+}
+
+.metabolic-node,
+.metabolic-core {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(247, 255, 243, 0.28);
+  border-radius: 50%;
+  background: rgba(4, 9, 16, 0.78);
+  box-shadow: 0 0 18px rgba(24, 255, 200, 0.18);
+  color: #f7fff3;
+  font-size: 10px;
+  line-height: 1.05;
+  text-align: center;
+  z-index: 3;
+  cursor: help;
+}
+
+.metabolic-node {
+  width: 60px;
+  height: 60px;
+  padding: 7px;
+}
+
+.node-glycogen {
+  width: 68px;
+  height: 68px;
+  padding: 8px;
+}
+
+.metabolic-core {
+  left: 50%;
+  top: 76%;
+  width: 60px;
+  height: 60px;
+  padding: 7px;
+  transform: translate(-50%, -50%);
+  border-color: rgba(255, 246, 158, 0.82);
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.18), transparent 62%),
+    rgba(4, 9, 16, 0.84);
+  box-shadow:
+    0 0 22px rgba(255, 246, 158, 0.42),
+    inset 0 0 20px rgba(255, 255, 255, 0.08);
+}
+
+.metabolic-node span,
+.metabolic-core span {
+  max-width: 48px;
+  color: rgba(247, 255, 243, 0.72);
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.node-glycogen span {
+  max-width: 62px;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.metabolic-store.metabolic-core span,
+.metabolic-store.metabolic-core .resource-readout {
+  max-width: 100%;
+}
+
+.metabolic-node strong,
+.metabolic-core strong {
+  color: #f9ff4d;
+  font-size: 14px;
+  line-height: 1;
+  text-shadow:
+    0 0 7px rgba(249, 255, 77, 0.45),
+    0 1px 0 rgba(0, 0, 0, 0.7);
+}
+
+.resource-readout {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+}
+
+.resource-value,
+.resource-delta {
+  font-variant-numeric: tabular-nums;
+}
+
+.resource-delta {
+  color: rgba(247, 255, 243, 0.48);
+  font-size: 10px;
+  line-height: 1;
+  text-shadow: none;
+}
+
+.resource-delta[data-trend='good'] {
+  color: #18ffc8;
+}
+
+.resource-delta[data-trend='bad'] {
+  color: #ff5d7a;
+}
+
+.resource-delta[data-trend='flat'] {
+  color: rgba(247, 255, 243, 0.48);
+}
+
+.node-glucose {
+  left: 22%;
+  top: 25%;
+  transform: translate(-50%, -50%);
+  border-color: rgba(255, 230, 46, 0.78);
+  box-shadow: 0 0 18px rgba(255, 230, 46, 0.3);
+}
+
+.node-glycogen {
+  left: 22%;
+  top: 62%;
+  transform: translate(-50%, -50%);
+  border-color: rgba(245, 217, 148, 0.78);
+  box-shadow: 0 0 18px rgba(245, 217, 148, 0.26);
+}
+
+.node-amino {
+  left: 78%;
+  top: 25%;
+  transform: translate(-50%, -50%);
+  border-color: rgba(97, 255, 189, 0.72);
+  box-shadow: 0 0 18px rgba(97, 255, 189, 0.28);
+}
+
+.node-oxygen {
+  left: 50%;
+  top: 18%;
+  transform: translate(-50%, -50%);
+  border-color: rgba(54, 215, 255, 0.76);
+  box-shadow: 0 0 18px rgba(54, 215, 255, 0.3);
+}
+
+.metabolic-flow-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.flow-path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 10 12;
+  stroke-dashoffset: 0;
+  opacity: 0.84;
+  filter: drop-shadow(0 0 4px currentColor);
+  animation: metabolic-flow 1100ms linear infinite;
+}
+
+.flow-path-glucose {
+  color: rgba(255, 230, 46, 0.92);
+  stroke: currentColor;
+  stroke-width: var(--glucose-flow);
+  animation-duration: var(--glucose-speed);
+}
+
+.flow-path-glycogen {
+  color: rgba(245, 217, 148, 0.86);
+  stroke: currentColor;
+  stroke-width: max(2px, calc(var(--glucose-flow) * 0.65));
+  animation-duration: var(--glucose-speed);
+}
+
+.flow-path-amino {
+  color: rgba(97, 255, 189, 0.82);
+  stroke: currentColor;
+  stroke-width: var(--amino-flow);
+  animation-duration: var(--amino-speed);
+}
+
+.flow-path-oxygen {
+  color: rgba(54, 215, 255, 0.9);
+  stroke: currentColor;
+  stroke-width: var(--oxygen-flow);
+  animation-duration: var(--oxygen-speed);
+}
+
+.conversion-flow.flow-path {
+  fill: initial;
+  stroke: initial;
+  stroke-width: 0;
+  stroke-dasharray: none;
+  stroke-dashoffset: 0;
+  opacity: 1;
+  filter: none;
+  animation: conversion-flow 900ms linear infinite;
+}
+
+.metabolic-dashboard.is-paused .flow-path {
+  animation-play-state: paused;
+}
+
+.metabolic-dashboard.is-toxic .flow-path {
+  filter:
+    drop-shadow(0 0 5px currentColor)
+    drop-shadow(0 0 9px rgba(255, 102, 46, 0.45));
+}
+
+.metabolic-dashboard.is-autophagy .node-glycogen,
+.metabolic-dashboard.is-autophagy .tri-gauge[data-gauge='autophagy'] {
+  border-color: rgba(255, 93, 122, 0.62);
+  box-shadow:
+    0 0 18px rgba(255, 93, 122, 0.22),
+    inset 0 0 14px rgba(255, 93, 122, 0.08);
+}
+
+@keyframes metabolic-flow {
+  from {
+    stroke-dashoffset: 22;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.flow-control {
+  position: absolute;
+  left: 50%;
+  top: 76%;
+  z-index: 4;
+  width: 86px;
+  height: 18px;
+  margin: 0;
+  transform-origin: left center;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.control-glucose {
+  color: #ffe62e;
+  transform: rotate(-123deg) translateX(40px);
+  accent-color: #ffe62e;
+}
+
+.control-amino {
+  color: #61ffbd;
+  transform: rotate(-57deg) translateX(40px);
+  accent-color: #61ffbd;
+}
+
+.control-oxygen {
+  color: #36d7ff;
+  width: 90px;
+  transform: rotate(-90deg) translateX(40px);
+  accent-color: #36d7ff;
+}
+
+.flow-control::-webkit-slider-runnable-track {
+  height: 18px;
+  background: transparent;
+}
+
+.flow-control::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  border: 2px solid rgba(4, 9, 16, 0.9);
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow:
+    0 0 0 2px rgba(247, 255, 243, 0.68),
+    0 0 15px currentColor;
+}
+
+.flow-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}

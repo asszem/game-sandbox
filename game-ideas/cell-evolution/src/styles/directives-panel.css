@@ -1,0 +1,75 @@
+.panel-head {
+  margin-bottom: 12px;
+}
+
+h3 {
+  font-size: 16px;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.dna-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.transport-controls {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+}
+.transport-controls label {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  color: rgba(239, 248, 229, 0.82);
+  font-size: 12px;
+}
+
+.transport-controls label span {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.transport-controls output {
+  color: currentColor;
+  font-variant-numeric: tabular-nums;
+}
+
+.transport-controls input[type='range'] {
+  width: 100%;
+  color: var(--channel-color, currentColor);
+  accent-color: var(--channel-color, currentColor);
+}
+
+.transport-controls input[type='range']:disabled {
+  opacity: 0.35;
+}
+
+.dna-buttons button {
+  position: relative;
+  min-height: 30px;
+  border: 1px solid rgba(68, 255, 203, 0.26);
+  border-radius: 6px;
+  padding: 0 8px;
+  background: rgba(255, 46, 189, 0.08);
+  color: #f2f8ea;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.dna-buttons button:hover {
+  border-color: rgba(249, 255, 77, 0.64);
+  background: rgba(24, 255, 200, 0.14);
+}
+
+.dna-buttons button[aria-disabled='true'] {
+  border-color: rgba(218, 241, 221, 0.1);
+  background: rgba(226, 238, 216, 0.04);
+  color: rgba(242, 248, 234, 0.36);
+}
