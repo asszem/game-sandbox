@@ -12,8 +12,17 @@ type SaveData = {
   inspectedTarget?: MapPick;
   dishes?: DishSaveData[];
   activeDishId?: number | null;
+  tutorial?: TutorialSaveData;
   windowLayout: WindowLayout;
   tooltipsEnabled?: boolean;
+};
+
+type TutorialSaveData = {
+  mode: boolean;
+  stepIndex: number;
+  goalMet: boolean;
+  completed: TutorialStepId[];
+  prepared: TutorialStepId[];
 };
 
 type DishSaveData = {
@@ -195,6 +204,7 @@ let tutorialStepIndex = 0;
 let tutorialEnteredStep: TutorialStepId | null = null;
 let tutorialGoalMet = false;
 let tutorialCompleted = readCompletedTutorialMilestones();
+let tutorialPreparedSteps = new Set<TutorialStepId>();
 
 const tutorialSteps: TutorialStep[] = [
   {
@@ -923,12 +933,13 @@ function deleteActiveDish(): void {
   showToast('Petri dish deleted');
 }
 
-function startTutorial(stepIndex = 0): void {
+function startTutorial(_stepIndex = 0): void {
   tutorialMode = true;
   if (tutorialWindow) {
     tutorialWindow.hidden = false;
   }
-  goToTutorialStep(stepIndex, true);
+  tutorialPreparedSteps = new Set<TutorialStepId>();
+  goToTutorialStep(0, true);
   showToast('Tutorial started');
 }
 
@@ -950,7 +961,7 @@ function goToTutorialStep(stepIndex: number, rebuildWorld: boolean): void {
   dnaButtons.forEach((button) => {
     delete button.dataset.tutorialUsed;
   });
-  if (rebuildWorld || !activeDish || dishes.length !== 1) {
+  if (rebuildWorld || !activeDish) {
     createTutorialWorld();
   }
   enterTutorialStep();
@@ -959,21 +970,13 @@ function goToTutorialStep(stepIndex: number, rebuildWorld: boolean): void {
 
 function createTutorialWorld(): void {
   cancelActiveDrop();
-  for (const dish of dishes) {
-    dish.renderer.dispose();
-    dish.canvas.remove();
-    dish.label.remove();
-  }
-  dishes = [];
-  activeDish = null;
-  hoveredDish = null;
-  hoveredTarget = null;
-  nextDishId = 1;
-  nextDishZ = 1;
+  tutorialPreparedSteps = new Set<TutorialStepId>();
   const size = Math.min(560, Math.max(430, Math.round(window.innerWidth * 0.36)));
+  const offset = (dishes.length % 5) * 34;
   const dish = createDish({
-    left: clamp(window.innerWidth - size - 64, 350, Math.max(350, window.innerWidth - size - 24)),
-    top: clamp(window.innerHeight - size - 44, 106, Math.max(106, window.innerHeight - size - 24)),
+    name: 'Tutorial Dish',
+    left: clamp(window.innerWidth - size - 64 - offset, 350, Math.max(350, window.innerWidth - size - 24)),
+    top: clamp(window.innerHeight - size - 44 - offset, 106, Math.max(106, window.innerHeight - size - 24)),
     size,
     select: true,
     setup: {
@@ -1020,47 +1023,45 @@ function enterTutorialStep(): void {
     return;
   }
 
-  const view = activeDish.renderer.exportView();
+  const shouldPrepareStep = !tutorialPreparedSteps.has(step.id);
   simulation.state.running = true;
-  simulation.state.tick = 0;
-  simulation.state.resources = [];
-  simulation.state.hazards = [];
-  simulation.state.blocks = [];
-  simulation.state.cells = [cell];
   activeDish.accumulator = 0;
   setActiveDish(activeDish, { kind: 'cell', id: cell.id });
-  activeDish.renderer.applyView(view);
+  if (!shouldPrepareStep) {
+    return;
+  }
+  tutorialPreparedSteps.add(step.id);
 
   if (step.id === 'atp') {
     Object.assign(cell, { position: { x: 0, y: 0 }, velocity: { x: 0, y: 0 }, atp: 72, glucose: 92, oxygen: 88, aminoAcids: 76, ros: 5, oxygenMetabolism: 0.35 });
   }
   if (step.id === 'glucose') {
-    Object.assign(cell, { position: { x: -6, y: 0 }, velocity: { x: 0, y: 0 }, atp: 82, glucose: 18, oxygen: 75, aminoAcids: 70, glucoseTransport: 0.35 });
-    spawnTutorialResource('glucose', { x: 6, y: 0 }, 'Glucose dropped');
+    Object.assign(cell, { velocity: { x: 0, y: 0 }, atp: Math.max(cell.atp, 82), glucose: Math.min(cell.glucose, 18), oxygen: Math.max(cell.oxygen, 75), aminoAcids: Math.max(cell.aminoAcids, 70), glucoseTransport: 0.35 });
+    spawnTutorialResource('glucose', offsetTutorialPoint(cell.position, 24, 0), 'Glucose dropped');
   }
   if (step.id === 'amino') {
-    Object.assign(cell, { position: { x: -6, y: 0 }, velocity: { x: 0, y: 0 }, atp: 86, glucose: 72, oxygen: 70, aminoAcids: 18, aminoTransport: 0.35 });
-    spawnTutorialResource('amino-acid', { x: 6, y: 0 }, 'Amino-acid cluster dropped');
+    Object.assign(cell, { velocity: { x: 0, y: 0 }, atp: Math.max(cell.atp, 86), glucose: Math.max(cell.glucose, 72), oxygen: Math.max(cell.oxygen, 70), aminoAcids: Math.min(cell.aminoAcids, 18), aminoTransport: 0.35 });
+    spawnTutorialResource('amino-acid', offsetTutorialPoint(cell.position, 24, 8), 'Amino-acid cluster dropped');
   }
   if (step.id === 'light') {
-    Object.assign(cell, { position: { x: -12, y: 0 }, velocity: { x: 0, y: 0 }, atp: 80, glucose: 45, oxygen: 55, aminoAcids: 65 });
-    spawnTutorialResource('light', { x: 4, y: 0 }, 'Light source dropped');
+    Object.assign(cell, { velocity: { x: 0, y: 0 }, atp: Math.max(cell.atp, 80), glucose: Math.max(cell.glucose, 45), oxygen: Math.max(cell.oxygen, 55), aminoAcids: Math.max(cell.aminoAcids, 65) });
+    spawnTutorialResource('light', offsetTutorialPoint(cell.position, 20, -8), 'Light source dropped');
   }
   if (step.id === 'poison') {
-    Object.assign(cell, { position: { x: -12, y: 0 }, velocity: { x: 0, y: 0 }, atp: 84, glucose: 70, oxygen: 70, aminoAcids: 72 });
-    simulation.spawnHazard({ x: 10, y: 0 }, 0.7);
+    Object.assign(cell, { velocity: { x: 0, y: 0 }, atp: Math.max(cell.atp, 84), glucose: Math.max(cell.glucose, 70), oxygen: Math.max(cell.oxygen, 70), aminoAcids: Math.max(cell.aminoAcids, 72) });
+    simulation.spawnHazard(offsetTutorialPoint(cell.position, 28, 0), 0.7);
     showToast('Poison cloud dropped');
   }
   if (step.id === 'rock') {
-    Object.assign(cell, { position: { x: -14, y: 0 }, velocity: { x: 0, y: 0 }, atp: 86, glucose: 72, oxygen: 70, aminoAcids: 72 });
-    simulation.spawnBlock({ x: 6, y: 0 }, 8, 7);
-    spawnTutorialResource('glucose', { x: 23, y: 0 }, 'Rock and glucose dropped');
+    Object.assign(cell, { velocity: { x: 0, y: 0 }, atp: Math.max(cell.atp, 86), glucose: Math.max(cell.glucose, 72), oxygen: Math.max(cell.oxygen, 70), aminoAcids: Math.max(cell.aminoAcids, 72) });
+    simulation.spawnBlock(offsetTutorialPoint(cell.position, 24, 0), 8, 7);
+    spawnTutorialResource('glucose', offsetTutorialPoint(cell.position, 42, 0), 'Rock and glucose dropped');
   }
   if (step.id === 'directives') {
-    Object.assign(cell, { position: { x: -10, y: 0 }, velocity: { x: 0, y: 0 }, atp: 88, glucose: 75, oxygen: 70, aminoAcids: 74 });
-    const neighbor = simulation.spawnCell({ x: 10, y: 0 }, 0);
+    Object.assign(cell, { velocity: { x: 0, y: 0 }, atp: Math.max(cell.atp, 88), glucose: Math.max(cell.glucose, 75), oxygen: Math.max(cell.oxygen, 70), aminoAcids: Math.max(cell.aminoAcids, 74) });
+    const neighbor = simulation.spawnCell(offsetTutorialPoint(cell.position, 20, -10), 0);
     neighbor.radius = Math.max(2.4, cell.radius * 0.82);
-    const rival = simulation.spawnCell({ x: 20, y: -7 }, 0);
+    const rival = simulation.spawnCell(offsetTutorialPoint(cell.position, 31, 9), 0);
     rival.radius = Math.max(cell.radius * 1.02, 3.2);
     showToast('Neighbor cells dropped');
   }
@@ -1069,6 +1070,13 @@ function enterTutorialStep(): void {
 function spawnTutorialResource(kind: ResourceKind, position: Vec2, message: string): void {
   simulation.spawnResource(kind, position, 1);
   showToast(message);
+}
+
+function offsetTutorialPoint(origin: Vec2, dx: number, dy: number): Vec2 {
+  const point = { x: origin.x + dx, y: origin.y + dy };
+  const max = Math.max(0, simulation.state.boardRadius - 8);
+  const d = distance(point, { x: 0, y: 0 });
+  return d > max ? { x: (point.x / d) * max, y: (point.y / d) * max } : point;
 }
 
 function tutorialCell(): Cell | null {
@@ -1158,7 +1166,11 @@ function renderTutorialMilestones(): void {
     button.type = 'button';
     button.textContent = String(index + 1);
     button.title = step.title;
-    button.className = index === tutorialStepIndex ? 'is-current' : tutorialCompleted.has(step.id) ? 'is-complete' : '';
+    button.className = index === tutorialStepIndex
+      ? 'is-current'
+      : index < tutorialStepIndex && tutorialCompleted.has(step.id)
+        ? 'is-complete'
+        : '';
     button.disabled = index !== tutorialStepIndex && !tutorialCompleted.has(step.id);
     button.addEventListener('click', () => {
       if (!button.disabled) {
@@ -1464,11 +1476,8 @@ function updateDishStatsHud(): void {
   }
   if (dishDetail) dishDetail.innerHTML = formatDishState();
   if (dishList) {
-    dishList.hidden = Boolean(activeDish);
-    if (activeDish) {
-      dishList.innerHTML = '';
-      dishPickerSignature = '';
-    } else if (!dishList.contains(document.activeElement)) {
+    dishList.hidden = false;
+    if (!dishList.contains(document.activeElement)) {
       const signature = currentDishPickerSignature();
       if (signature !== dishPickerSignature) {
         dishList.innerHTML = formatDishPickerList();
@@ -1484,7 +1493,7 @@ function updateDishStatsHud(): void {
 
 function formatDishState(): string {
   if (!activeDish) {
-    return '<div class="dish-picker"><p>Add a new dish, start the tutorial, or select an existing dish below.</p></div>';
+    return '<div class="dish-picker-empty">Select a dish from the Game window or click any petri dish to inspect it.</div>';
   }
   const resources = simulation.state.resources.reduce(
     (counts, resource) => {
@@ -1763,11 +1772,8 @@ function syncCellOnlyPanels(hasSelectedCell: boolean): void {
   if (dnaButtonsPanel) {
     dnaButtonsPanel.hidden = !hasSelectedCell;
   }
-  if (dishActions) {
-    dishActions.hidden = false;
-  }
   if (addDishButton) {
-    addDishButton.hidden = Boolean(activeDish);
+    addDishButton.hidden = false;
   }
   if (deleteDishButton) {
     deleteDishButton.hidden = !activeDish;
@@ -1775,7 +1781,7 @@ function syncCellOnlyPanels(hasSelectedCell: boolean): void {
   dishActionButtons.forEach((button) => {
     const action = button.dataset.dishAction;
     if (action === 'tutorial') {
-      button.hidden = Boolean(activeDish);
+      button.hidden = false;
     }
     const requiresDish = action === 'restart' || action === 'random';
     if (requiresDish) {
@@ -1821,6 +1827,13 @@ function createSavePayload(): SaveData {
     savedAt: Date.now(),
     dishes: dishes.map(exportDish),
     activeDishId: activeDish?.id ?? null,
+    tutorial: {
+      mode: tutorialMode,
+      stepIndex: tutorialStepIndex,
+      goalMet: tutorialGoalMet,
+      completed: [...tutorialCompleted],
+      prepared: [...tutorialPreparedSteps],
+    },
     windowLayout: windowSystem.exportLayout(),
     tooltipsEnabled,
   };
@@ -1978,6 +1991,12 @@ function applySaveData(payload: SaveData, message: string): void {
   inspectedTarget = { kind: 'dish', id: null };
   hoveredDish = null;
   hoveredTarget = null;
+  tutorialMode = payload.tutorial?.mode ?? false;
+  tutorialStepIndex = clamp(payload.tutorial?.stepIndex ?? 0, 0, tutorialSteps.length - 1);
+  tutorialGoalMet = payload.tutorial?.goalMet ?? false;
+  tutorialCompleted = new Set(payload.tutorial?.completed ?? [...tutorialCompleted]);
+  tutorialPreparedSteps = new Set(payload.tutorial?.prepared ?? []);
+  tutorialEnteredStep = null;
   nextDishId = 1;
   nextDishZ = 1;
 
@@ -2018,7 +2037,14 @@ function applySaveData(payload: SaveData, message: string): void {
     clearActiveDish();
   }
   setTooltipsEnabled(payload.tooltipsEnabled ?? true, false);
+  if (tutorialWindow) {
+    tutorialWindow.hidden = !tutorialMode;
+  }
   windowSystem.applyLayout(payload.windowLayout ?? {});
+  if (tutorialMode) {
+    enterTutorialStep();
+    updateTutorialPanel();
+  }
   updateHud();
   showToast(message);
 }

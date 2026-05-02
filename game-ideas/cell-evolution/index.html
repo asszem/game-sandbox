@@ -29,6 +29,14 @@
               <button type="button" data-dish-action="save">Save</button>
               <button type="button" data-dish-action="load">Load</button>
             </div>
+            <div class="dish-actions" aria-label="petri dish actions">
+              <button type="button" data-dish-action="add">Add new dish</button>
+              <button type="button" data-dish-action="delete">Delete dish</button>
+              <button type="button" data-dish-action="tutorial">Start tutorial</button>
+              <button type="button" data-dish-action="restart">Restart Same Dish</button>
+              <button type="button" data-dish-action="random">Restart Random Dish</button>
+            </div>
+            <div id="dish-list" class="dish-picker-list" aria-label="existing dishes"></div>
           </div>
           <span class="window-resize" aria-hidden="true"></span>
         </div>
@@ -52,14 +60,6 @@
             <h3 id="dish-name">No dish selected</h3>
             <div id="dish-detail">Add a new dish, or click any petri dish to inspect and control it.</div>
           </div>
-          <div class="dish-actions" aria-label="petri dish actions">
-            <button type="button" data-dish-action="add">Add new dish</button>
-            <button type="button" data-dish-action="delete">Delete dish</button>
-            <button type="button" data-dish-action="tutorial">Start tutorial</button>
-            <button type="button" data-dish-action="restart">Restart Same Dish</button>
-            <button type="button" data-dish-action="random">Restart Random Dish</button>
-          </div>
-          <div id="dish-list" class="dish-picker-list" aria-label="existing dishes"></div>
         </div>
         <span class="window-resize" aria-hidden="true"></span>
       </aside>

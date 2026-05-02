@@ -207,7 +207,7 @@ async function exerciseDishPicker(page) {
     icon.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
   });
   await page.waitForFunction(() => document.querySelector('#dish-window-title')?.textContent === 'Training Dish | State');
-  await page.waitForFunction(() => document.querySelector('[data-dish-action="tutorial"]')?.hidden === true);
+  await page.waitForFunction(() => document.querySelector('[data-dish-action="tutorial"]')?.hidden === false);
 }
 
 async function exerciseTutorial(page) {
@@ -217,8 +217,9 @@ async function exerciseTutorial(page) {
   });
   await clickBySelector(page, '[data-dish-action="tutorial"]');
   await page.locator('#tutorial-title', { hasText: 'Tutorial | 1/7' }).waitFor();
-  await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length === 1);
+  await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length >= 2);
   await page.waitForFunction(() => document.querySelector('#population-readout')?.textContent === '1 cells');
+  await page.waitForFunction(() => document.querySelector('#dish-window-title')?.textContent === 'Tutorial Dish | State');
   const beforeNextRect = await page.evaluate(() => {
     const canvas = document.querySelector('.dish-canvas');
     const rect = canvas.getBoundingClientRect();
@@ -235,7 +236,7 @@ async function exerciseTutorial(page) {
   await page.waitForFunction(() => document.querySelector('#tutorial-goal')?.getAttribute('data-state') === 'complete', null, { timeout: 10_000 });
   await clickBySelector(page, '#tutorial-next');
   await page.locator('#tutorial-title', { hasText: 'Tutorial | 2/7' }).waitFor();
-  await page.waitForFunction(() => (document.querySelector('#dish-detail')?.textContent ?? '').includes('Glucose1'));
+  await page.waitForFunction(() => /Glucose\s*[1-9]/.test(document.querySelector('#dish-detail')?.textContent ?? ''));
   const afterNextRect = await page.evaluate(() => {
     const canvas = document.querySelector('.dish-canvas');
     const rect = canvas.getBoundingClientRect();
