@@ -33,27 +33,24 @@
             <h3 id="selected-name">No cell selected</h3>
             <p id="selected-detail">Click a cell to inspect and infuse DNA.</p>
           </div>
-          <div class="stat-grid">
-            <label data-tooltip="ATP is the cell's immediate energy currency. Movement, molecule transport, repair, antioxidant response, and division slow down when ATP is low.">ATP <meter id="energy-meter" min="0" max="1" value="0"></meter></label>
-            <label data-tooltip="Amino acids are structural material. The cell spends them to maintain membrane integrity, synthesize enzymes, repair damage, grow, and divide.">Amino Acids <meter id="mass-meter" min="0" max="1" value="0"></meter></label>
-            <label data-tooltip="Oxygen improves ATP yield from glucose, but high oxygen metabolism creates ROS that must be repaired with ATP and amino acids.">Oxygen <meter id="oxygen-meter" min="0" max="1" value="0"></meter></label>
-            <label>Health <meter id="health-meter" min="0" max="1" value="0"></meter></label>
-          </div>
           <div class="metabolic-dashboard" aria-label="metabolic engine dashboard">
             <div class="metabolic-triangle">
               <div class="flow flow-glucose"></div>
               <div class="flow flow-amino"></div>
               <div class="flow flow-oxygen"></div>
-              <div class="metabolic-node node-glucose"><span>Glucose</span><strong id="glucose-rate">0</strong></div>
-              <div class="metabolic-node node-amino"><span>Amino</span><strong id="amino-rate">0</strong></div>
-              <div class="metabolic-node node-oxygen"><span>Oxygen</span><strong id="oxygen-rate">0</strong></div>
-              <div class="metabolic-core"><span>ATP</span><strong id="atp-core">0</strong></div>
+              <input class="flow-control control-glucose" data-control="glucoseTransport" type="range" min="0" max="100" value="50" aria-label="Glucose channels" />
+              <input class="flow-control control-amino" data-control="aminoTransport" type="range" min="0" max="100" value="50" aria-label="Amino acid channels" />
+              <input class="flow-control control-oxygen" data-control="oxygenMetabolism" type="range" min="0" max="100" value="50" aria-label="Mitochondrial activity" />
+              <div class="metabolic-node node-glucose" data-tooltip="Glucose is fuel. Transported glucose combines with oxygen to generate ATP, but high intake can empty the local supply."><span>Glucose</span><strong id="glucose-rate">0</strong></div>
+              <div class="metabolic-node node-amino" data-tooltip="Amino acids are building material. They repair membrane damage, synthesize enzymes, and let the cell grow or divide."><span>Amino Acids</span><strong id="amino-rate">0</strong></div>
+              <div class="metabolic-node node-oxygen" data-tooltip="Oxygen boosts ATP yield from glucose. Too much mitochondrial activity raises ROS waste and repair pressure."><span>Oxygen</span><strong id="oxygen-rate">0</strong></div>
+              <div class="metabolic-core" data-tooltip="ATP requires glucose and oxygen. It powers movement, transport, repair, antioxidant response, and division."><span>ATP</span><strong id="atp-core">0</strong></div>
             </div>
             <div class="tri-gauges">
-              <div class="tri-gauge" data-gauge="atp"><span>ATP</span><strong id="atp-delta">0</strong></div>
-              <div class="tri-gauge" data-gauge="amino"><span>Amino</span><strong id="amino-delta">0</strong></div>
-              <div class="tri-gauge" data-gauge="oxygen"><span>Oxygen</span><strong id="oxygen-delta">0</strong></div>
-              <div class="tri-gauge" data-gauge="ros"><span>ROS</span><strong id="ros-delta">0</strong></div>
+              <div class="tri-gauge" data-gauge="atp"><span>ATP</span><div class="gauge-track"></div><strong id="atp-delta">0</strong></div>
+              <div class="tri-gauge" data-gauge="amino"><span>Amino Acids</span><div class="gauge-track"></div><strong id="amino-delta">0</strong></div>
+              <div class="tri-gauge" data-gauge="oxygen"><span>Oxygen</span><div class="gauge-track"></div><strong id="oxygen-delta">0</strong></div>
+              <div class="tri-gauge" data-gauge="ros"><span>ROS Waste</span><div class="gauge-track"></div><strong id="ros-delta">0</strong></div>
             </div>
           </div>
         </div>

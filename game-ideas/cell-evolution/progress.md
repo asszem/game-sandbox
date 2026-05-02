@@ -11,3 +11,15 @@ Notes:
 - Dev server URL: `http://localhost:4177/`.
 - Verification: `npm run build` passed; `npm test` passed; web-game client screenshot passed without console errors; full-page Playwright screenshot at 1710x936 matches the requested default HUD positions and shows `Zoom 100%`.
 - Added a Hover Info window that tracks board hover targets separately from selected entities.
+- Verification: hover over a glucose resource updated Hover Info with resource type, amount, size, and position; no browser console errors.
+- Reworked the State metabolic UI: removed redundant horizontal bars, made the triangle the primary stock/flow view, added real slider handles on flow lines, added ATP/resource node tooltips, and changed bottom gauges to center-zero net-flow readouts.
+- Verification: `npm run build`, `npm test`, web-game client, and Playwright browser checks passed; ATP tooltip appears and the triangle oxygen handle syncs to the Directives mitochondria slider.
+- Updated cell visuals: shader-driven plasma/cell membrane/nucleus materials inspired by WebGL fluid dye/advection, structured mitochondria/strand organelles, and shorter membrane-attached cilia that sweep with movement instead of reading as long spikes.
+- Verification: `npm run build`, `npm test`, web-game client screenshot, and Playwright browser error check passed.
+- Extended the same realism pass to the environment and non-cell entities: microscope-style backdrop, shader agar/dish/rim materials, circular clipped agar texture, shader resources, smoky poison, and striated mineral blocks.
+- Verification: `npm run build`, `npm test`, web-game client screenshot, and Playwright full-page screenshot/error check passed.
+- Empty selection now shows general petri dish state in the State window: cell count, biomass, average ATP, resource breakdown, poison count, block count, and tick.
+- Background rendering moved to a separate fixed scene/camera so pan and zoom affect only the dish/game board, not the microscope backdrop.
+- Verification: `npm run build`, `npm test`, web-game client, and Playwright pan/zoom check passed; sampled background pixels were unchanged after pan/zoom.
+- Fixed regression where the fixed background wrote depth and hid the petri dish: clear depth between background and board render passes, disable depth on the background plate, and shift default reset framing back to the right-side dish view.
+- Verification: `npm run build`, `npm test`, web-game client, and full-page Playwright screenshot/error check passed.

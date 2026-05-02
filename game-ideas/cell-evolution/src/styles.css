@@ -30,9 +30,9 @@ button {
   position: relative;
   isolation: isolate;
   background:
-    radial-gradient(circle at 28% 24%, rgba(255, 0, 221, 0.2), transparent 35%),
-    radial-gradient(circle at 68% 58%, rgba(0, 255, 184, 0.16), transparent 42%),
-    linear-gradient(135deg, #050711, #08262e 50%, #12051c);
+    radial-gradient(circle at 54% 48%, rgba(92, 132, 128, 0.22), transparent 38%),
+    radial-gradient(circle at 25% 20%, rgba(179, 218, 201, 0.08), transparent 24%),
+    linear-gradient(135deg, #03080b, #0b1b20 48%, #071014);
 }
 
 #dish {
@@ -226,7 +226,7 @@ h1 {
   top: 654px;
   left: 0;
   width: min(386px, calc(100vw - 16px));
-  height: min(156px, calc(100vh - 662px));
+  height: 190px;
 }
 
 .shortcuts-window {
@@ -245,38 +245,6 @@ h3 {
   letter-spacing: 0;
 }
 
-.stat-grid {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.stat-grid label {
-  position: relative;
-  display: grid;
-  grid-template-columns: 58px 1fr;
-  align-items: center;
-  gap: 8px;
-  color: rgba(239, 248, 229, 0.82);
-  font-size: 12px;
-}
-
-meter {
-  width: 100%;
-  height: 10px;
-}
-
-meter::-webkit-meter-bar {
-  border: 0;
-  border-radius: 99px;
-  background: rgba(235, 247, 226, 0.12);
-}
-
-meter::-webkit-meter-optimum-value {
-  border-radius: 99px;
-  background: linear-gradient(90deg, #ff2ebd, #f9ff4d, #18ffc8);
-}
-
 .dna-buttons {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -293,18 +261,23 @@ meter::-webkit-meter-optimum-value {
   --glucose-flow: 2px;
   --amino-flow: 2px;
   --oxygen-flow: 2px;
+  --glucose-speed: 1100ms;
+  --amino-speed: 1100ms;
+  --oxygen-speed: 1100ms;
   display: grid;
-  gap: 10px;
+  gap: 12px;
   margin: 12px 0;
 }
 
 .metabolic-triangle {
   position: relative;
-  height: 150px;
+  height: 186px;
   border: 1px solid rgba(68, 255, 203, 0.16);
   border-radius: 8px;
   background:
-    radial-gradient(circle at 50% 50%, rgba(249, 255, 77, 0.08), transparent 34%),
+    radial-gradient(circle at 50% 58%, rgba(255, 246, 158, 0.11), transparent 23%),
+    linear-gradient(120deg, rgba(255, 230, 46, 0.08), transparent 34%),
+    linear-gradient(238deg, rgba(97, 255, 189, 0.08), transparent 36%),
     rgba(255, 255, 255, 0.025);
   overflow: hidden;
 }
@@ -317,24 +290,32 @@ meter::-webkit-meter-optimum-value {
   border: 1px solid rgba(247, 255, 243, 0.28);
   border-radius: 50%;
   background: rgba(4, 9, 16, 0.78);
-  box-shadow: 0 0 16px rgba(24, 255, 200, 0.18);
+  box-shadow: 0 0 18px rgba(24, 255, 200, 0.18);
   color: #f7fff3;
   font-size: 10px;
   text-align: center;
+  z-index: 3;
+  cursor: help;
 }
 
 .metabolic-node {
-  width: 58px;
-  height: 58px;
+  width: 68px;
+  height: 68px;
 }
 
 .metabolic-core {
   left: 50%;
   top: 58%;
-  width: 58px;
-  height: 58px;
+  width: 66px;
+  height: 66px;
   transform: translate(-50%, -50%);
-  border-color: rgba(249, 255, 77, 0.54);
+  border-color: rgba(255, 246, 158, 0.82);
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.18), transparent 62%),
+    rgba(4, 9, 16, 0.84);
+  box-shadow:
+    0 0 22px rgba(255, 246, 158, 0.42),
+    inset 0 0 20px rgba(255, 255, 255, 0.08);
 }
 
 .metabolic-node span,
@@ -345,63 +326,142 @@ meter::-webkit-meter-optimum-value {
 .metabolic-node strong,
 .metabolic-core strong {
   color: #f9ff4d;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .node-glucose {
   left: 12px;
   bottom: 10px;
+  border-color: rgba(255, 230, 46, 0.78);
+  box-shadow: 0 0 18px rgba(255, 230, 46, 0.3);
 }
 
 .node-amino {
   right: 12px;
   bottom: 10px;
+  border-color: rgba(97, 255, 189, 0.72);
+  box-shadow: 0 0 18px rgba(97, 255, 189, 0.28);
 }
 
 .node-oxygen {
   left: 50%;
-  top: 4px;
+  top: 8px;
   transform: translateX(-50%);
+  border-color: rgba(54, 215, 255, 0.76);
+  box-shadow: 0 0 18px rgba(54, 215, 255, 0.3);
 }
 
 .flow {
   position: absolute;
   left: 50%;
-  top: 50%;
+  top: 58%;
   width: 46%;
   height: var(--glucose-flow);
   transform-origin: left center;
-  background: linear-gradient(90deg, transparent, rgba(249, 255, 77, 0.86), transparent);
-  opacity: 0.75;
-  animation: metabolic-flow 900ms linear infinite;
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 8px,
+      currentColor 8px 18px,
+      transparent 18px 30px
+    );
+  background-size: 60px 100%;
+  filter: drop-shadow(0 0 5px currentColor);
+  opacity: 0.78;
+  z-index: 1;
 }
 
 .flow-glucose {
+  color: rgba(255, 230, 46, 0.9);
   height: var(--glucose-flow);
-  transform: rotate(150deg);
+  transform: rotate(152deg);
+  animation: metabolic-flow var(--glucose-speed) linear infinite;
 }
 
 .flow-amino {
+  color: rgba(97, 255, 189, 0.82);
   height: var(--amino-flow);
-  transform: rotate(30deg);
+  transform: rotate(28deg);
+  animation: metabolic-flow var(--amino-speed) linear infinite;
 }
 
 .flow-oxygen {
+  color: rgba(54, 215, 255, 0.9);
   height: var(--oxygen-flow);
   transform: rotate(-90deg);
+  animation: metabolic-flow var(--oxygen-speed) linear infinite;
 }
 
 .metabolic-dashboard.is-toxic .flow {
-  background: linear-gradient(90deg, transparent, rgba(255, 46, 90, 0.9), transparent);
+  filter:
+    drop-shadow(0 0 5px currentColor)
+    drop-shadow(0 0 9px rgba(255, 102, 46, 0.45));
 }
 
 @keyframes metabolic-flow {
   from {
-    background-position: 0 0;
-  }
-  to {
     background-position: 60px 0;
   }
+  to {
+    background-position: 0 0;
+  }
+}
+
+.flow-control {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  z-index: 4;
+  width: 142px;
+  height: 18px;
+  margin: 0;
+  transform-origin: left center;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.control-glucose {
+  color: #ffe62e;
+  transform: rotate(152deg) translateX(24px);
+  accent-color: #ffe62e;
+}
+
+.control-amino {
+  color: #61ffbd;
+  transform: rotate(28deg) translateX(24px);
+  accent-color: #61ffbd;
+}
+
+.control-oxygen {
+  color: #36d7ff;
+  width: 118px;
+  transform: rotate(-90deg) translateX(24px);
+  accent-color: #36d7ff;
+}
+
+.flow-control::-webkit-slider-runnable-track {
+  height: 18px;
+  background: transparent;
+}
+
+.flow-control::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  border: 2px solid rgba(4, 9, 16, 0.9);
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow:
+    0 0 0 2px rgba(247, 255, 243, 0.68),
+    0 0 15px currentColor;
+}
+
+.flow-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .tri-gauges {
@@ -411,19 +471,85 @@ meter::-webkit-meter-optimum-value {
 }
 
 .tri-gauge {
+  --net-size: 0%;
+  position: relative;
   display: grid;
-  min-height: 58px;
-  place-items: center;
+  min-height: 64px;
+  grid-template-rows: auto 14px auto;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 7px;
   border: 1px solid rgba(68, 255, 203, 0.2);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(4, 9, 16, 0.9) 0 48%, transparent 49%),
-    conic-gradient(from -90deg, #18ffc8 0 62%, rgba(255, 255, 255, 0.14) 63% 100%);
+  border-radius: 8px;
+  background: rgba(4, 9, 16, 0.68);
   font-size: 10px;
+  overflow: hidden;
+}
+
+.tri-gauge span {
+  color: rgba(247, 255, 243, 0.72);
+}
+
+.gauge-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(255, 93, 122, 0.2), rgba(247, 255, 243, 0.12) 49%, rgba(247, 255, 243, 0.42) 50%, rgba(247, 255, 243, 0.12) 51%, rgba(24, 255, 200, 0.2));
+}
+
+.gauge-track::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  width: 2px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(247, 255, 243, 0.88);
+  box-shadow: 0 0 8px rgba(247, 255, 243, 0.4);
+}
+
+.gauge-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  width: var(--net-size);
+  height: 6px;
+  border-radius: 999px;
+  background: #f9ff4d;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.tri-gauge[data-flow='good'] .gauge-track::after {
+  color: #18ffc8;
+  background: #18ffc8;
+}
+
+.tri-gauge[data-flow='bad'] .gauge-track::after {
+  color: #ff5d7a;
+  background: #ff5d7a;
+  transform: translateX(-100%);
+}
+
+.tri-gauge[data-gauge='ros'] {
+  border-color: rgba(255, 122, 46, 0.28);
+}
+
+.tri-gauge[data-gauge='ros'] .gauge-track {
+  background:
+    linear-gradient(90deg, rgba(24, 255, 200, 0.16), rgba(247, 255, 243, 0.12) 49%, rgba(247, 255, 243, 0.42) 50%, rgba(247, 255, 243, 0.12) 51%, rgba(255, 122, 46, 0.28));
+}
+
+.tri-gauge[data-gauge='ros'][data-flow='bad'] .gauge-track::after {
+  color: #ff7a2e;
+  background: linear-gradient(90deg, #ff7a2e, #ff2ebd);
 }
 
 .tri-gauge strong {
   font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 
 .tri-gauge strong[data-trend='good'] {

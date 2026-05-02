@@ -386,11 +386,27 @@ function updateInspectionHud(): void {
   }
 
   if (selectedName) selectedName.textContent = 'Petri dish medium';
-  if (selectedDetail) selectedDetail.textContent = 'Click any cell, glucose, amino acids, oxygen, light, poison, or block to identify it.';
+  if (selectedDetail) selectedDetail.textContent = describeDishState();
   setMeter(energyMeter, 0);
   setMeter(massMeter, 0);
   setMeter(oxygenMeter, 0);
   setMeter(healthMeter, 0);
+}
+
+function describeDishState(): string {
+  const resources = simulation.state.resources.reduce(
+    (counts, resource) => {
+      counts[resource.kind] += 1;
+      counts.totalAmount += resource.amount;
+      return counts;
+    },
+    { glucose: 0, 'amino-acid': 0, oxygen: 0, light: 0, totalAmount: 0 } as Record<'glucose' | 'amino-acid' | 'oxygen' | 'light', number> & { totalAmount: number },
+  );
+  const livingMass = simulation.state.cells.reduce((total, cell) => total + cell.mass, 0);
+  const avgAtp = simulation.state.cells.length
+    ? simulation.state.cells.reduce((total, cell) => total + cell.atp, 0) / simulation.state.cells.length
+    : 0;
+  return `Board radius ${simulation.state.boardRadius} · ${simulation.state.cells.length} cells · biomass ${livingMass.toFixed(1)} · average ATP ${avgAtp.toFixed(0)} · ${simulation.state.resources.length} resources (${resources.glucose} glucose, ${resources['amino-acid']} amino acids, ${resources.oxygen} oxygen, ${resources.light} light) · ${simulation.state.hazards.length} poison clouds · ${simulation.state.blocks.length} mineral blocks · tick ${simulation.state.tick}.`;
 }
 
 function updateHoverInfo(): void {
@@ -478,6 +494,7 @@ function syncSelectedEntityTitles(label: string): void {
 function restartScenario(): void {
   simulation.restart();
   inspectedTarget = { kind: 'dish', id: null };
+  renderer.resetZoom();
   updateHud();
   showToast('Scenario restarted');
 }
@@ -589,10 +606,21 @@ function syncMetabolicDashboard(cell: Cell | null): void {
 
   const root = document.querySelector<HTMLElement>('.metabolic-dashboard');
   if (root && cell) {
-    root.style.setProperty('--glucose-flow', `${1 + cell.glucoseTransport * 4}px`);
-    root.style.setProperty('--amino-flow', `${1 + cell.aminoTransport * 4}px`);
-    root.style.setProperty('--oxygen-flow', `${1 + cell.oxygenMetabolism * 4}px`);
+    root.style.setProperty('--glucose-flow', `${2 + cell.glucoseTransport * 7}px`);
+    root.style.setProperty('--amino-flow', `${2 + cell.aminoTransport * 6}px`);
+    root.style.setProperty('--oxygen-flow', `${2 + cell.oxygenMetabolism * 7}px`);
+    root.style.setProperty('--glucose-speed', `${Math.round(1200 - cell.glucoseTransport * 650)}ms`);
+    root.style.setProperty('--amino-speed', `${Math.round(1250 - cell.aminoTransport * 560)}ms`);
+    root.style.setProperty('--oxygen-speed', `${Math.round(1200 - cell.oxygenMetabolism * 650)}ms`);
     root.classList.toggle('is-toxic', cell.ros > 45);
+  } else if (root) {
+    root.style.setProperty('--glucose-flow', '2px');
+    root.style.setProperty('--amino-flow', '2px');
+    root.style.setProperty('--oxygen-flow', '2px');
+    root.style.setProperty('--glucose-speed', '1100ms');
+    root.style.setProperty('--amino-speed', '1100ms');
+    root.style.setProperty('--oxygen-speed', '1100ms');
+    root.classList.remove('is-toxic');
   }
 }
 
@@ -605,6 +633,11 @@ function setDelta(element: HTMLElement | null, value: number, inverted = false):
   const bad = inverted ? value > 0 : value < -0.05;
   const good = inverted ? value < -0.05 : value > 0.05;
   element.dataset.trend = good ? 'good' : bad ? 'bad' : 'flat';
+  const parent = element.closest<HTMLElement>('.tri-gauge');
+  if (parent) {
+    parent.dataset.flow = good ? 'good' : bad ? 'bad' : 'flat';
+    parent.style.setProperty('--net-size', `${Math.min(46, Math.abs(value) * 16)}%`);
+  }
 }
 
 function setText(element: HTMLElement | null, value: string): void {
