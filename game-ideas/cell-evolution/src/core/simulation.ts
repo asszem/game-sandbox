@@ -1,4 +1,8 @@
+import { scanEnvironment } from './environment-scan';
+import { applyCellMetabolism, radiusForMass } from './metabolism';
 import { Rng } from './rng';
+import { transportResource } from './resource-transport';
+import { awarenessRadius, sensingProfile, type SensingProfile } from './sensing';
 import type { Block, Cell, CellGenome, DNAKey, Hazard, Resource, ResourceKind, SimulationEvent, SimulationState, Vec2 } from './types';
 import { add, clamp, clampLength, distance, length, normalize, scale, sub, vec } from './vector';
 
@@ -163,34 +167,11 @@ export class CellSimulation {
   }
 
   awarenessRadius(cell: Cell): number {
-    return this.sensingProfile(cell).radius;
+    return awarenessRadius(cell);
   }
 
-  sensingProfile(cell: Cell): { radius: number; clarity: number; processing: number } {
-    const baseRadius = 16 + cell.radius * 3.4 + cell.genome.caution * 16;
-    const atpResolution = clamp(cell.atp / 80, 0.18, 1.25);
-    const aminoIntegrity = clamp(cell.aminoAcids / 45, 0.25, 1.15);
-    const oxygenProcessing = clamp(cell.oxygen / 35, 0.35, 1.15);
-    const rosIntegrity = clamp(1 - Math.max(0, cell.ros - 18) / 82, 0.35, 1);
-    const healthIntegrity = clamp(cell.health, 0.3, 1);
-    const radius = baseRadius
-      * clamp(0.3 + atpResolution * 0.7, 0.3, 1.18)
-      * clamp(0.68 + oxygenProcessing * 0.32, 0.68, 1.08)
-      * clamp(0.78 + rosIntegrity * 0.22, 0.55, 1);
-    const clarity = clamp(
-      aminoIntegrity * 0.42
-        + atpResolution * 0.24
-        + oxygenProcessing * 0.16
-        + rosIntegrity * 0.12
-        + healthIntegrity * 0.06,
-      0.15,
-      1,
-    );
-    return {
-      radius,
-      clarity,
-      processing: clamp(oxygenProcessing * rosIntegrity, 0.2, 1),
-    };
+  sensingProfile(cell: Cell): SensingProfile {
+    return sensingProfile(cell);
   }
 
   step(): void {
@@ -405,12 +386,14 @@ export class CellSimulation {
   }
 
   private updateCell(cell: Cell): void {
-    const beforeAtp = cell.atp;
-    const beforeGlucose = cell.glucose;
-    const beforeAmino = cell.aminoAcids;
-    const beforeOxygen = cell.oxygen;
-    const beforeRos = cell.ros;
-    const beforeGlycogen = cell.glycogen;
+    const baseline = {
+      atp: cell.atp,
+      glucose: cell.glucose,
+      amino: cell.aminoAcids,
+      oxygen: cell.oxygen,
+      ros: cell.ros,
+      glycogen: cell.glycogen,
+    };
     cell.glucoseRate = 0;
     cell.glycogenRate = 0;
     cell.autophagyRate = 0;
@@ -418,7 +401,7 @@ export class CellSimulation {
     cell.signalPhase += 0.12 + cell.genome.motility * 0.04;
 
     const awareness = this.awarenessRadius(cell);
-    const pull = this.scanEnvironment(cell, awareness);
+    const pull = scanEnvironment(this.state, cell, awareness);
     const jitter = vec(this.rng.signed(0.15), this.rng.signed(0.15));
     const desired = add(scale(normalize(pull), 0.08 + cell.genome.motility * 0.16), jitter);
     const metabolicBoost = 0.75 + cell.oxygenMetabolism * 0.55;
@@ -432,127 +415,12 @@ export class CellSimulation {
     this.consumeResources(cell);
     this.applyHazards(cell);
 
-    const lightFactor = this.localLight(cell.position);
-    cell.lightFactor = Math.max(0, lightFactor);
-    const photosynthesisGlucose = Math.max(0, lightFactor) * (0.35 + cell.genome.harvest * 0.25);
-    cell.glucose += photosynthesisGlucose;
-    cell.oxygen = clamp(cell.oxygen + lightFactor * 0.018, 0, 100);
-
-    if (cell.glucose > 80 && cell.glycogen < 200 && cell.atp > 1) {
-      const glucoseToPack = Math.min(cell.glucose - 80, (200 - cell.glycogen) * 2);
-      cell.glucose -= glucoseToPack;
-      cell.glycogen += glucoseToPack / 2;
-      cell.atp -= glucoseToPack / 2;
-    }
-
-    if (cell.glucose < 1 && cell.glycogen > 0) {
-      const glucoseNeeded = 1 - cell.glucose;
-      const glycogenToUnpack = Math.min(cell.glycogen, glucoseNeeded / 2);
-      cell.glycogen -= glycogenToUnpack;
-      cell.glucose += glycogenToUnpack * 2;
-    }
-
-    const glucoseUsed = Math.min(cell.glucose, 1);
-    if (glucoseUsed > 0) {
-      const oxygenNeeded = glucoseUsed * (0.28 + cell.oxygenMetabolism * 0.42);
-      const oxygenUsed = Math.min(cell.oxygen, oxygenNeeded);
-      const oxygenRatio = oxygenNeeded > 0 ? oxygenUsed / oxygenNeeded : 0;
-      cell.glucose -= glucoseUsed;
-      cell.oxygen -= oxygenUsed;
-      cell.atp += 2 * glucoseUsed * oxygenRatio * (0.7 + cell.oxygenMetabolism * 0.6);
-      cell.ros += (0.06 + cell.oxygenMetabolism * 0.12) * glucoseUsed * oxygenRatio;
-    }
-
-    if (cell.atp >= 1 && cell.aminoAcids >= 0.2) {
-      cell.atp -= 1;
-      cell.aminoAcids -= 0.2;
-      cell.health = clamp(cell.health + 0.002, 0, 1);
-    } else {
-      cell.health -= 0.012;
-    }
-
-    if (cell.glucose <= 0.01 && cell.glycogen <= 0.01 && cell.aminoAcids > 0) {
-      const autophagyAmino = Math.min(cell.aminoAcids, 2);
-      cell.aminoAcids -= autophagyAmino;
-      cell.mass -= autophagyAmino * 0.002;
-      cell.health -= autophagyAmino * 0.003;
-      cell.atp += autophagyAmino * 0.8;
-      cell.autophagyRate = autophagyAmino;
-    }
-
-    const movementCost = length(cell.velocity) * (0.28 + cell.genome.motility * 0.12) * Math.pow(cell.radius / 3.2, 1.45) * (0.85 + cell.oxygenMetabolism * 0.35);
-    cell.atp -= movementCost;
-    const repairBudget = Math.min(cell.atp, cell.aminoAcids, 0.06 + cell.ribosomeActivity * 0.16);
-    if (cell.ros > 18 && repairBudget > 0) {
-      cell.ros -= repairBudget * (0.55 + cell.ribosomeActivity * 0.65);
-      cell.atp -= repairBudget * (0.35 + cell.ribosomeActivity * 0.45);
-      cell.aminoAcids -= repairBudget * (0.35 + cell.ribosomeActivity * 0.55);
-    }
-    const growthBias = 1 - cell.ribosomeActivity;
-    cell.mass += Math.max(0, Math.min(cell.atp - 78, cell.aminoAcids - 45)) * 0.0012 * (0.45 + growthBias * 0.75 + cell.genome.harvest * 0.4);
-    if (cell.atp < 12) {
-      cell.mass -= 0.0045;
-      cell.aminoAcids = Math.max(0, cell.aminoAcids - 0.03);
-    }
-    if (cell.aminoAcids < 8) {
-      cell.health -= 0.006;
-    }
-    cell.health -= Math.max(0, cell.ros - 45) * 0.0008;
-    cell.mass = clamp(cell.mass, 0.18, 2.4);
-    cell.radius = this.radiusForMass(cell);
-    cell.atp = clamp(cell.atp, -12, 100);
-    cell.glucose = clamp(cell.glucose, 0, 100);
-    cell.aminoAcids = clamp(cell.aminoAcids, 0, 100);
-    cell.oxygen = clamp(cell.oxygen, 0, 100);
-    cell.ros = clamp(cell.ros, 0, 100);
-    cell.glycogen = clamp(cell.glycogen, 0, 200);
-    cell.energy = cell.atp;
-    cell.health = clamp(cell.health + (cell.atp > 15 && cell.aminoAcids > 12 && cell.ros < 35 ? 0.001 : -0.006), 0, 1);
+    applyCellMetabolism(cell, this.localLight(cell.position), baseline);
     this.constrainCell(cell);
-    cell.atpRate = cell.atp - beforeAtp;
-    cell.glucoseRate = cell.glucose - beforeGlucose;
-    cell.glycogenRate = cell.glycogen - beforeGlycogen;
-    cell.aminoRate = cell.aminoAcids - beforeAmino;
-    cell.oxygenRate = cell.oxygen - beforeOxygen;
-    cell.rosRate = cell.ros - beforeRos;
 
     if (cell.atp > 92 && cell.aminoAcids > 55 && cell.mass > 1.12 && cell.genome.split > 0.4 && this.state.cells.length < 55) {
       this.splitCell(cell);
     }
-  }
-
-  private scanEnvironment(cell: Cell, awareness: number): Vec2 {
-    let pull = vec();
-
-    for (const resource of this.state.resources) {
-      const d = distance(cell.position, resource.position);
-      if (d > awareness) {
-        continue;
-      }
-      const value = resource.kind === 'light' ? 0.75 : 1.25;
-      pull = add(pull, scale(normalize(sub(resource.position, cell.position)), value * (1 - d / awareness) * cell.genome.harvest));
-    }
-
-    for (const hazard of this.state.hazards) {
-      const d = distance(cell.position, hazard.position);
-      if (d < awareness + hazard.radius) {
-        pull = add(pull, scale(normalize(sub(cell.position, hazard.position)), (1.5 - d / awareness) * cell.genome.caution * 1.8));
-      }
-    }
-
-    for (const other of this.state.cells) {
-      if (other === cell) {
-        continue;
-      }
-      const d = distance(cell.position, other.position);
-      if (d < awareness) {
-        const direction = normalize(sub(other.position, cell.position));
-        const predatory = cell.radius > other.radius * 1.08 && cell.genome.predator > 0.4;
-        pull = add(pull, scale(direction, predatory ? cell.genome.predator : -0.15));
-      }
-    }
-
-    return pull;
   }
 
   private consumeResources(cell: Cell): void {
@@ -566,7 +434,7 @@ export class CellSimulation {
         cell.energy -= 0.08;
         return true;
       }
-      const consumedAmount = this.transportResource(cell, resource);
+      const consumedAmount = transportResource(cell, resource);
       this.events.push({
         kind: 'resource-consumed',
         position: { ...resource.position },
@@ -648,7 +516,7 @@ export class CellSimulation {
     child.glycogen = cell.glycogen * 0.42;
     child.mass = cell.mass * 0.48;
     child.bodyLength = clamp(cell.bodyLength + this.rng.signed(0.16), 1.35, 2.55);
-    child.radius = this.radiusForMass(child);
+    child.radius = radiusForMass(child);
     cell.atp *= 0.48;
     cell.energy = cell.atp;
     cell.glucose *= 0.52;
@@ -657,7 +525,7 @@ export class CellSimulation {
     cell.ros *= 0.65;
     cell.glycogen *= 0.52;
     cell.mass *= 0.58;
-    cell.radius = this.radiusForMass(cell);
+    cell.radius = radiusForMass(cell);
     this.state.cells.push(child);
     this.resolveCellObstacles();
   }
@@ -777,10 +645,6 @@ export class CellSimulation {
     }
   }
 
-  private radiusForMass(cell: Cell): number {
-    return clamp(1.85 + Math.sqrt(cell.mass) * 2.55, 2.2, 6.4);
-  }
-
   private mutateGenome(genome: CellGenome): CellGenome {
     const next = { ...genome };
     for (const key of DNA_KEYS) {
@@ -797,36 +661,6 @@ export class CellSimulation {
       const d = distance(position, resource.position);
       return total + Math.max(0, 1 - d / (resource.radius * 3.2)) * resource.amount;
     }, -0.12);
-  }
-
-  private transportResource(cell: Cell, resource: Resource): number {
-    const channel =
-      resource.kind === 'glucose'
-        ? cell.glucoseTransport
-        : resource.kind === 'amino-acid'
-          ? cell.aminoTransport
-          : resource.kind === 'oxygen'
-            ? cell.oxygenMetabolism
-            : 0;
-    const consumedAmount = Math.min(resource.amount, 0.16 + channel * 0.72);
-    const transportCost = (0.08 + resource.radius * 0.018) * (0.5 + channel);
-    cell.atp -= transportCost;
-    const uptake = consumedAmount * (0.7 + cell.genome.harvest * 0.55);
-    if (resource.kind === 'glucose') {
-      cell.glucose += uptake * 18;
-    }
-    if (resource.kind === 'amino-acid') {
-      cell.aminoAcids += uptake * 22;
-      cell.mass += uptake * 0.035 * (resource.radius / 2.4);
-    }
-    if (resource.kind === 'oxygen') {
-      cell.oxygen += uptake * 28;
-      cell.ros += uptake * 0.25;
-    }
-    resource.amount = Math.max(0, resource.amount - consumedAmount);
-    resource.radius = Math.max(0.65, resource.radius * (0.62 + resource.amount * 0.38));
-    cell.energy = cell.atp;
-    return consumedAmount;
   }
 
   private keepInDish(cell: Cell): void {

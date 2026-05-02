@@ -1,5 +1,11 @@
 import * as THREE from 'three';
+import { sensingProfile } from '../core/sensing';
 import type { Block, Cell, Hazard, Resource, SimulationEvent, SimulationState, Vec2 } from '../core/types';
+import { createBlockGeometry, createMineralMaterial, pointInBlock } from './blocks';
+import { createCellBodyGeometry, createCiliaGeometry, seededNoise, updateCiliaGeometry } from './cell-geometry';
+import { createAgarMaterial, createDishBaseMaterial, createDishRimMaterial } from './dish-materials';
+import { createPoisonMaterial } from './hazards';
+import { createResourceVisual, RESOURCE_COLORS } from './resources';
 import { createTimedShaderMaterial, noiseShaderChunk, updateTimedMaterials } from './shaders';
 import { createDishTexture, createMicroscopeBackdropTexture } from './textures';
 
@@ -46,14 +52,6 @@ export type RendererView = {
   cameraY: number;
 };
 
-const RESOURCE_COLORS = {
-  glucose: 0xff5d7a,
-  'amino-acid': 0x65ffbd,
-  oxygen: 0x36d7ff,
-  light: 0xf7ff5a,
-};
-
-const LIGHT_RESOURCE_RENDER_ORDER = 1000;
 const LIGHT_RESOURCE_Z = 10;
 
 export class PetriDishRenderer {
@@ -243,15 +241,15 @@ export class PetriDishRenderer {
 
     const dish = new THREE.Mesh(
       new THREE.CircleGeometry(96, 160),
-      this.createDishBaseMaterial(),
+      createDishBaseMaterial(this.timedMaterials),
     );
     const agar = new THREE.Mesh(
       new THREE.CircleGeometry(91.5, 160),
-      this.createAgarMaterial(),
+      createAgarMaterial(this.timedMaterials),
     );
     const rim = new THREE.Mesh(
       new THREE.RingGeometry(91.8, 96.8, 160),
-      this.createDishRimMaterial(),
+      createDishRimMaterial(this.timedMaterials),
     );
     const grid = createDishTexture();
     const dishVeins = new THREE.Mesh(
@@ -262,71 +260,6 @@ export class PetriDishRenderer {
 
     this.board.add(dish, agar, dishVeins, this.resourceLayer, this.hazardLayer, this.effectLayer, this.sensorLayer, this.cellLayer, this.blockLayer, rim, this.selectedRing);
     this.scene.add(ambient, key, this.board);
-  }
-
-  private createDishBaseMaterial(): THREE.ShaderMaterial {
-    return createTimedShaderMaterial(this.timedMaterials, {
-      transparent: false,
-      uniforms: {},
-      fragmentShader: `
-        precision highp float;
-        varying vec2 vLocal;
-        ${noiseShaderChunk()}
-        void main() {
-          vec2 p = vLocal / 96.0;
-          float r = length(p);
-          float grain = fbm(p * 18.0);
-          float vignette = smoothstep(1.08, 0.2, r);
-          vec3 color = mix(vec3(0.015, 0.055, 0.064), vec3(0.05, 0.16, 0.16), grain * 0.5 + vignette * 0.45);
-          gl_FragColor = vec4(color, 1.0);
-        }
-      `,
-    });
-  }
-
-  private createAgarMaterial(): THREE.ShaderMaterial {
-    return createTimedShaderMaterial(this.timedMaterials, {
-      transparent: true,
-      uniforms: {},
-      fragmentShader: `
-        precision highp float;
-        uniform float uTime;
-        varying vec2 vLocal;
-        ${noiseShaderChunk()}
-        void main() {
-          vec2 p = vLocal / 91.5;
-          float r = length(p);
-          vec2 drift = p * 8.0 + vec2(uTime * 0.025, -uTime * 0.018);
-          float culture = fbm(drift + fbm(drift * 0.72));
-          float meniscus = smoothstep(1.02, 0.82, r) * smoothstep(0.22, 1.0, r);
-          float depth = smoothstep(1.02, 0.02, r);
-          vec3 color = mix(vec3(0.06, 0.24, 0.27), vec3(0.18, 0.45, 0.42), culture * 0.5 + meniscus * 0.36);
-          color += vec3(0.03, 0.08, 0.07) * sin((p.x + p.y) * 34.0 + uTime * 0.28);
-          gl_FragColor = vec4(color, 0.9 * depth);
-        }
-      `,
-    });
-  }
-
-  private createDishRimMaterial(): THREE.ShaderMaterial {
-    return createTimedShaderMaterial(this.timedMaterials, {
-      transparent: true,
-      uniforms: {},
-      fragmentShader: `
-        precision highp float;
-        uniform float uTime;
-        varying vec2 vLocal;
-        ${noiseShaderChunk()}
-        void main() {
-          vec2 p = vLocal / 96.0;
-          float r = length(p);
-          float ring = smoothstep(0.94, 0.98, r) * smoothstep(1.03, 0.99, r);
-          float scratch = fbm(vec2(atan(p.y, p.x) * 18.0, r * 40.0 + uTime * 0.04));
-          vec3 color = mix(vec3(0.25, 0.62, 0.58), vec3(0.74, 1.0, 0.9), scratch * 0.42);
-          gl_FragColor = vec4(color, ring * (0.42 + scratch * 0.16));
-        }
-      `,
-    });
   }
 
   private syncCells(cells: Cell[], selectedCellId: number | null, time: number, running: boolean): void {
@@ -368,7 +301,7 @@ export class PetriDishRenderer {
       visual.nucleus.material.uniforms.uStress.value = stressed ? 1 : 0;
       visual.nucleus.scale.setScalar(0.22 + cell.genome.split * 0.1);
       visual.signal.visible = false;
-      this.updateCiliaGeometry(visual, cell, time, running);
+      updateCiliaGeometry(visual.cilia.geometry, visual.seed, cell.velocity, time, running);
 
       for (let index = 0; index < visual.organelles.length; index += 1) {
         const organelle = visual.organelles[index];
@@ -453,7 +386,7 @@ export class PetriDishRenderer {
       return;
     }
 
-    const sensing = this.sensingProfile(selected);
+    const sensing = sensingProfile(selected);
     const awareness = sensing.radius;
     const pulse = 1;
     this.sensorField.visible = true;
@@ -495,47 +428,15 @@ export class PetriDishRenderer {
     this.sensorRays.material.opacity = (state.running ? 0.22 + Math.sin(time * 0.01) * 0.08 : 0.22) * sensing.clarity * sensing.processing;
   }
 
-  private awarenessRadius(cell: Cell): number {
-    return this.sensingProfile(cell).radius;
-  }
-
-  private sensingProfile(cell: Cell): { radius: number; clarity: number; processing: number } {
-    const clamp = THREE.MathUtils.clamp;
-    const baseRadius = 16 + cell.radius * 3.4 + cell.genome.caution * 16;
-    const atpResolution = clamp(cell.atp / 80, 0.18, 1.25);
-    const aminoIntegrity = clamp(cell.aminoAcids / 45, 0.25, 1.15);
-    const oxygenProcessing = clamp(cell.oxygen / 35, 0.35, 1.15);
-    const rosIntegrity = clamp(1 - Math.max(0, cell.ros - 18) / 82, 0.35, 1);
-    const healthIntegrity = clamp(cell.health, 0.3, 1);
-    const radius = baseRadius
-      * clamp(0.3 + atpResolution * 0.7, 0.3, 1.18)
-      * clamp(0.68 + oxygenProcessing * 0.32, 0.68, 1.08)
-      * clamp(0.78 + rosIntegrity * 0.22, 0.55, 1);
-    const clarity = clamp(
-      aminoIntegrity * 0.42
-        + atpResolution * 0.24
-        + oxygenProcessing * 0.16
-        + rosIntegrity * 0.12
-        + healthIntegrity * 0.06,
-      0.15,
-      1,
-    );
-    return {
-      radius,
-      clarity,
-      processing: clamp(oxygenProcessing * rosIntegrity, 0.2, 1),
-    };
-  }
-
   private createCellVisual(cell: Cell): CellVisual {
     const group = new THREE.Group();
     const bodySeed = cell.id * 917 + cell.generation * 53;
     const membrane = new THREE.Mesh(
-      this.createCellBodyGeometry(bodySeed, 1.04, 0.16),
+      createCellBodyGeometry(bodySeed, 1.04, 0.16),
       this.createMembraneMaterial(0xd5fff0, bodySeed),
     );
     const cytoplasm = new THREE.Mesh(
-      this.createCellBodyGeometry(bodySeed + 29, 0.88, 0.1),
+      createCellBodyGeometry(bodySeed + 29, 0.88, 0.1),
       this.createPlasmaMaterial(cell, bodySeed + 29),
     );
     cytoplasm.rotation.z = 0.08;
@@ -549,7 +450,7 @@ export class PetriDishRenderer {
     const organelles = this.createOrganelles(cell, bodySeed);
 
     const cilia = new THREE.LineSegments(
-      this.createCiliaGeometry(bodySeed, 0, 0),
+      createCiliaGeometry(bodySeed, 0, 0),
       new THREE.LineBasicMaterial({ color: 0xf9fff4, transparent: true, opacity: 0.66, depthWrite: false }),
     );
     cilia.position.z = 0.28;
@@ -569,83 +470,6 @@ export class PetriDishRenderer {
 
     group.add(aura, signal, cilia, membrane, cytoplasm, nucleus, ...organelles);
     return { group, membrane, cytoplasm, nucleus, organelles, cilia, aura, signal, seed: bodySeed };
-  }
-
-  private createCellBodyGeometry(seed: number, radius: number, wobble: number): THREE.ShapeGeometry {
-    const points: THREE.Vector2[] = [];
-    const count = 56;
-    const { stretchX, stretchY } = this.cellStretch(seed);
-
-    for (let index = 0; index < count; index += 1) {
-      const angle = (index / count) * Math.PI * 2;
-      points.push(this.cellBoundaryPoint(seed, angle, radius, wobble, index, stretchX, stretchY));
-    }
-
-    const shape = new THREE.Shape(points);
-    const geometry = new THREE.ShapeGeometry(shape, 12);
-    geometry.computeVertexNormals();
-    return geometry;
-  }
-
-  private createCiliaGeometry(seed: number, time: number, speed: number): THREE.BufferGeometry {
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(this.ciliaPositions(seed, time, speed), 3));
-    return geometry;
-  }
-
-  private updateCiliaGeometry(visual: CellVisual, cell: Cell, time: number, running: boolean): void {
-    const speed = Math.min(1, Math.hypot(cell.velocity.x, cell.velocity.y) * 10);
-    const phase = running ? time * (0.012 + speed * 0.022) : 0;
-    const attribute = visual.cilia.geometry.getAttribute('position') as THREE.BufferAttribute;
-    const positions = this.ciliaPositions(visual.seed, phase, speed);
-    (attribute.array as Float32Array).set(positions);
-    attribute.needsUpdate = true;
-  }
-
-  private ciliaPositions(seed: number, time: number, speed: number): number[] {
-    const positions: number[] = [];
-    const count = 76;
-    const { stretchX, stretchY } = this.cellStretch(seed);
-    for (let index = 0; index < count; index += 1) {
-      const angle = (index / count) * Math.PI * 2;
-      const root = this.cellBoundaryPoint(seed, angle, 1.045, 0.16, index, stretchX, stretchY);
-      const normal = new THREE.Vector2(Math.cos(angle) / stretchX, Math.sin(angle) / stretchY).normalize();
-      const tangent = new THREE.Vector2(-normal.y, normal.x);
-      const beat = Math.sin(time + index * 0.55 + seed * 0.013);
-      const rearSweep = -speed * (0.028 + Math.max(0, Math.cos(angle)) * 0.035);
-      const sideSweep = beat * (0.016 + speed * 0.026);
-      const length = 0.018 + Math.abs(this.seededNoise(seed, index + 90)) * 0.018 + speed * 0.014;
-      const tip = root
-        .clone()
-        .add(normal.multiplyScalar(length))
-        .add(tangent.multiplyScalar(sideSweep))
-        .add(new THREE.Vector2(rearSweep, beat * 0.006 * speed));
-      positions.push(root.x, root.y, 0.32, tip.x, tip.y, 0.32);
-    }
-    return positions;
-  }
-
-  private cellBoundaryPoint(
-    seed: number,
-    angle: number,
-    radius: number,
-    wobble: number,
-    index: number,
-    stretchX: number,
-    stretchY: number,
-  ): THREE.Vector2 {
-    const waveA = Math.sin(angle * 3 + seed * 0.017) * wobble;
-    const waveB = Math.cos(angle * 5 + seed * 0.011) * wobble * 0.55;
-    const noise = this.seededNoise(seed, index + 10) * wobble * 0.7;
-    const r = radius * (1 + waveA + waveB + noise);
-    return new THREE.Vector2(Math.cos(angle) * r * stretchX, Math.sin(angle) * r * stretchY);
-  }
-
-  private cellStretch(seed: number): { stretchX: number; stretchY: number } {
-    return {
-      stretchX: 1.04 + this.seededNoise(seed, 1) * 0.06,
-      stretchY: 0.78 + this.seededNoise(seed, 2) * 0.05,
-    };
   }
 
   private createPlasmaMaterial(cell: Cell, seed: number): THREE.ShaderMaterial {
@@ -808,14 +632,14 @@ export class PetriDishRenderer {
     const organelles: THREE.Object3D[] = [];
     for (let index = 0; index < 5; index += 1) {
       const group = new THREE.Group();
-      const x = -0.56 + index * 0.28 + this.seededNoise(seed, index + 120) * 0.08;
-      const y = this.seededNoise(seed, index + 150) * 0.26;
+      const x = -0.56 + index * 0.28 + seededNoise(seed, index + 120) * 0.08;
+      const y = seededNoise(seed, index + 150) * 0.26;
       const body = new THREE.Mesh(
         new THREE.CapsuleGeometry(0.045 + (index % 2) * 0.012, 0.1 + (index % 3) * 0.025, 4, 10),
         new THREE.MeshBasicMaterial({ color: index % 2 ? 0x8dffe0 : 0xf2fff2, transparent: true, opacity: 0.52, depthWrite: false }),
       );
       body.scale.set(1.25, 0.56, 1);
-      body.rotation.z = this.seededNoise(seed, index + 180) * Math.PI;
+      body.rotation.z = seededNoise(seed, index + 180) * Math.PI;
       const fold = new THREE.Line(
         new THREE.BufferGeometry().setAttribute(
           'position',
@@ -830,9 +654,9 @@ export class PetriDishRenderer {
 
     for (let index = 0; index < 4; index += 1) {
       const curve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(-0.42 + index * 0.18, -0.22 + this.seededNoise(seed, index + 210) * 0.08, 0.235),
-        new THREE.Vector3(-0.24 + index * 0.16, -0.06 + this.seededNoise(seed, index + 220) * 0.08, 0.235),
-        new THREE.Vector3(-0.04 + index * 0.12, 0.06 + this.seededNoise(seed, index + 230) * 0.08, 0.235),
+        new THREE.Vector3(-0.42 + index * 0.18, -0.22 + seededNoise(seed, index + 210) * 0.08, 0.235),
+        new THREE.Vector3(-0.24 + index * 0.16, -0.06 + seededNoise(seed, index + 220) * 0.08, 0.235),
+        new THREE.Vector3(-0.04 + index * 0.12, 0.06 + seededNoise(seed, index + 230) * 0.08, 0.235),
       ]);
       const tube = new THREE.TubeGeometry(curve, 12, 0.01, 5, false);
       const strand = new THREE.Mesh(
@@ -843,11 +667,6 @@ export class PetriDishRenderer {
     }
 
     return organelles;
-  }
-
-  private seededNoise(seed: number, salt: number): number {
-    const value = Math.sin(seed * 12.9898 + salt * 78.233) * 43758.5453;
-    return (value - Math.floor(value)) * 2 - 1;
   }
 
   private cellColor(cell: Cell, lightness: number): THREE.Color {
@@ -866,7 +685,7 @@ export class PetriDishRenderer {
         mesh = undefined;
       }
       if (!mesh) {
-        mesh = this.createResourceVisual(resource);
+        mesh = createResourceVisual(resource, this.timedMaterials);
         this.resourceVisuals.set(resource.id, mesh);
         this.resourceLayer.add(mesh);
       }
@@ -884,122 +703,6 @@ export class PetriDishRenderer {
     }
   }
 
-  private createResourceVisual(resource: Resource): THREE.Group {
-    const group = new THREE.Group();
-    group.userData.kind = resource.kind;
-    const color = RESOURCE_COLORS[resource.kind];
-    const material = this.createResourceMaterial(color, resource.kind, resource.id);
-
-    if (resource.kind === 'glucose') {
-      const backbone = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.48, 6), material);
-      backbone.rotation.z = Math.PI / 6;
-      group.add(backbone);
-      for (let index = 0; index < 6; index += 1) {
-        const angle = (index / 6) * Math.PI * 2;
-        const mesh = new THREE.Mesh(new THREE.CircleGeometry(0.13 + (index % 2) * 0.03, 16), material);
-        mesh.position.set(Math.cos(angle) * 0.56, Math.sin(angle) * 0.56, index * 0.002);
-        mesh.rotation.z = angle;
-        group.add(mesh);
-      }
-    } else if (resource.kind === 'amino-acid') {
-      const spine = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.58, 5, 16), material);
-      spine.rotation.z = 1.1;
-      group.add(spine);
-      for (let index = 0; index < 4; index += 1) {
-        const angle = index * Math.PI * 0.5 + 0.4;
-        const mesh = new THREE.Mesh(new THREE.CircleGeometry(0.13, 16), material);
-        mesh.position.set(Math.cos(angle) * 0.42, Math.sin(angle) * 0.34, index * 0.002);
-        group.add(mesh);
-      }
-    } else if (resource.kind === 'oxygen') {
-      const left = new THREE.Mesh(new THREE.CircleGeometry(0.34, 24), material);
-      const right = new THREE.Mesh(new THREE.CircleGeometry(0.34, 24), material);
-      left.position.x = -0.22;
-      right.position.x = 0.22;
-      const bridge = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.28, 4, 8), material);
-      bridge.rotation.z = Math.PI * 0.5;
-      group.add(left, right, bridge);
-    } else {
-      const glow = new THREE.Mesh(new THREE.CircleGeometry(1, 56), material);
-      const core = new THREE.Mesh(new THREE.CircleGeometry(0.46, 40), material);
-      core.scale.setScalar(0.58);
-      group.add(glow, core);
-    }
-
-    if (resource.kind === 'light') {
-      group.renderOrder = LIGHT_RESOURCE_RENDER_ORDER;
-      group.traverse((child) => {
-        child.renderOrder = LIGHT_RESOURCE_RENDER_ORDER;
-      });
-    }
-
-    return group;
-  }
-
-  private createResourceMaterial(color: number, kind: Resource['kind'], seed: number): THREE.ShaderMaterial {
-    const material = createTimedShaderMaterial(this.timedMaterials, {
-      transparent: true,
-      uniforms: {
-        uColor: { value: new THREE.Color(color) },
-        uSeed: { value: seed * 0.031 },
-        uKind: { value: kind === 'light' ? 1 : 0 },
-      },
-      fragmentShader: `
-        precision highp float;
-        uniform float uTime;
-        uniform float uSeed;
-        uniform vec3 uColor;
-        uniform float uKind;
-        varying vec2 vLocal;
-        ${noiseShaderChunk()}
-        void main() {
-          vec2 p = vLocal;
-          float r = length(p);
-          float texture = fbm(p * 8.0 + vec2(uTime * 0.18, -uTime * 0.12) + uSeed);
-          float shell = smoothstep(1.08, 0.05, r);
-          float glint = smoothstep(0.12, 0.0, length(p - vec2(-0.16, 0.18)));
-          vec3 color = mix(uColor * 0.48, uColor, 0.42 + texture * 0.58);
-          color += vec3(0.9, 1.0, 0.92) * glint * 0.45;
-          if (uKind > 0.5) {
-            color = mix(color, vec3(1.0, 0.96, 0.54), 0.42 + sin(uTime * 0.7 + uSeed) * 0.12);
-            shell *= 0.62 + texture * 0.3;
-          }
-          gl_FragColor = vec4(color, shell * (0.58 + texture * 0.32));
-        }
-      `,
-    });
-    if (kind === 'light') {
-      material.depthTest = false;
-    }
-    return material;
-  }
-
-  private createPoisonMaterial(seed: number): THREE.ShaderMaterial {
-    return createTimedShaderMaterial(this.timedMaterials, {
-      transparent: true,
-      uniforms: {
-        uSeed: { value: seed * 0.047 },
-      },
-      fragmentShader: `
-        precision highp float;
-        uniform float uTime;
-        uniform float uSeed;
-        varying vec2 vLocal;
-        ${noiseShaderChunk()}
-        void main() {
-          vec2 p = vLocal;
-          float r = length(p);
-          vec2 swirl = p * 4.4 + vec2(sin(uTime + p.y * 3.0), cos(uTime * 0.8 + p.x * 3.0)) * 0.35 + uSeed;
-          float smoke = fbm(swirl);
-          float rim = smoothstep(1.05, 0.28, r) * smoothstep(0.08, 0.9, smoke);
-          vec3 color = mix(vec3(0.34, 0.05, 0.44), vec3(1.0, 0.2, 0.55), smoke);
-          color = mix(color, vec3(0.28, 1.0, 0.68), smoothstep(0.72, 0.95, smoke) * 0.18);
-          gl_FragColor = vec4(color, rim * 0.58);
-        }
-      `,
-    });
-  }
-
   private syncHazards(hazards: Hazard[], time: number): void {
     const active = new Set<number>();
     for (const hazard of hazards) {
@@ -1008,7 +711,7 @@ export class PetriDishRenderer {
       if (!mesh) {
         mesh = new THREE.Mesh(
           new THREE.CircleGeometry(1, 40),
-          this.createPoisonMaterial(hazard.id),
+          createPoisonMaterial(hazard.id, this.timedMaterials),
         );
         this.hazardVisuals.set(hazard.id, mesh);
         this.hazardLayer.add(mesh);
@@ -1047,7 +750,7 @@ export class PetriDishRenderer {
     const group = new THREE.Group();
     group.position.set(position.x, position.y, 7);
     const cloud = new THREE.Mesh(
-      this.createCellBodyGeometry(Math.floor(time), Math.max(0.8, radius * 0.34), 0.22),
+      createCellBodyGeometry(Math.floor(time), Math.max(0.8, radius * 0.34), 0.22),
       new THREE.MeshBasicMaterial({ color: 0xdfeee5, transparent: true, opacity: 0.52, depthWrite: false }),
     );
     cloud.userData.baseOpacity = 0.52;
@@ -1099,45 +802,14 @@ export class PetriDishRenderer {
     this.blockVisuals.clear();
     for (const block of state.blocks) {
       const mesh = new THREE.Mesh(
-        this.createBlockGeometry(block),
-        this.createMineralMaterial(block.id),
+        createBlockGeometry(block),
+        createMineralMaterial(block.id, this.timedMaterials),
       );
       mesh.position.set(block.position.x, block.position.y, 12);
       mesh.renderOrder = 820;
       this.blockVisuals.set(block.id, mesh);
       this.blockLayer.add(mesh);
     }
-  }
-
-  private createMineralMaterial(seed: number): THREE.ShaderMaterial {
-    const material = createTimedShaderMaterial(this.timedMaterials, {
-      transparent: true,
-      uniforms: {
-        uSeed: { value: seed * 0.037 },
-      },
-      fragmentShader: `
-        precision highp float;
-        uniform float uTime;
-        uniform float uSeed;
-        varying vec2 vLocal;
-        ${noiseShaderChunk()}
-        void main() {
-          vec2 p = vLocal * 0.09;
-          float grain = fbm(p * 22.0 + uSeed);
-          float coarse = fbm(p * 6.0 + uSeed * 1.7);
-          float strata = sin(p.x * 13.0 + p.y * 4.0 + coarse * 4.0);
-          float chips = smoothstep(0.66, 0.98, grain);
-          float cracks = 1.0 - smoothstep(0.02, 0.075, abs(strata) * (0.65 + coarse));
-          vec3 base = mix(vec3(0.22, 0.25, 0.26), vec3(0.48, 0.52, 0.51), coarse);
-          vec3 mineral = base + chips * vec3(0.16, 0.17, 0.16);
-          mineral -= cracks * vec3(0.18, 0.19, 0.18);
-          mineral += smoothstep(0.12, 0.9, vLocal.y * 0.025 + 0.5) * vec3(0.08);
-          gl_FragColor = vec4(mineral, 0.96);
-        }
-      `,
-    });
-    material.depthTest = false;
-    return material;
   }
 
   private pickAtPoint(point: Vec2, state: SimulationState): MapPick {
@@ -1173,7 +845,7 @@ export class PetriDishRenderer {
     }
 
     for (const block of state.blocks) {
-      if (this.pointInBlock(point, block)) {
+      if (pointInBlock(point, block)) {
         const dx = Math.abs(point.x - block.position.x);
         const dy = Math.abs(point.y - block.position.y);
         consider({ kind: 'block', id: block.id }, Math.max(dx, dy) + 0.6);
@@ -1181,32 +853,6 @@ export class PetriDishRenderer {
     }
 
     return target;
-  }
-
-  private pointInBlock(point: Vec2, block: Block): boolean {
-    const local = {
-      x: point.x - block.position.x,
-      y: point.y - block.position.y,
-    };
-    if (Math.hypot(local.x, local.y) > block.radius + 1) {
-      return false;
-    }
-    let inside = false;
-    for (let index = 0, previous = block.vertices.length - 1; index < block.vertices.length; previous = index, index += 1) {
-      const currentVertex = block.vertices[index];
-      const previousVertex = block.vertices[previous];
-      const crosses = (currentVertex.y > local.y) !== (previousVertex.y > local.y)
-        && local.x < ((previousVertex.x - currentVertex.x) * (local.y - currentVertex.y)) / (previousVertex.y - currentVertex.y) + currentVertex.x;
-      if (crosses) {
-        inside = !inside;
-      }
-    }
-    return inside;
-  }
-
-  private createBlockGeometry(block: Block): THREE.ShapeGeometry {
-    const shape = new THREE.Shape(block.vertices.map((point) => new THREE.Vector2(point.x, point.y)));
-    return new THREE.ShapeGeometry(shape, 8);
   }
 
   private bindEvents(): void {

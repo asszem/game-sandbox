@@ -15,14 +15,58 @@ game-ideas/cell-evolution/
   index.html
   src/
     main.ts
-    styles.css
+    app/
+      backdrop.ts
+      drop-tools.ts
+      new-dish.ts
+      save-load.ts
+      tutorial.ts
     core/
+      environment-scan.ts
+      metabolism.ts
+      resource-transport.ts
       rng.ts
+      sensing.ts
       simulation.ts
       types.ts
       vector.ts
+    hud/
+      directives-panel.ts
+      dom.ts
+      entity-panel.ts
+      hover-info.ts
+      metabolism-panel.ts
+      state-panel.ts
+      toasts.ts
+      tooltips.ts
+      windows.ts
     render/
       PetriDishRenderer.ts
+      blocks.ts
+      cell-geometry.ts
+      dish-materials.ts
+      hazards.ts
+      resources.ts
+      shaders.ts
+      textures.ts
+    styles/
+      index.css
+      base.css
+      dish.css
+      windows.css
+      game-panel.css
+      entity-panel.css
+      hover-info.css
+      tutorial.css
+      drop-tools.css
+      directives-panel.css
+      metabolism-panel.css
+      metabolism-icons.css
+      metabolism-flow.css
+      metabolism-controls.css
+      feedback.css
+      modals.css
+      responsive.css
   tests/
     smoke.mjs
   docs/
@@ -34,10 +78,16 @@ game-ideas/cell-evolution/
 ```
 
 Current oversized files:
-- `src/main.ts` - app orchestration, DOM wiring, windows, save/load, tutorial, HUD formatting, drop tools
-- `src/styles.css` - all layout, windows, panels, controls, modals, icons, responsive rules
-- `src/render/PetriDishRenderer.ts` - Three.js scene setup, cell/resource/hazard/block visuals, picking, camera/zoom/pan
-- `src/core/simulation.ts` - simulation state updates, metabolism, sensing, movement, collisions, spawning
+- `src/main.ts` - app orchestration, dish lifecycle, DOM wiring, animation loop, selected entity flow, and remaining event handlers
+- `src/render/PetriDishRenderer.ts` - Three.js scene setup, resource/hazard/block visuals, picking, camera/zoom/pan, effects, and remaining render facade work
+- `src/core/simulation.ts` - simulation state updates, movement, collisions, spawning, hazards, resources, blocks, and remaining world orchestration
+
+Already split:
+- HUD utilities, windows, panel formatting, hover info, directives, metabolism display
+- App helpers for backdrop, drop tools, new dish modal, save/load, and tutorial UI
+- CSS into `src/styles/*` imported by `src/styles/index.css`
+- Renderer texture, shader, cell geometry, dish material, resource marker, hazard material, and mineral block helpers
+- Core sensing, metabolism, resource transport, and environment scan helpers
 
 ## Refactor Principles
 
@@ -59,12 +109,18 @@ src/
   app/
     bootstrap.ts              # app startup, animation loop, global keyboard/pointer orchestration
     dishes.ts                 # DishInstance lifecycle, create/select/delete/position labels
+    backdrop.ts               # microscope backdrop DOM/rendering helper
+    new-dish.ts               # new dish modal option parsing/rendering
     save-load.ts              # SaveData, slots, import/export, localStorage
     tutorial.ts               # tutorial state, milestones, scenario setup
     drop-tools.ts             # drag/drop item tools and ghost UI
   core/
+    environment-scan.ts        # nearby resource/hazard/cell pull vector
+    metabolism.ts             # cell resource flow, rates, growth, mass radius
+    resource-transport.ts     # resource ingestion and uptake math
     rng.ts
-    simulation.ts             # eventually split once app/render are separated
+    sensing.ts                # cell awareness and sensing profile
+    simulation.ts             # world orchestration facade; keep splitting carefully
     types.ts
     vector.ts
   hud/
@@ -76,12 +132,14 @@ src/
     windows.ts                # draggable/collapsible/resizable window system
     tooltips.ts               # tooltip enable/position/render helpers
     toasts.ts                 # toast messages
+    dom.ts                    # generic input target and button helpers
   render/
     PetriDishRenderer.ts      # keep as facade during first pass
+    blocks.ts                 # mineral block geometry, material, and hit testing
     scene.ts                  # scene/camera/renderer setup
     cells.ts                  # cell visual creation/update
     resources.ts              # resource visual creation/update
-    hazards.ts                # poison visual creation/update
+    hazards.ts                # poison material and visual helpers
     blocks.ts                 # mineral block visual creation/picking
     effects.ts                # consume/death effects
     picking.ts                # screen/world picking helpers
@@ -104,35 +162,29 @@ src/styles/
   hover-info.css              # Hover Info fact cards
   drop-tools.css              # Drop Items window, icons, drag ghost
   tutorial.css                # Tutorial window and milestones
+  metabolism-panel.css        # Metabolism panel layout
+  metabolism-icons.css        # Metabolism resource marker visuals
+  metabolism-flow.css         # Metabolism flow channel visuals
+  metabolism-controls.css     # Metabolism sliders and control rows
+  feedback.css                # Toasts, tooltip surfaces, transient feedback
   modals.css                  # New dish and save/load modals
   responsive.css              # media queries only
 ```
 
-After CSS splitting:
-- Import CSS from `src/main.ts` or a single `src/styles/index.css`.
-- Keep cascade order stable: base -> dish -> windows -> panels -> modals -> responsive.
-- Do not move CSS into `index.html` inline styles.
+CSS is already split. Keep importing from `src/styles/index.css` and preserve cascade order: base -> dish -> windows -> panels -> feedback -> modals -> responsive. Do not move CSS into `index.html` inline styles.
 
 ## Recommended Refactor Order
 
 1. Extract pure utility/UI helpers from `src/main.ts`:
-   - `hud/toasts.ts`
-   - `hud/tooltips.ts`
-   - `hud/windows.ts`
+   - Done: `hud/toasts.ts`, `hud/tooltips.ts`, `hud/windows.ts`, `hud/dom.ts`
 2. Extract formatting-only HUD modules:
-   - `hud/hover-info.ts`
-   - `hud/state-panel.ts`
-   - `hud/entity-panel.ts`
-   - `hud/directives-panel.ts`
-   - `hud/metabolism-panel.ts`
+   - Done: `hud/hover-info.ts`, `hud/state-panel.ts`, `hud/entity-panel.ts`, `hud/directives-panel.ts`, `hud/metabolism-panel.ts`
 3. Extract app domains from `src/main.ts`:
-   - `app/dishes.ts`
-   - `app/save-load.ts`
-   - `app/tutorial.ts`
-   - `app/drop-tools.ts`
-4. Split `src/styles.css` by panel/domain while preserving visual output.
-5. Split `src/render/PetriDishRenderer.ts` after app/HUD code is stable.
-6. Split `src/core/simulation.ts` only after renderer and app boundaries are clear.
+   - Done: `app/backdrop.ts`, `app/save-load.ts`, `app/tutorial.ts`, `app/drop-tools.ts`, `app/new-dish.ts`
+   - Remaining: `app/dishes.ts` / dish lifecycle extraction from `src/main.ts`
+4. Done: split CSS by panel/domain while preserving visual output.
+5. Continue splitting `src/render/PetriDishRenderer.ts` through narrow render helpers.
+6. Continue splitting `src/core/simulation.ts` through narrow core helpers.
 
 ## Domain Boundaries
 

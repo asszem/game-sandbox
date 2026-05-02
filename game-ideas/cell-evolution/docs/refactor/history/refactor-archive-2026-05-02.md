@@ -18,6 +18,61 @@ No behavior changes intended.
 - `npm run build` - pass
 - `npm test` - pass
 
+## Renderer cell geometry extraction - body and cilia shapes
+
+### Motivation
+Cell body shape generation, cilia geometry updates, and seeded visual noise are standalone geometry helpers. Moving them out of `PetriDishRenderer.ts` reduces renderer class size while keeping cell materials and object lifecycle local.
+
+### Old files changed
+- `src/render/PetriDishRenderer.ts` - uses cell geometry helpers for body shapes, cilia, and seeded organelle noise.
+
+### New files created
+- `src/render/cell-geometry.ts` - cell body geometry, cilia geometry/update helpers, and seeded noise.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Core sensing extraction - shared signal profile math
+
+### Motivation
+Sensing radius, clarity, and processing math was duplicated between simulation and renderer. Moving it to `src/core/sensing.ts` gives both domains one shared source for cell signal transduction calculations.
+
+### Old files changed
+- `src/core/simulation.ts` - delegates awareness and sensing profile calculation to core sensing helpers.
+- `src/render/PetriDishRenderer.ts` - uses the shared sensing profile for the sensor overlay.
+
+### New files created
+- `src/core/sensing.ts` - sensing profile and awareness radius helpers.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Backdrop extraction - microscope canvas drawing
+
+### Motivation
+The procedural microscope backdrop drawing does not depend on app state. Moving it into an app helper removes canvas drawing noise from `src/main.ts`.
+
+### Old files changed
+- `src/main.ts` - delegates backdrop drawing to `drawMicroscopeBackdrop(canvas)`.
+
+### New files created
+- `src/app/backdrop.ts` - microscope backdrop canvas drawing helper.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
 ## Renderer shader helper extraction - timed materials
 
 ### Motivation
@@ -283,6 +338,132 @@ Dish state and picker HTML formatting was embedded in `src/main.ts` even though 
 
 ### New files created
 - `src/hud/state-panel.ts` - dish stat HTML, dish picker rows, picker signature, dish name sanitization, and HTML escaping.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Core metabolism extraction - cell resource flow
+
+### Motivation
+Cell metabolism updates were embedded in `CellSimulation.updateCell`, making movement, sensing, resource flow, growth, and rate calculation difficult to scan together. Moving metabolism to a core helper keeps the simulation step focused on orchestration while preserving the existing resource math.
+
+### Old files changed
+- `src/core/simulation.ts` - delegated cell metabolism and mass-radius calculation.
+
+### New files created
+- `src/core/metabolism.ts` - cell resource flow, rate calculation, and radius-from-mass helper.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Core resource transport extraction - ingestion helper
+
+### Motivation
+Resource ingestion math was embedded in `CellSimulation`, even though it only mutates a cell and the resource being consumed. Moving it to a focused helper makes consume-resource logic shorter and gives metabolism-adjacent behavior a clear home.
+
+### Old files changed
+- `src/core/simulation.ts` - delegated transport math from resource consumption.
+
+### New files created
+- `src/core/resource-transport.ts` - glucose, amino-acid, and oxygen uptake math.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Core environment scan extraction - sensing pull vector
+
+### Motivation
+The logic that converts nearby resources, hazards, and other cells into a movement pull vector is sensing behavior, not simulation orchestration. Moving it out of `CellSimulation` keeps `updateCell` focused on step ordering and makes sensing easier to test or tune separately.
+
+### Old files changed
+- `src/core/simulation.ts` - delegated environment pull calculation.
+
+### New files created
+- `src/core/environment-scan.ts` - resource attraction, hazard avoidance, and cell interaction pull vector.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Renderer dish material extraction - base agar rim shaders
+
+### Motivation
+The renderer facade still contained dish-only shader factories. Moving base, agar, and rim materials into a render helper reduces class size while keeping shader code in the render domain.
+
+### Old files changed
+- `src/render/PetriDishRenderer.ts` - delegated dish material creation.
+
+### New files created
+- `src/render/dish-materials.ts` - dish base, agar, and rim shader material factories.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Renderer resource visual extraction - resource markers and colors
+
+### Motivation
+Resource marker construction and shader code were embedded in the renderer facade. Moving them to `render/resources.ts` keeps molecule marker visuals together and leaves the renderer responsible for syncing scene objects.
+
+### Old files changed
+- `src/render/PetriDishRenderer.ts` - delegated resource group creation and imported shared resource colors.
+
+### New files created
+- `src/render/resources.ts` - resource colors, marker geometry, and resource shader material.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Renderer hazard material extraction - poison shader
+
+### Motivation
+The poison shader is hazard-specific render code. Moving it out of the renderer facade keeps hazard material tuning separate from scene synchronization.
+
+### Old files changed
+- `src/render/PetriDishRenderer.ts` - delegated poison material creation.
+
+### New files created
+- `src/render/hazards.ts` - poison shader material factory.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Renderer block helper extraction - mineral visuals and hit test
+
+### Motivation
+Mineral block geometry, shader material, and polygon hit testing are block-specific render helpers. Moving them out of the renderer facade keeps block rendering and picking math together.
+
+### Old files changed
+- `src/render/PetriDishRenderer.ts` - delegated block geometry, material, and point-in-block checks.
+
+### New files created
+- `src/render/blocks.ts` - mineral block geometry, shader material, and polygon hit test helper.
 
 ### Behavior
 No behavior changes intended.
