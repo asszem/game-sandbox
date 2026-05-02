@@ -130,6 +130,7 @@ export class CellSimulation {
     }
 
     this.resolveCells();
+    this.resolveCellObstacles();
     this.removeDeadCells();
     if (this.state.selectedCellId && !this.state.cells.some((cell) => cell.id === this.state.selectedCellId)) {
       this.state.selectedCellId = null;
@@ -241,6 +242,7 @@ export class CellSimulation {
       aminoRate: 0,
       oxygenRate: 0,
       rosRate: 0,
+      lightFactor: 0,
       age: 0,
       genome: base,
       signalPhase: this.rng.range(0, Math.PI * 2),
@@ -266,6 +268,7 @@ export class CellSimulation {
     cell.aminoRate ??= 0;
     cell.oxygenRate ??= 0;
     cell.rosRate ??= 0;
+    cell.lightFactor ??= 0;
     cell.energy = cell.atp;
   }
 
@@ -314,6 +317,7 @@ export class CellSimulation {
     this.applyHazards(cell);
 
     const lightFactor = this.localLight(cell.position);
+    cell.lightFactor = Math.max(0, lightFactor);
     const photosynthesisGlucose = Math.max(0, lightFactor) * (0.35 + cell.genome.harvest * 0.25);
     cell.glucose += photosynthesisGlucose;
     cell.oxygen = clamp(cell.oxygen + lightFactor * 0.018, 0, 100);
@@ -388,6 +392,7 @@ export class CellSimulation {
     cell.glycogen = clamp(cell.glycogen, 0, 200);
     cell.energy = cell.atp;
     cell.health = clamp(cell.health + (cell.atp > 15 && cell.aminoAcids > 12 && cell.ros < 35 ? 0.001 : -0.006), 0, 1);
+    this.constrainCell(cell);
     cell.atpRate = cell.atp - beforeAtp;
     cell.glucoseRate = cell.glucose - beforeGlucose;
     cell.glycogenRate = cell.glycogen - beforeGlycogen;
@@ -534,6 +539,8 @@ export class CellSimulation {
     cell.glycogen *= 0.52;
     cell.mass *= 0.58;
     cell.radius = this.radiusForMass(cell);
+    this.constrainCell(cell);
+    this.constrainCell(child);
     this.state.cells.push(child);
   }
 
@@ -626,7 +633,7 @@ export class CellSimulation {
 
   private keepInDish(cell: Cell): void {
     const d = length(cell.position);
-    const max = this.state.boardRadius - cell.radius - 2;
+    const max = Math.max(0, this.state.boardRadius - cell.radius);
     if (d > max) {
       const inward = scale(normalize(cell.position), max);
       cell.position = inward;
@@ -638,12 +645,38 @@ export class CellSimulation {
   private resolveBlocks(cell: Cell): void {
     for (const block of this.state.blocks) {
       const d = distance(cell.position, block.position);
-      if (d < block.radius + cell.radius && this.pointNearBlock(cell.position, block, cell.radius)) {
-        const push = normalize(sub(cell.position, block.position));
-        cell.position = add(cell.position, scale(push, block.radius + cell.radius - d + 0.08));
+      const minDistance = block.radius + cell.radius;
+      if (d < minDistance) {
+        const push = this.cellPushDirection(cell, block.position);
+        cell.position = add(cell.position, scale(push, minDistance - d + 0.08));
         cell.velocity = scale(cell.velocity, -0.2);
       }
     }
+  }
+
+  private resolveCellObstacles(): void {
+    for (let pass = 0; pass < 4; pass += 1) {
+      for (const cell of this.state.cells) {
+        this.constrainCell(cell);
+      }
+    }
+  }
+
+  private constrainCell(cell: Cell): void {
+    this.keepInDish(cell);
+    this.resolveBlocks(cell);
+    this.keepInDish(cell);
+  }
+
+  private cellPushDirection(cell: Cell, origin: Vec2): Vec2 {
+    const away = sub(cell.position, origin);
+    if (length(away) > 0.001) {
+      return normalize(away);
+    }
+    if (length(cell.velocity) > 0.001) {
+      return normalize(cell.velocity);
+    }
+    return normalize(origin.x === 0 && origin.y === 0 ? vec(1, 0) : origin);
   }
 
   private spawnAmbientResources(): void {

@@ -82,6 +82,7 @@ export class PetriDishRenderer {
   private sensorRays: THREE.LineSegments<THREE.BufferGeometry, THREE.LineBasicMaterial>;
   private timedMaterials: THREE.ShaderMaterial[] = [];
   private frustumHeight = 203;
+  private aspect = 1;
   private zoom = 1;
   private defaultCameraX = -48;
   private defaultCameraY = 0;
@@ -175,6 +176,7 @@ export class PetriDishRenderer {
   centerOnCell(cell: Cell): void {
     this.camera.position.x = cell.position.x;
     this.camera.position.y = cell.position.y;
+    this.clampCameraToZoomBounds();
   }
 
   resetZoom(): void {
@@ -188,9 +190,22 @@ export class PetriDishRenderer {
     return Math.round(this.zoom * 100);
   }
 
+  panFromView(view: RendererView, screenDx: number, screenDy: number): void {
+    const worldHeight = this.frustumHeight / Math.max(0.001, view.zoom);
+    const worldPerPixel = worldHeight / Math.max(1, this.canvas.clientHeight);
+    this.camera.position.x = view.cameraX - screenDx * worldPerPixel;
+    this.camera.position.y = view.cameraY + screenDy * worldPerPixel;
+    this.clampCameraToZoomBounds();
+  }
+
   zoomBy(factor: number): void {
     this.zoom = THREE.MathUtils.clamp(this.zoom * factor, 1, 4.2);
+    if (this.zoom <= 1.001) {
+      this.camera.position.x = this.defaultCameraX;
+      this.camera.position.y = this.defaultCameraY;
+    }
     this.resize();
+    this.clampCameraToZoomBounds();
   }
 
   exportView(): RendererView {
@@ -209,6 +224,7 @@ export class PetriDishRenderer {
     this.camera.position.x = Number.isFinite(view.cameraX) ? view.cameraX : this.defaultCameraX;
     this.camera.position.y = Number.isFinite(view.cameraY) ? view.cameraY : this.defaultCameraY;
     this.resize();
+    this.clampCameraToZoomBounds();
   }
 
   private buildScene(): void {
@@ -1267,6 +1283,7 @@ export class PetriDishRenderer {
     const height = Math.max(1, this.canvas.clientHeight || window.innerHeight);
     this.renderer.setSize(width, height, false);
     const aspect = width / Math.max(1, height);
+    this.aspect = aspect;
     const halfHeight = (this.frustumHeight / this.zoom) * 0.5;
     this.camera.left = -halfHeight * aspect;
     this.camera.right = halfHeight * aspect;
@@ -1286,6 +1303,7 @@ export class PetriDishRenderer {
       const after = this.screenToWorld(event.clientX, event.clientY);
       this.camera.position.x += before.x - after.x;
       this.camera.position.y += before.y - after.y;
+      this.clampCameraToZoomBounds();
     }
   };
 
@@ -1309,11 +1327,28 @@ export class PetriDishRenderer {
     const worldPerPixel = worldHeight / Math.max(1, this.canvas.clientHeight);
     this.camera.position.x = this.dragStart.cameraX - dx * worldPerPixel;
     this.camera.position.y = this.dragStart.cameraY + dy * worldPerPixel;
+    this.clampCameraToZoomBounds();
   };
 
   private handlePointerUp = (): void => {
     this.dragStart = null;
   };
+
+  private clampCameraToZoomBounds(): void {
+    if (this.zoom <= 1.001) {
+      this.camera.position.x = this.defaultCameraX;
+      this.camera.position.y = this.defaultCameraY;
+      return;
+    }
+    const defaultHalfHeight = this.frustumHeight * 0.5;
+    const currentHalfHeight = (this.frustumHeight / this.zoom) * 0.5;
+    const defaultHalfWidth = defaultHalfHeight * this.aspect;
+    const currentHalfWidth = currentHalfHeight * this.aspect;
+    const maxPanX = Math.max(0, defaultHalfWidth - currentHalfWidth);
+    const maxPanY = Math.max(0, defaultHalfHeight - currentHalfHeight);
+    this.camera.position.x = THREE.MathUtils.clamp(this.camera.position.x, this.defaultCameraX - maxPanX, this.defaultCameraX + maxPanX);
+    this.camera.position.y = THREE.MathUtils.clamp(this.camera.position.y, this.defaultCameraY - maxPanY, this.defaultCameraY + maxPanY);
+  }
 
   screenToWorld(clientX: number, clientY: number): Vec2 {
     const rect = this.canvas.getBoundingClientRect();

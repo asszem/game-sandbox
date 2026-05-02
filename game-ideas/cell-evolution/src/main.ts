@@ -37,7 +37,15 @@ type DishInstance = {
   accumulator: number;
   worldTime: number;
   zIndex: number;
-  dragStart: { pointerId: number; x: number; y: number; left: number; top: number } | null;
+  dragStart: {
+    pointerId: number;
+    x: number;
+    y: number;
+    mode: 'move' | 'pan';
+    left: number;
+    top: number;
+    view: RendererView;
+  } | null;
   dragMoved: boolean;
 };
 
@@ -80,6 +88,9 @@ const tickReadout = document.querySelector<HTMLElement>('#tick-readout');
 const populationReadout = document.querySelector<HTMLElement>('#population-readout');
 const stateReadout = document.querySelector<HTMLElement>('#state-readout');
 const zoomReadout = document.querySelector<HTMLElement>('#zoom-readout');
+const gameDishCount = document.querySelector<HTMLElement>('#game-dish-count');
+const gameCellCount = document.querySelector<HTMLElement>('#game-cell-count');
+const gameRunningCount = document.querySelector<HTMLElement>('#game-running-count');
 const tooltipToggle = document.querySelector<HTMLInputElement>('#tooltip-toggle');
 const tooltipStatus = document.querySelector<HTMLElement>('#tooltip-status');
 const dishWindowTitle = document.querySelector<HTMLElement>('#dish-window-title');
@@ -114,11 +125,12 @@ const glucoseRate = document.querySelector<HTMLElement>('#glucose-rate');
 const glycogenRate = document.querySelector<HTMLElement>('#glycogen-rate');
 const aminoRate = document.querySelector<HTMLElement>('#amino-rate');
 const oxygenRate = document.querySelector<HTMLElement>('#oxygen-rate');
-const atpDelta = document.querySelector<HTMLElement>('#atp-delta');
-const glucoseDelta = document.querySelector<HTMLElement>('#glucose-delta');
-const glycogenDelta = document.querySelector<HTMLElement>('#glycogen-delta');
-const aminoDelta = document.querySelector<HTMLElement>('#amino-delta');
-const oxygenDelta = document.querySelector<HTMLElement>('#oxygen-delta');
+const atpNodeDelta = document.querySelector<HTMLElement>('#atp-node-delta');
+const glucoseNodeDelta = document.querySelector<HTMLElement>('#glucose-node-delta');
+const glycogenNodeDelta = document.querySelector<HTMLElement>('#glycogen-node-delta');
+const aminoNodeDelta = document.querySelector<HTMLElement>('#amino-node-delta');
+const oxygenNodeDelta = document.querySelector<HTMLElement>('#oxygen-node-delta');
+const lightFactor = document.querySelector<HTMLElement>('#light-factor');
 const rosDelta = document.querySelector<HTMLElement>('#ros-delta');
 const autophagyDelta = document.querySelector<HTMLElement>('#autophagy-delta');
 const toastRegion = document.querySelector<HTMLElement>('#toast-region');
@@ -151,6 +163,10 @@ window.addEventListener('keydown', (event) => {
   }
   if (event.code === 'Space') {
     event.preventDefault();
+    if (event.shiftKey) {
+      toggleAllDishesRunning();
+      return;
+    }
     if (!activeDish) {
       showToast('Select a petri dish first');
       return;
@@ -188,6 +204,19 @@ window.addEventListener('keydown', (event) => {
     closeSaveModal();
   }
 });
+
+function toggleAllDishesRunning(): void {
+  if (dishes.length === 0) {
+    showToast('No petri dishes to pause');
+    return;
+  }
+  const shouldRun = !dishes.every((dish) => dish.simulation.state.running);
+  for (const dish of dishes) {
+    dish.simulation.state.running = shouldRun;
+  }
+  showToast(shouldRun ? 'All cell ticks resumed' : 'All cell ticks paused');
+  updateHud();
+}
 
 tooltipToggle?.addEventListener('change', () => {
   setTooltipsEnabled(tooltipToggle.checked, true);
@@ -401,6 +430,10 @@ function createDish(options: {
 }
 
 function bindDishEvents(dish: DishInstance): void {
+  dish.canvas.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+  });
+
   dish.canvas.addEventListener('wheel', (event) => {
     if (!event.shiftKey) {
       return;
@@ -413,7 +446,16 @@ function bindDishEvents(dish: DishInstance): void {
   dish.canvas.addEventListener('pointerdown', (event) => {
     setActiveDish(dish, dish.inspectedTarget);
     const rect = dish.canvas.getBoundingClientRect();
-    dish.dragStart = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top };
+    const view = dish.renderer.exportView();
+    dish.dragStart = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      mode: view.zoom > 1.001 ? 'pan' : 'move',
+      left: rect.left,
+      top: rect.top,
+      view,
+    };
     dish.dragMoved = false;
     dish.canvas.setPointerCapture(event.pointerId);
   });
@@ -424,6 +466,11 @@ function bindDishEvents(dish: DishInstance): void {
       const dy = event.clientY - dish.dragStart.y;
       if (Math.hypot(dx, dy) > 4) {
         dish.dragMoved = true;
+      }
+      if (dish.dragStart.mode === 'pan') {
+        dish.renderer.panFromView(dish.dragStart.view, dx, dy);
+        updateHud();
+        return;
       }
       dish.canvas.style.left = `${dish.dragStart.left + dx}px`;
       dish.canvas.style.top = `${dish.dragStart.top + dy}px`;
@@ -588,18 +635,17 @@ function animate(time: number): void {
 }
 
 function updateHud(): void {
+  updateGameStatsHud();
   if (!activeDish) {
-    const totalCells = dishes.reduce((total, dish) => total + dish.simulation.state.cells.length, 0);
-    const runningCount = dishes.filter((dish) => dish.simulation.state.running).length;
     if (tickReadout) {
-      tickReadout.textContent = `${dishes.length} dishes`;
+      tickReadout.textContent = 'No dish';
     }
     if (populationReadout) {
-      populationReadout.textContent = `${totalCells} cells`;
+      populationReadout.textContent = '0 cells';
     }
     if (stateReadout) {
-      stateReadout.textContent = runningCount > 0 ? `${runningCount} running` : 'Paused';
-      stateReadout.dataset.state = runningCount > 0 ? 'running' : 'paused';
+      stateReadout.textContent = 'Paused';
+      stateReadout.dataset.state = 'paused';
     }
     if (zoomReadout) {
       zoomReadout.textContent = 'No dish selected';
@@ -676,6 +722,20 @@ function updateHud(): void {
   fitEntityWindowForSelection();
 }
 
+function updateGameStatsHud(): void {
+  const totalCells = dishes.reduce((total, dish) => total + dish.simulation.state.cells.length, 0);
+  const runningCount = dishes.filter((dish) => dish.simulation.state.running).length;
+  if (gameDishCount) {
+    gameDishCount.textContent = String(dishes.length);
+  }
+  if (gameCellCount) {
+    gameCellCount.textContent = String(totalCells);
+  }
+  if (gameRunningCount) {
+    gameRunningCount.textContent = String(runningCount);
+  }
+}
+
 function describeCellState(
   cell: Cell,
   detections: { resources: number; hazards: number; prey: number; rivals: number; nearestResource: number; nearestHazard: number },
@@ -718,7 +778,7 @@ function formatCellState(
       healthState,
     ],
     ['ATP', Math.round(cell.atp).toString(), 'ATP is adenosine triphosphate, the immediate energy reserve used for movement, transport, repair, and division.'],
-    ['Amino', Math.round(cell.aminoAcids).toString(), 'Amino acids are building material for repair proteins, enzymes, growth, and daughter-cell structure.'],
+    ['Amino Acids', Math.round(cell.aminoAcids).toString(), 'Amino acids are building material for repair proteins, enzymes, growth, and daughter-cell structure.'],
     ['Glucose', Math.round(cell.glucose).toString(), 'Glucose is immediate fuel measured 0 to 100. The cell burns it first with oxygen to make ATP; surplus above 80 is packed into glycogen.'],
     ['Glycogen', Math.round(cell.glycogen).toString(), 'Glycogen is compact glucose storage measured 0 to 200. The cell unpacks it when immediate glucose is low, before resorting to autophagy.'],
     ['Autophagy', `${cell.autophagyRate.toFixed(2)}/tick`, 'Autophagy is emergency self-eating: when glucose and glycogen are empty, the cell breaks down amino acids and mass for fuel, hurting health.', cell.autophagyRate > 0 ? 'danger' : undefined],
@@ -830,7 +890,10 @@ function setMeter(meter: HTMLMeterElement | null, value: number): void {
 
 function updateDishStatsHud(): void {
   syncWindowTitles(selectedEntityLabel());
-  if (dishName) dishName.textContent = activeDish ? `Dish ${activeDish.id}` : 'No dish selected';
+  if (dishName) {
+    dishName.hidden = Boolean(activeDish);
+    dishName.textContent = activeDish ? '' : 'No dish selected';
+  }
   if (dishDetail) dishDetail.innerHTML = formatDishState();
   setMeter(energyMeter, 0);
   setMeter(massMeter, 0);
@@ -855,7 +918,6 @@ function formatDishState(): string {
     ? simulation.state.cells.reduce((total, cell) => total + cell.atp, 0) / simulation.state.cells.length
     : 0;
   const stats = [
-    ['Cells', simulation.state.cells.length.toString()],
     ['Biomass', livingMass.toFixed(1)],
     ['Avg ATP', avgAtp.toFixed(0)],
     ['Resources', simulation.state.resources.length.toString()],
@@ -865,8 +927,7 @@ function formatDishState(): string {
     ['Light', resources.light.toString()],
     ['Poison', simulation.state.hazards.length.toString()],
     ['Blocks', simulation.state.blocks.length.toString()],
-    ['Radius', simulation.state.boardRadius.toString()],
-    ['Tick', simulation.state.tick.toString()],
+    ['Radius', simulation.state.boardRadius.toFixed(1)],
   ];
   return `<span class="dish-stat-grid">${stats.map(([label, value]) => `<span class="dish-stat"><span>${label}</span><strong>${value}</strong></span>`).join('')}</span>`;
 }
@@ -987,14 +1048,14 @@ function syncWindowTitles(entityLabel: string): void {
   }
   if (entityWindowTitle) {
     entityWindowTitle.textContent = activeDish && inspectedTarget.kind === 'cell'
-      ? `${dishLabel} | ${entityLabel} Metabolism`
+      ? `${dishLabel} | ${entityLabel} | Metabolism`
       : activeDish
         ? `${dishLabel} | ${entityLabel}`
         : 'No dish | Entity';
   }
   if (directivesWindowTitle) {
     directivesWindowTitle.textContent = activeDish && inspectedTarget.kind === 'cell'
-      ? `${dishLabel} | ${entityLabel} Metabolism`
+      ? `${dishLabel} | ${entityLabel} | Directives`
       : `${dishLabel} | Directives`;
   }
 }
@@ -1023,7 +1084,7 @@ function syncCellOnlyPanels(hasSelectedCell: boolean): void {
   }
   dishActionButtons.forEach((button) => {
     const action = button.dataset.dishAction;
-    const requiresNoDish = action === 'tutorial' || action === 'save' || action === 'load';
+    const requiresNoDish = action === 'tutorial';
     if (requiresNoDish) {
       button.hidden = Boolean(activeDish);
     }
@@ -1455,16 +1516,12 @@ function syncTransportControls(cell: Cell | null): void {
 }
 
 function syncMetabolicDashboard(cell: Cell | null): void {
-  setText(atpCore, cell ? String(Math.round(cell.atp)) : '0');
-  setText(glucoseRate, cell ? String(Math.round(cell.glucose)) : '0');
-  setText(glycogenRate, cell ? String(Math.round(cell.glycogen)) : '0');
-  setText(aminoRate, cell ? String(Math.round(cell.aminoAcids)) : '0');
-  setText(oxygenRate, cell ? String(Math.round(cell.oxygen)) : '0');
-  setDelta(atpDelta, cell?.atpRate ?? 0);
-  setDelta(glucoseDelta, cell?.glucoseRate ?? 0);
-  setDelta(glycogenDelta, cell?.glycogenRate ?? 0);
-  setDelta(aminoDelta, cell?.aminoRate ?? 0);
-  setDelta(oxygenDelta, cell?.oxygenRate ?? 0);
+  setResourceReadout(atpCore, atpNodeDelta, cell?.atp ?? 0, cell?.atpRate ?? 0);
+  setResourceReadout(glucoseRate, glucoseNodeDelta, cell?.glucose ?? 0, cell?.glucoseRate ?? 0);
+  setResourceReadout(glycogenRate, glycogenNodeDelta, cell?.glycogen ?? 0, cell?.glycogenRate ?? 0);
+  setResourceReadout(aminoRate, aminoNodeDelta, cell?.aminoAcids ?? 0, cell?.aminoRate ?? 0);
+  setResourceReadout(oxygenRate, oxygenNodeDelta, cell?.oxygen ?? 0, cell?.oxygenRate ?? 0);
+  setLightFactor(lightFactor, cell?.lightFactor ?? 0);
   setDelta(rosDelta, cell?.rosRate ?? 0, true);
   setDelta(autophagyDelta, cell?.autophagyRate ?? 0, true);
 
@@ -1478,6 +1535,7 @@ function syncMetabolicDashboard(cell: Cell | null): void {
     root.style.setProperty('--oxygen-speed', `${Math.round(1200 - cell.oxygenMetabolism * 650)}ms`);
     root.classList.toggle('is-toxic', cell.ros > 45);
     root.classList.toggle('is-autophagy', cell.autophagyRate > 0);
+    root.classList.toggle('is-paused', !simulation.state.running);
   } else if (root) {
     root.style.setProperty('--glucose-flow', '3px');
     root.style.setProperty('--amino-flow', '3px');
@@ -1487,6 +1545,31 @@ function syncMetabolicDashboard(cell: Cell | null): void {
     root.style.setProperty('--oxygen-speed', '1100ms');
     root.classList.remove('is-toxic');
     root.classList.remove('is-autophagy');
+    root.classList.add('is-paused');
+  }
+}
+
+function setResourceReadout(container: HTMLElement | null, deltaElement: HTMLElement | null, value: number, delta: number): void {
+  if (container) {
+    const valueElement = container.querySelector<HTMLElement>('.resource-value');
+    if (valueElement) {
+      valueElement.textContent = String(Math.round(value));
+    } else {
+      container.textContent = String(Math.round(value));
+    }
+  }
+  setDelta(deltaElement, delta);
+}
+
+function setLightFactor(element: HTMLElement | null, value: number): void {
+  if (!element) {
+    return;
+  }
+  element.textContent = value.toFixed(2);
+  element.dataset.trend = value > 0.01 ? 'good' : 'flat';
+  const parent = element.closest<HTMLElement>('.tri-gauge');
+  if (parent) {
+    parent.dataset.flow = value > 0.01 ? 'good' : 'flat';
   }
 }
 
@@ -1662,6 +1745,7 @@ function setupWindow(gameWindow: GameWindow): void {
   const resizeHandle = element.querySelector<HTMLElement>('.window-resize');
   let drag: { pointerId: number; startX: number; startY: number; left: number; top: number } | null = null;
   let resize: { pointerId: number; startX: number; startY: number; width: number; height: number } | null = null;
+  let lastTitlePress = 0;
 
   gameWindow.collapseButton?.addEventListener('click', (event) => {
     event.stopPropagation();
@@ -1672,6 +1756,15 @@ function setupWindow(gameWindow: GameWindow): void {
     if (event.target instanceof HTMLButtonElement) {
       return;
     }
+    const now = performance.now();
+    if (now - lastTitlePress < 320) {
+      event.preventDefault();
+      lastTitlePress = 0;
+      drag = null;
+      setCollapsed(gameWindow, !element.classList.contains('is-collapsed'));
+      return;
+    }
+    lastTitlePress = now;
     const rect = element.getBoundingClientRect();
     drag = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, left: rect.left, top: rect.top };
     element.setPointerCapture(event.pointerId);

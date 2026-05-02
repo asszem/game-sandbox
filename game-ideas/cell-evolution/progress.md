@@ -23,3 +23,6 @@ Notes:
 - Verification: `npm run build`, `npm test`, web-game client, and Playwright pan/zoom check passed; sampled background pixels were unchanged after pan/zoom.
 - Fixed regression where the fixed background wrote depth and hid the petri dish: clear depth between background and board render passes, disable depth on the background plate, and shift default reset framing back to the right-side dish view.
 - Verification: `npm run build`, `npm test`, web-game client, and full-page Playwright screenshot/error check passed.
+- Moved Glycogen below Glucose in the metabolic triangle and enlarged it so the label stays on one line.
+- Renamed channel sliders to Fuel uptake, Repair material uptake, and ATP production rate; colored them yellow, green, and blue to match glucose/amino/oxygen flow. Cell stat display now uses "Amino Acids".
+- Verification: `npm run build`, `npm test`, and Playwright DOM/style checks passed.

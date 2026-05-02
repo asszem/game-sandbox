@@ -9,25 +9,26 @@
     <div id="app">
       <canvas id="microscope-backdrop" aria-hidden="true"></canvas>
       <div id="dish-layer" aria-label="petri dish workspace"></div>
-      <section class="hud hud-top" aria-label="simulation status">
-        <div class="game-window status-window" data-window-id="status" aria-label="simulation status window">
+      <section class="hud hud-top" aria-label="game settings">
+        <div class="game-window status-window" data-window-id="game" aria-label="game settings window">
           <div class="window-titlebar">
-            <h2>Status</h2>
-            <button class="window-collapse" type="button" aria-label="Collapse Status">▾</button>
+            <h2>Game</h2>
+            <button class="window-collapse" type="button" aria-label="Collapse Game">▾</button>
           </div>
-          <div class="window-body status-strip">
-            <span id="tick-readout">Tick 0</span>
-            <span aria-hidden="true">·</span>
-            <span id="population-readout">0 cells</span>
-            <span aria-hidden="true">·</span>
-            <span id="state-readout">Running</span>
-            <span aria-hidden="true">·</span>
-            <span id="zoom-readout">Zoom 100%</span>
-            <span aria-hidden="true">·</span>
+          <div class="window-body game-controls">
+            <div class="game-status-strip" aria-label="global game status">
+              <span>Total dishes <strong id="game-dish-count">0</strong></span>
+              <span>Total cells <strong id="game-cell-count">0</strong></span>
+              <span>Running dishes <strong id="game-running-count">0</strong></span>
+            </div>
             <label class="status-toggle">
               <input id="tooltip-toggle" type="checkbox" checked />
               <span>Hover tooltips <strong id="tooltip-status">On</strong></span>
             </label>
+            <div class="game-actions" aria-label="game actions">
+              <button type="button" data-dish-action="save">Save</button>
+              <button type="button" data-dish-action="load">Load</button>
+            </div>
           </div>
           <span class="window-resize" aria-hidden="true"></span>
         </div>
@@ -38,6 +39,15 @@
           <button class="window-collapse" type="button" aria-label="Collapse State">▾</button>
         </div>
         <div class="window-body">
+          <div class="status-strip" aria-label="selected dish status">
+            <span id="tick-readout">No dish</span>
+            <span aria-hidden="true">·</span>
+            <span id="population-readout">0 cells</span>
+            <span aria-hidden="true">·</span>
+            <span id="state-readout">Paused</span>
+            <span aria-hidden="true">·</span>
+            <span id="zoom-readout">Zoom 100%</span>
+          </div>
           <div class="panel-head">
             <h3 id="dish-name">No dish selected</h3>
             <p id="dish-detail">Add another dish, or click any petri dish to inspect and control it.</p>
@@ -48,8 +58,6 @@
             <button type="button" data-dish-action="tutorial">Start tutorial</button>
             <button type="button" data-dish-action="restart">Restart Same Dish</button>
             <button type="button" data-dish-action="random">Restart Random Dish</button>
-            <button type="button" data-dish-action="save">Save</button>
-            <button type="button" data-dish-action="load">Load</button>
           </div>
         </div>
         <span class="window-resize" aria-hidden="true"></span>
@@ -68,36 +76,32 @@
             <div class="metabolic-triangle" data-tooltip="Cell metabolism consumes current glucose input first, then unpacks glycogen storage, then triggers autophagy if both fuel sources are empty.">
               <svg class="metabolic-flow-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
                 <path class="flow-path flow-path-glucose" d="M 29 40 L 45 65" pathLength="100"></path>
-                <path class="flow-path flow-path-glycogen" d="M 31 33 L 38 43" pathLength="100"></path>
+                <path class="flow-path flow-path-glycogen" d="M 22 38 L 22 62" pathLength="100"></path>
                 <path class="flow-path flow-path-amino" d="M 71 40 L 55 65" pathLength="100"></path>
                 <path class="flow-path flow-path-oxygen" d="M 50 34 L 50 64" pathLength="100"></path>
               </svg>
-              <div class="metabolic-node node-glucose" data-tooltip="Glucose is immediate fuel, measured 0 to 100. The cell uses it first each tick; if glucose rises above 80, surplus is packed into glycogen."><span>Glucose</span><strong id="glucose-rate">0</strong></div>
-              <div class="metabolic-node node-glycogen" data-tooltip="Glycogen is compact glucose storage. Packing surplus glucose costs a little ATP; unpacking glycogen buffers the cell when environmental glucose is gone."><span>Glycogen</span><strong id="glycogen-rate">0</strong></div>
-              <div class="metabolic-node node-amino" data-tooltip="Amino acids are stored structural material. The cell spends them on repair, enzymes, growth, and division rather than direct ATP fuel."><span>Amino Acids</span><strong id="amino-rate">0</strong></div>
-              <div class="metabolic-node node-oxygen" data-tooltip="Oxygen is stored briefly and used by metabolism. High oxygen use makes ATP production stronger but increases ROS stress."><span>Oxygen</span><strong id="oxygen-rate">0</strong></div>
-              <div class="metabolic-core" data-tooltip="ATP is adenosine triphosphate, the cell's immediate energy currency. Movement, transport, repair, antioxidant response, and division all spend ATP."><span>ATP</span><strong id="atp-core">0</strong></div>
+              <div class="metabolic-node node-glucose" data-tooltip="What it is: Glucose is the cell's immediate fuel buffer.&#10;&#10;More detail: It is measured from 0 to 100. The cell burns glucose first to make ATP, and surplus above 80 can be packed into glycogen storage.&#10;&#10;How to get it: Touch glucose molecules, increase Fuel uptake, or sit inside light blooms so photosynthesis can add glucose."><span>Glucose</span><strong id="glucose-rate" class="resource-readout"><span class="resource-value">0</span><small id="glucose-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
+              <div class="metabolic-node node-glycogen" data-tooltip="What it is: Glycogen is stored glucose.&#10;&#10;More detail: It is measured from 0 to 200. The cell packs surplus glucose into glycogen and unpacks it when immediate glucose runs out.&#10;&#10;How to get it: Keep glucose above 80 while the cell has ATP available, then surplus glucose is converted into glycogen."><span>Glycogen</span><strong id="glycogen-rate" class="resource-readout"><span class="resource-value">0</span><small id="glycogen-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
+              <div class="metabolic-node node-amino" data-tooltip="What it is: Amino acids are repair and growth material.&#10;&#10;More detail: The cell spends amino acids on membrane repair, enzymes, antioxidant response, growth, and division rather than direct fuel.&#10;&#10;How to get it: Touch amino-acid clusters and increase Repair material uptake to import them faster."><span>Amino Acids</span><strong id="amino-rate" class="resource-readout"><span class="resource-value">0</span><small id="amino-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
+              <div class="metabolic-node node-oxygen" data-tooltip="What it is: Oxygen supports efficient ATP production.&#10;&#10;More detail: It is stored briefly and consumed by oxygen metabolism. Higher oxygen use increases ATP output from glucose but also raises ROS stress.&#10;&#10;How to get it: Touch oxygen pockets, increase ATP production rate to import oxygen, or sit in light where oxygen rises slightly."><span>Oxygen</span><strong id="oxygen-rate" class="resource-readout"><span class="resource-value">0</span><small id="oxygen-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
+              <div class="metabolic-core" data-tooltip="What it is: ATP is the cell's immediate energy currency.&#10;&#10;More detail: Movement, transport, repair, antioxidant response, growth, and division all spend ATP. Oxygen metabolism converts glucose into ATP more efficiently.&#10;&#10;How to get it: Keep glucose and oxygen available, tune ATP production rate upward, and avoid excessive movement or repair costs."><span>ATP</span><strong id="atp-core" class="resource-readout"><span class="resource-value">0</span><small id="atp-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
             </div>
             <div class="channel-controls" aria-label="cell metabolism controls">
-              <label data-tooltip="Glucose transport controls fuel intake through membrane channels. Higher values refill the glucose buffer faster when touching glucose, but spend transport energy and exhaust nearby food.">
-                <span>Glucose import <output data-control-value="glucoseTransport">50%</output></span>
+              <label data-tooltip="Fuel uptake opens glucose membrane channels. Higher values refill the immediate glucose buffer faster when touching glucose, but spend transport energy and exhaust nearby food.">
+                <span>Fuel uptake <output data-control-value="glucoseTransport">50%</output></span>
                 <input data-control="glucoseTransport" type="range" min="0" max="100" value="50" />
               </label>
-              <label data-tooltip="Amino-acid transport controls import of repair and growth material. Higher values build reserves faster, but still cost ATP to operate.">
-                <span>Amino import <output data-control-value="aminoTransport">50%</output></span>
+              <label data-tooltip="Repair material uptake opens amino-acid transporters. Higher values build protein and membrane reserves faster, but still cost ATP to operate.">
+                <span>Repair material uptake <output data-control-value="aminoTransport">50%</output></span>
                 <input data-control="aminoTransport" type="range" min="0" max="100" value="50" />
               </label>
-              <label data-tooltip="Mitochondrial activity controls oxygen-driven ATP production. Higher values make ATP faster, but also create more ROS, Reactive Oxygen Species.">
-                <span>Mitochondria <output data-control-value="oxygenMetabolism">50%</output></span>
+              <label data-tooltip="ATP production rate controls oxygen-driven mitochondrial metabolism. Higher values make ATP faster, but also create more ROS, Reactive Oxygen Species.">
+                <span>ATP production rate <output data-control-value="oxygenMetabolism">50%</output></span>
                 <input data-control="oxygenMetabolism" type="range" min="0" max="100" value="50" />
               </label>
             </div>
             <div class="tri-gauges">
-              <div class="tri-gauge" data-gauge="atp" data-tooltip="ATP balance per tick. Positive means the cell is producing more energy than it spends; negative means movement, transport, and repair are consuming reserves."><span>ATP</span><div class="gauge-track"></div><strong id="atp-delta">0</strong></div>
-              <div class="tri-gauge" data-gauge="glucose" data-tooltip="Glucose buffer change per tick. Negative means the cell is burning immediate fuel; positive means food or light is refilling it."><span>Glucose</span><div class="gauge-track"></div><strong id="glucose-delta">0</strong></div>
-              <div class="tri-gauge" data-gauge="glycogen" data-tooltip="Glycogen change per tick. Positive means surplus glucose is being stored; negative means the cell is unpacking its buffer for ATP production."><span>Glycogen</span><div class="gauge-track"></div><strong id="glycogen-delta">0</strong></div>
-              <div class="tri-gauge" data-gauge="amino" data-tooltip="Amino acid balance per tick. Positive means repair and growth material is increasing; negative means repair, enzyme work, or growth is spending it."><span>Amino Acids</span><div class="gauge-track"></div><strong id="amino-delta">0</strong></div>
-              <div class="tri-gauge" data-gauge="oxygen" data-tooltip="Oxygen balance per tick. Oxygen is consumed by mitochondria to make ATP from glucose. Low oxygen limits efficient energy production."><span>Oxygen</span><div class="gauge-track"></div><strong id="oxygen-delta">0</strong></div>
+              <div class="tri-gauge tri-gauge-light" data-gauge="light" data-tooltip="Current light intake factor. Higher values mean nearby light blooms are feeding photosynthesis for glucose and a small oxygen boost."><span>Light intake</span><strong id="light-factor">0.00</strong></div>
               <div class="tri-gauge" data-gauge="ros" data-tooltip="ROS means Reactive Oxygen Species. ROS is oxidative waste from high metabolism; it damages health unless the cell spends ATP and amino acids on antioxidant repair."><span>ROS Waste</span><div class="gauge-track"></div><strong id="ros-delta">0</strong></div>
               <div class="tri-gauge" data-gauge="autophagy" data-tooltip="Autophagy is emergency self-eating. When glucose input and glycogen are empty, the cell breaks down amino acids and mass to keep ATP from collapsing, damaging health over time."><span>Autophagy</span><div class="gauge-track"></div><strong id="autophagy-delta">0</strong></div>
             </div>
@@ -117,15 +121,15 @@
           </div>
           <div class="transport-controls" aria-label="membrane transport controls">
             <label>
-              <span data-tooltip="Controls glucose membrane transporters. Higher values pull glucose into the cell faster and make ATP sooner, but can drain nearby glucose supplies quickly and costs ATP to operate.">Glucose channels <output data-control-value="glucoseTransport">50%</output></span>
+              <span data-tooltip="Fuel uptake opens glucose membrane channels. Higher values pull glucose into the cell faster and make ATP sooner, but can drain nearby glucose supplies quickly and costs ATP to operate.">Fuel uptake <output data-control-value="glucoseTransport">50%</output></span>
               <input data-control="glucoseTransport" type="range" min="0" max="100" value="50" />
             </label>
             <label>
-              <span data-tooltip="Controls amino-acid transporters. Higher values import repair and growth material faster, but spend ATP and can exhaust local amino-acid clusters.">Amino Acids channels <output data-control-value="aminoTransport">50%</output></span>
+              <span data-tooltip="Repair material uptake opens amino-acid transporters. Higher values import membrane repair and growth material faster, but spend ATP and can exhaust local amino-acid clusters.">Repair material uptake <output data-control-value="aminoTransport">50%</output></span>
               <input data-control="aminoTransport" type="range" min="0" max="100" value="50" />
             </label>
             <label>
-              <span data-tooltip="Controls oxygen-driven metabolic rate. Higher values make the cell move and generate ATP more aggressively, but consume oxygen and create ROS wear that needs ATP and amino acids to repair.">Mitochondria <output data-control-value="oxygenMetabolism">50%</output></span>
+              <span data-tooltip="ATP production rate controls oxygen-driven mitochondrial metabolism. Higher values generate ATP more aggressively, but consume oxygen and create ROS wear that needs ATP and amino acids to repair.">ATP production rate <output data-control-value="oxygenMetabolism">50%</output></span>
               <input data-control="oxygenMetabolism" type="range" min="0" max="100" value="50" />
             </label>
             <label>

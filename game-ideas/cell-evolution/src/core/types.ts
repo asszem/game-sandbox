@@ -36,6 +36,7 @@ export type Cell = {
   aminoRate: number;
   oxygenRate: number;
   rosRate: number;
+  lightFactor: number;
   age: number;
   genome: CellGenome;
   signalPhase: number;
