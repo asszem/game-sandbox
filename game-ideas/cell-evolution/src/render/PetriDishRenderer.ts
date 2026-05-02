@@ -19,6 +19,13 @@ type EffectVisual = {
   duration: number;
 };
 
+type PetriDishRendererOptions = {
+  renderBackground?: boolean;
+  cameraControls?: boolean;
+  defaultCameraX?: number;
+  defaultCameraY?: number;
+};
+
 export type MapPick =
   | { kind: 'cell'; id: number }
   | { kind: 'resource'; id: number }
@@ -29,6 +36,12 @@ export type MapPick =
 export type PickResult = {
   target: MapPick;
   dragged: boolean;
+};
+
+export type RendererView = {
+  zoom: number;
+  cameraX: number;
+  cameraY: number;
 };
 
 const RESOURCE_COLORS = {
@@ -70,26 +83,33 @@ export class PetriDishRenderer {
   private timedMaterials: THREE.ShaderMaterial[] = [];
   private frustumHeight = 203;
   private zoom = 1;
-  private readonly defaultCameraX = -48;
-  private readonly defaultCameraY = 0;
+  private defaultCameraX = -48;
+  private defaultCameraY = 0;
   private dragStart: { x: number; y: number; cameraX: number; cameraY: number } | null = null;
   private pointerDown = { x: 0, y: 0 };
   private clickMoved = false;
+  private renderBackground: boolean;
+  private cameraControls: boolean;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, options: PetriDishRendererOptions = {}) {
     this.canvas = canvas;
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    this.renderBackground = options.renderBackground ?? true;
+    this.cameraControls = options.cameraControls ?? true;
+    this.defaultCameraX = options.defaultCameraX ?? this.defaultCameraX;
+    this.defaultCameraY = options.defaultCameraY ?? this.defaultCameraY;
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: !this.renderBackground });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setClearColor(0x06080f, 1);
+    this.renderer.setClearColor(0x06080f, this.renderBackground ? 1 : 0);
 
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -200, 200);
     this.camera.position.set(this.defaultCameraX, this.defaultCameraY, 100);
     this.camera.lookAt(this.camera.position.x, this.camera.position.y, 0);
 
     this.selectedRing = new THREE.Mesh(
-      new THREE.RingGeometry(1, 1.14, 96),
-      new THREE.MeshBasicMaterial({ color: 0xf3f8d4, transparent: true, opacity: 0.9 }),
+      new THREE.RingGeometry(1, 1.08, 128),
+      new THREE.MeshBasicMaterial({ color: 0xf9ff4d, transparent: true, opacity: 0.58, depthTest: false, depthWrite: false }),
     );
+    this.selectedRing.renderOrder = 900;
     this.selectedRing.visible = false;
     this.sensorField = new THREE.Mesh(
       new THREE.CircleGeometry(1, 96),
@@ -115,10 +135,14 @@ export class PetriDishRenderer {
 
   dispose(): void {
     window.removeEventListener('resize', this.resize);
+    this.canvas.removeEventListener('wheel', this.handleWheel);
+    this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
+    window.removeEventListener('pointermove', this.handlePointerMove);
+    window.removeEventListener('pointerup', this.handlePointerUp);
     this.renderer.dispose();
   }
 
-  render(state: SimulationState, time: number, events: SimulationEvent[] = []): void {
+  render(state: SimulationState, time: number, events: SimulationEvent[] = [], selectedTarget: MapPick = { kind: 'dish', id: null }): void {
     this.updateTimedMaterials(time);
     this.spawnEffects(events, time);
     this.syncResources(state.resources, time);
@@ -126,11 +150,14 @@ export class PetriDishRenderer {
     this.syncBlocks(state);
     this.syncCells(state.cells, state.selectedCellId, time, state.running);
     this.syncSensorOverlay(state, time);
+    this.syncSelectionRing(state, selectedTarget, time);
     this.syncEffects(time);
     this.renderer.autoClear = true;
-    this.renderer.render(this.backgroundScene, this.backgroundCamera);
-    this.renderer.clearDepth();
-    this.renderer.autoClear = false;
+    if (this.renderBackground) {
+      this.renderer.render(this.backgroundScene, this.backgroundCamera);
+      this.renderer.clearDepth();
+      this.renderer.autoClear = false;
+    }
     this.renderer.render(this.scene, this.camera);
     this.renderer.autoClear = true;
   }
@@ -159,6 +186,29 @@ export class PetriDishRenderer {
 
   getZoomPercent(): number {
     return Math.round(this.zoom * 100);
+  }
+
+  zoomBy(factor: number): void {
+    this.zoom = THREE.MathUtils.clamp(this.zoom * factor, 1, 4.2);
+    this.resize();
+  }
+
+  exportView(): RendererView {
+    return {
+      zoom: this.zoom,
+      cameraX: this.camera.position.x,
+      cameraY: this.camera.position.y,
+    };
+  }
+
+  applyView(view: RendererView | undefined): void {
+    if (!view) {
+      return;
+    }
+    this.zoom = THREE.MathUtils.clamp(view.zoom || 1, 1, 4.2);
+    this.camera.position.x = Number.isFinite(view.cameraX) ? view.cameraX : this.defaultCameraX;
+    this.camera.position.y = Number.isFinite(view.cameraY) ? view.cameraY : this.defaultCameraY;
+    this.resize();
   }
 
   private buildScene(): void {
@@ -442,6 +492,59 @@ export class PetriDishRenderer {
     }
 
     this.selectedRing.visible = false;
+  }
+
+  private syncSelectionRing(state: SimulationState, target: MapPick, time: number): void {
+    this.selectedRing.visible = false;
+    if (target.kind === 'dish') {
+      return;
+    }
+
+    const pulse = 1 + Math.sin(time * 0.004) * 0.018;
+    if (target.kind === 'cell') {
+      const cell = state.cells.find((item) => item.id === target.id);
+      if (!cell) {
+        return;
+      }
+      this.selectedRing.visible = true;
+      this.selectedRing.position.set(cell.position.x, cell.position.y, 9);
+      this.selectedRing.rotation.z = this.cellVisuals.get(cell.id)?.group.rotation.z ?? 0;
+      this.selectedRing.scale.set(cell.radius * cell.bodyLength * 1.2 * pulse, cell.radius * 1.2 * pulse, 1);
+      return;
+    }
+
+    this.selectedRing.rotation.z = 0;
+    if (target.kind === 'resource') {
+      const resource = state.resources.find((item) => item.id === target.id);
+      if (!resource) {
+        return;
+      }
+      const amountScale = 0.68 + resource.amount * 0.72;
+      const lightScale = resource.kind === 'light' ? 0.75 + resource.amount * 0.45 : amountScale;
+      this.selectedRing.visible = true;
+      this.selectedRing.position.set(resource.position.x, resource.position.y, 9);
+      this.selectedRing.scale.setScalar(resource.radius * lightScale * 1.16 * pulse);
+      return;
+    }
+
+    if (target.kind === 'hazard') {
+      const hazard = state.hazards.find((item) => item.id === target.id);
+      if (!hazard) {
+        return;
+      }
+      this.selectedRing.visible = true;
+      this.selectedRing.position.set(hazard.position.x, hazard.position.y, 9);
+      this.selectedRing.scale.setScalar(hazard.radius * 1.12 * pulse);
+      return;
+    }
+
+    const block = state.blocks.find((item) => item.id === target.id);
+    if (!block) {
+      return;
+    }
+    this.selectedRing.visible = true;
+    this.selectedRing.position.set(block.position.x, block.position.y, 9);
+    this.selectedRing.scale.setScalar(block.radius * 1.12 * pulse);
   }
 
   private syncSensorOverlay(state: SimulationState, time: number): void {
@@ -1152,9 +1255,11 @@ export class PetriDishRenderer {
   private bindEvents(): void {
     window.addEventListener('resize', this.resize);
     this.canvas.addEventListener('wheel', this.handleWheel, { passive: false });
-    this.canvas.addEventListener('pointerdown', this.handlePointerDown);
-    window.addEventListener('pointermove', this.handlePointerMove);
-    window.addEventListener('pointerup', this.handlePointerUp);
+    if (this.cameraControls) {
+      this.canvas.addEventListener('pointerdown', this.handlePointerDown);
+      window.addEventListener('pointermove', this.handlePointerMove);
+      window.addEventListener('pointerup', this.handlePointerUp);
+    }
   }
 
   private resize = (): void => {
@@ -1171,13 +1276,17 @@ export class PetriDishRenderer {
   };
 
   private handleWheel = (event: WheelEvent): void => {
+    if (event.shiftKey) {
+      return;
+    }
     event.preventDefault();
-    const before = this.screenToWorld(event.clientX, event.clientY);
-    this.zoom = THREE.MathUtils.clamp(this.zoom * (event.deltaY > 0 ? 0.9 : 1.1), 0.55, 4.2);
-    this.resize();
-    const after = this.screenToWorld(event.clientX, event.clientY);
-    this.camera.position.x += before.x - after.x;
-    this.camera.position.y += before.y - after.y;
+    const before = this.cameraControls ? this.screenToWorld(event.clientX, event.clientY) : null;
+    this.zoomBy(event.deltaY > 0 ? 0.9 : 1.1);
+    if (before) {
+      const after = this.screenToWorld(event.clientX, event.clientY);
+      this.camera.position.x += before.x - after.x;
+      this.camera.position.y += before.y - after.y;
+    }
   };
 
   private handlePointerDown = (event: PointerEvent): void => {

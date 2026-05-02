@@ -7,7 +7,8 @@
   </head>
   <body>
     <div id="app">
-      <canvas id="dish"></canvas>
+      <canvas id="microscope-backdrop" aria-hidden="true"></canvas>
+      <div id="dish-layer" aria-label="petri dish workspace"></div>
       <section class="hud hud-top" aria-label="simulation status">
         <div class="game-window status-window" data-window-id="status" aria-label="simulation status window">
           <div class="window-titlebar">
@@ -42,13 +43,15 @@
             <p id="selected-detail">Click a cell to inspect and infuse DNA.</p>
           </div>
           <div class="dish-actions" aria-label="petri dish actions">
+            <button type="button" data-dish-action="add">Add another dish</button>
+            <button type="button" data-dish-action="delete">Delete dish</button>
             <button type="button" data-dish-action="tutorial">Start tutorial</button>
             <button type="button" data-dish-action="restart">Restart scenario</button>
             <button type="button" data-dish-action="random">Random scenario</button>
             <button type="button" data-dish-action="save">Save</button>
             <button type="button" data-dish-action="load">Load</button>
           </div>
-          <div class="metabolic-dashboard" aria-label="metabolic engine dashboard">
+          <div class="metabolic-dashboard" aria-label="metabolic engine dashboard" hidden>
             <div class="metabolic-triangle">
               <div class="flow flow-glucose"></div>
               <div class="flow flow-amino"></div>

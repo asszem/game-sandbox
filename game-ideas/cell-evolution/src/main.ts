@@ -1,17 +1,44 @@
 import './styles.css';
 import { CellSimulation } from './core/simulation';
 import type { Cell, DNAKey, SimulationState } from './core/types';
-import { MapPick, PetriDishRenderer } from './render/PetriDishRenderer';
+import { MapPick, PetriDishRenderer, RendererView } from './render/PetriDishRenderer';
 
 type WindowLayout = Record<string, { left: number; top: number; width: number; height: number; collapsed: boolean }>;
 
 type SaveData = {
-  version: 1;
+  version: 1 | 2;
   savedAt: number;
-  simulation: SimulationState;
-  inspectedTarget: MapPick;
+  simulation?: SimulationState;
+  inspectedTarget?: MapPick;
+  dishes?: DishSaveData[];
+  activeDishId?: number | null;
   windowLayout: WindowLayout;
   tooltipsEnabled?: boolean;
+};
+
+type DishSaveData = {
+  id: number;
+  state: SimulationState;
+  inspectedTarget: MapPick;
+  view: RendererView;
+  left: number;
+  top: number;
+  size: number;
+  zIndex: number;
+};
+
+type DishInstance = {
+  id: number;
+  canvas: HTMLCanvasElement;
+  simulation: CellSimulation;
+  renderer: PetriDishRenderer;
+  inspectedTarget: MapPick;
+  hoveredTarget: MapPick | null;
+  accumulator: number;
+  worldTime: number;
+  zIndex: number;
+  dragStart: { pointerId: number; x: number; y: number; left: number; top: number } | null;
+  dragMoved: boolean;
 };
 
 type SaveSlot = {
@@ -32,14 +59,22 @@ type DropItemKind = 'cotton-candy' | 'cat-pawn';
 const SAVE_KEY = 'cell-evolution-save-v1';
 const SAVE_SLOTS_KEY = 'cell-evolution-save-slots-v1';
 const SAVE_SLOT_COUNT = 5;
+const MIN_DISH_SIZE = 320;
+const MAX_DISH_SIZE = 760;
 
-const canvas = document.querySelector<HTMLCanvasElement>('#dish');
-if (!canvas) {
-  throw new Error('Missing #dish canvas');
+const dishLayer = document.querySelector<HTMLElement>('#dish-layer');
+if (!dishLayer) {
+  throw new Error('Missing #dish-layer');
 }
+const dishLayerElement = dishLayer;
+const microscopeBackdrop = document.querySelector<HTMLCanvasElement>('#microscope-backdrop');
 
-const simulation = new CellSimulation();
-const renderer = new PetriDishRenderer(canvas);
+let dishes: DishInstance[] = [];
+let activeDish: DishInstance | null = null;
+let nextDishId = 1;
+let nextDishZ = 1;
+let simulation: CellSimulation;
+let renderer: PetriDishRenderer;
 
 const tickReadout = document.querySelector<HTMLElement>('#tick-readout');
 const populationReadout = document.querySelector<HTMLElement>('#population-readout');
@@ -67,6 +102,8 @@ const transportControls = document.querySelectorAll<HTMLInputElement>('[data-con
 const transportOutputs = document.querySelectorAll<HTMLOutputElement>('[data-control-value]');
 const dishActions = document.querySelector<HTMLElement>('.dish-actions');
 const dishActionButtons = document.querySelectorAll<HTMLButtonElement>('[data-dish-action]');
+const addDishButton = document.querySelector<HTMLButtonElement>('[data-dish-action="add"]');
+const deleteDishButton = document.querySelector<HTMLButtonElement>('[data-dish-action="delete"]');
 const dropItemButtons = document.querySelectorAll<HTMLButtonElement>('[data-drop-item]');
 const atpCore = document.querySelector<HTMLElement>('#atp-core');
 const glucoseRate = document.querySelector<HTMLElement>('#glucose-rate');
@@ -84,9 +121,7 @@ const saveModalClose = document.querySelector<HTMLButtonElement>('#save-modal-cl
 const saveSlotList = document.querySelector<HTMLElement>('#save-slot-list');
 const windowSystem = createWindowSystem();
 
-let accumulator = 0;
 let lastTime = performance.now();
-let worldTime = 0;
 const tickMs = 150;
 let inspectedTarget: MapPick = { kind: 'dish', id: null };
 let hoveredTarget: MapPick | null = { kind: 'dish', id: null };
@@ -95,41 +130,10 @@ let activeDrop: { pointerId: number | null; kind: DropItemKind; ghost: HTMLEleme
 let suppressDropClick = false;
 let saveModalMode: 'save' | 'load' = 'save';
 
-canvas.addEventListener('click', (event) => {
-  const pick = renderer.onPointerPick(event, simulation.state);
-  if (!pick.dragged) {
-    inspectedTarget = pick.target;
-    simulation.selectCell(pick.target.kind === 'cell' ? pick.target.id : null);
-    updateHud();
+dishLayerElement.addEventListener('pointerdown', (event) => {
+  if (event.target === dishLayerElement) {
+    clearActiveDish();
   }
-});
-
-canvas.addEventListener('dblclick', (event) => {
-  const target = renderer.pickAtScreenPosition(event.clientX, event.clientY, simulation.state);
-  if (target.kind !== 'cell') {
-    return;
-  }
-  const cell = simulation.state.cells.find((item) => item.id === target.id);
-  if (!cell) {
-    return;
-  }
-  inspectedTarget = target;
-  simulation.selectCell(cell.id);
-  renderer.centerOnCell(cell);
-  updateHud();
-});
-
-canvas.addEventListener('pointermove', (event) => {
-  const target = renderer.pickAtScreenPosition(event.clientX, event.clientY, simulation.state);
-  if (!sameTarget(hoveredTarget, target)) {
-    hoveredTarget = target;
-    updateHud();
-  }
-});
-
-canvas.addEventListener('pointerleave', () => {
-  hoveredTarget = null;
-  updateHud();
 });
 
 window.addEventListener('keydown', (event) => {
@@ -138,6 +142,10 @@ window.addEventListener('keydown', (event) => {
   }
   if (event.code === 'Space') {
     event.preventDefault();
+    if (!activeDish) {
+      showToast('Select a petri dish first');
+      return;
+    }
     simulation.toggleRunning();
     updateHud();
   }
@@ -155,6 +163,10 @@ window.addEventListener('keydown', (event) => {
   }
   if (event.code === 'Numpad0') {
     event.preventDefault();
+    if (!activeDish) {
+      showToast('Select a petri dish first');
+      return;
+    }
     renderer.resetZoom();
     updateHud();
   }
@@ -222,6 +234,12 @@ dropItemButtons.forEach((button) => {
 dishActionButtons.forEach((button) => {
   button.addEventListener('click', () => {
     const action = button.dataset.dishAction;
+    if (action === 'add') {
+      addDish();
+    }
+    if (action === 'delete') {
+      deleteActiveDish();
+    }
     if (action === 'tutorial') {
       showToast('Tutorial placeholder');
     }
@@ -247,27 +265,345 @@ saveModal?.addEventListener('click', (event) => {
   }
 });
 
+drawMicroscopeBackdrop();
+window.addEventListener('resize', drawMicroscopeBackdrop);
+createDefaultDishes();
 setupTooltips();
+updateHud();
+requestAnimationFrame(animate);
+
+function drawMicroscopeBackdrop(): void {
+  if (!microscopeBackdrop) {
+    return;
+  }
+  const pixelRatio = Math.min(window.devicePixelRatio, 2);
+  const width = Math.max(1, window.innerWidth);
+  const height = Math.max(1, window.innerHeight);
+  microscopeBackdrop.width = Math.round(width * pixelRatio);
+  microscopeBackdrop.height = Math.round(height * pixelRatio);
+  microscopeBackdrop.style.width = `${width}px`;
+  microscopeBackdrop.style.height = `${height}px`;
+
+  const ctx = microscopeBackdrop.getContext('2d');
+  if (!ctx) {
+    return;
+  }
+  ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = 'rgba(62, 110, 105, 0.18)';
+  ctx.fillRect(0, 0, width, height);
+
+  let seed = 1138;
+  const random = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+
+  for (let index = 0; index < 95; index += 1) {
+    const hue = 150 + random() * 58;
+    ctx.strokeStyle = `hsla(${hue}, 40%, 72%, ${0.035 + random() * 0.045})`;
+    ctx.lineWidth = 1 + random() * 2.4;
+    ctx.beginPath();
+    const x = random() * width;
+    const y = random() * height;
+    ctx.ellipse(x, y, 90 + random() * 290, 5 + random() * 26, random() * Math.PI, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  for (let index = 0; index < 34; index += 1) {
+    ctx.strokeStyle = `rgba(180, 225, 206, ${0.025 + random() * 0.035})`;
+    ctx.lineWidth = 1 + random() * 1.8;
+    ctx.beginPath();
+    const startX = random() * width;
+    const startY = random() * height;
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(startX + (random() - 0.5) * width * 1.4, startY + (random() - 0.5) * height * 1.4);
+    ctx.stroke();
+  }
+}
+
+function createDefaultDishes(): void {
+  const size = Math.min(560, Math.max(400, Math.round(window.innerWidth * 0.32)));
+  const positions = [
+    { left: window.innerWidth - size - 46, top: Math.max(120, window.innerHeight - size - 24) },
+    { left: Math.max(430, window.innerWidth - size * 1.7), top: Math.max(130, window.innerHeight - size - 84) },
+  ];
+  positions.forEach((position) => createDish({ ...position, size, select: false }));
+  clearActiveDish();
+}
+
+function createDish(options: {
+  state?: SimulationState;
+  inspectedTarget?: MapPick;
+  view?: RendererView;
+  left?: number;
+  top?: number;
+  size?: number;
+  zIndex?: number;
+  id?: number;
+  select?: boolean;
+} = {}): DishInstance {
+  const canvas = document.createElement('canvas');
+  canvas.className = 'dish-canvas';
+  canvas.dataset.dishId = String(options.id ?? nextDishId);
+  const size = options.size ?? Math.min(560, Math.max(400, Math.round(window.innerWidth * 0.32)));
+  canvas.style.width = `${size}px`;
+  canvas.style.height = `${size}px`;
+  canvas.style.left = `${options.left ?? window.innerWidth - size - 48}px`;
+  canvas.style.top = `${options.top ?? window.innerHeight - size - 32}px`;
+  dishLayerElement.appendChild(canvas);
+
+  const dishSimulation = new CellSimulation();
+  if (options.state) {
+    dishSimulation.importState(options.state);
+  } else {
+    dishSimulation.randomScenario();
+  }
+  const dishRenderer = new PetriDishRenderer(canvas, {
+    renderBackground: false,
+    cameraControls: false,
+    defaultCameraX: 0,
+    defaultCameraY: 0,
+  });
+  dishRenderer.applyView(options.view);
+  const dish: DishInstance = {
+    id: options.id ?? nextDishId,
+    canvas,
+    simulation: dishSimulation,
+    renderer: dishRenderer,
+    inspectedTarget: options.inspectedTarget ?? { kind: 'dish', id: null },
+    hoveredTarget: { kind: 'dish', id: null },
+    accumulator: 0,
+    worldTime: 0,
+    zIndex: options.zIndex ?? nextDishZ,
+    dragStart: null,
+    dragMoved: false,
+  };
+  nextDishId = Math.max(nextDishId, dish.id + 1);
+  nextDishZ = Math.max(nextDishZ, dish.zIndex + 1);
+  canvas.style.zIndex = String(dish.zIndex);
+  bindDishEvents(dish);
+  dishes.push(dish);
+  dishRenderer.applyView(options.view);
+  if (options.select) {
+    setActiveDish(dish, dish.inspectedTarget);
+  }
+  return dish;
+}
+
+function bindDishEvents(dish: DishInstance): void {
+  dish.canvas.addEventListener('wheel', (event) => {
+    if (!event.shiftKey) {
+      return;
+    }
+    event.preventDefault();
+    setActiveDish(dish, dish.inspectedTarget);
+    resizeDish(dish, event.deltaY > 0 ? 0.94 : 1.06);
+  }, { passive: false });
+
+  dish.canvas.addEventListener('pointerdown', (event) => {
+    setActiveDish(dish, dish.inspectedTarget);
+    const rect = dish.canvas.getBoundingClientRect();
+    dish.dragStart = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top };
+    dish.dragMoved = false;
+    dish.canvas.setPointerCapture(event.pointerId);
+  });
+
+  dish.canvas.addEventListener('pointermove', (event) => {
+    if (dish.dragStart?.pointerId === event.pointerId) {
+      const dx = event.clientX - dish.dragStart.x;
+      const dy = event.clientY - dish.dragStart.y;
+      if (Math.hypot(dx, dy) > 4) {
+        dish.dragMoved = true;
+      }
+      dish.canvas.style.left = `${dish.dragStart.left + dx}px`;
+      dish.canvas.style.top = `${dish.dragStart.top + dy}px`;
+    }
+  });
+
+  dish.canvas.addEventListener('pointerup', (event) => {
+    if (dish.dragStart?.pointerId === event.pointerId) {
+      dish.dragStart = null;
+    }
+  });
+
+  dish.canvas.addEventListener('click', (event) => {
+    if (dish.dragMoved) {
+      dish.dragMoved = false;
+      return;
+    }
+    const pick = dish.renderer.onPointerPick(event, dish.simulation.state);
+    if (!pick.dragged) {
+      setActiveDish(dish, pick.target);
+    }
+  });
+
+  dish.canvas.addEventListener('dblclick', (event) => {
+    const target = dish.renderer.pickAtScreenPosition(event.clientX, event.clientY, dish.simulation.state);
+    if (target.kind !== 'cell') {
+      setActiveDish(dish, target);
+      return;
+    }
+    const cell = dish.simulation.state.cells.find((item) => item.id === target.id);
+    if (!cell) {
+      return;
+    }
+    setActiveDish(dish, target);
+    dish.renderer.centerOnCell(cell);
+  });
+
+  dish.canvas.addEventListener('pointermove', (event) => {
+    if (dish.dragStart) {
+      return;
+    }
+    const target = dish.renderer.pickAtScreenPosition(event.clientX, event.clientY, dish.simulation.state);
+    if (!sameTarget(dish.hoveredTarget, target)) {
+      dish.hoveredTarget = target;
+      if (activeDish === dish) {
+        hoveredTarget = target;
+        updateHud();
+      }
+    }
+  });
+
+  dish.canvas.addEventListener('pointerleave', () => {
+    dish.hoveredTarget = null;
+    if (activeDish === dish) {
+      hoveredTarget = null;
+      updateHud();
+    }
+  });
+}
+
+function resizeDish(dish: DishInstance, factor: number): void {
+  const rect = dish.canvas.getBoundingClientRect();
+  const nextSize = clamp(rect.width * factor, MIN_DISH_SIZE, MAX_DISH_SIZE);
+  if (Math.abs(nextSize - rect.width) < 0.5) {
+    return;
+  }
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  dish.canvas.style.width = `${nextSize}px`;
+  dish.canvas.style.height = `${nextSize}px`;
+  dish.canvas.style.left = `${centerX - nextSize / 2}px`;
+  dish.canvas.style.top = `${centerY - nextSize / 2}px`;
+  dish.renderer.applyView(dish.renderer.exportView());
+  updateHud();
+}
+
+function setActiveDish(dish: DishInstance, target: MapPick = { kind: 'dish', id: null }): void {
+  activeDish = dish;
+  simulation = dish.simulation;
+  renderer = dish.renderer;
+  inspectedTarget = target;
+  hoveredTarget = dish.hoveredTarget;
+  dish.inspectedTarget = target;
+  dish.simulation.selectCell(target.kind === 'cell' ? target.id : null);
+  dish.zIndex = nextDishZ;
+  dish.canvas.style.zIndex = String(nextDishZ);
+  nextDishZ += 1;
+  syncDishSelectionClasses();
+  updateHud();
+}
+
+function clearActiveDish(): void {
+  activeDish = null;
+  inspectedTarget = { kind: 'dish', id: null };
+  hoveredTarget = null;
+  for (const dish of dishes) {
+    dish.simulation.selectCell(null);
+    dish.inspectedTarget = { kind: 'dish', id: null };
+  }
+  syncDishSelectionClasses();
+  updateHud();
+}
+
+function syncDishSelectionClasses(): void {
+  for (const dish of dishes) {
+    dish.canvas.classList.toggle('is-selected', dish === activeDish);
+  }
+}
+
+function requireActiveDish(): DishInstance | null {
+  if (!activeDish) {
+    showToast('Select a petri dish first');
+    return null;
+  }
+  return activeDish;
+}
+
+function addDish(): void {
+  const size = Math.min(560, Math.max(400, Math.round(window.innerWidth * 0.32)));
+  const offset = (dishes.length % 5) * 34;
+  const dish = createDish({
+    left: clamp(window.innerWidth - size - 64 - offset, 24, Math.max(24, window.innerWidth - size - 24)),
+    top: clamp(window.innerHeight - size - 40 - offset, 88, Math.max(88, window.innerHeight - size - 24)),
+    size,
+    select: true,
+  });
+  setActiveDish(dish, { kind: 'dish', id: null });
+  showToast('Petri dish added');
+}
+
+function deleteActiveDish(): void {
+  const dish = activeDish;
+  if (!dish) {
+    showToast('No dish selected');
+    return;
+  }
+  dish.renderer.dispose();
+  dish.canvas.remove();
+  dishes = dishes.filter((item) => item !== dish);
+  clearActiveDish();
+  showToast('Petri dish deleted');
+}
 
 function animate(time: number): void {
   const delta = Math.min(80, time - lastTime);
   lastTime = time;
 
-  if (simulation.state.running) {
-    worldTime += delta;
-    accumulator += delta;
-    while (accumulator >= tickMs) {
-      simulation.step();
-      accumulator -= tickMs;
+  for (const dish of dishes) {
+    if (dish.simulation.state.running) {
+      dish.worldTime += delta;
+      dish.accumulator += delta;
+      while (dish.accumulator >= tickMs) {
+        dish.simulation.step();
+        dish.accumulator -= tickMs;
+      }
     }
+    dish.renderer.render(dish.simulation.state, dish.worldTime, dish.simulation.drainEvents(), dish.inspectedTarget);
   }
 
-  renderer.render(simulation.state, worldTime, simulation.drainEvents());
   updateHud();
   requestAnimationFrame(animate);
 }
 
 function updateHud(): void {
+  if (!activeDish) {
+    const totalCells = dishes.reduce((total, dish) => total + dish.simulation.state.cells.length, 0);
+    const runningCount = dishes.filter((dish) => dish.simulation.state.running).length;
+    if (tickReadout) {
+      tickReadout.textContent = `${dishes.length} dishes`;
+    }
+    if (populationReadout) {
+      populationReadout.textContent = `${totalCells} cells`;
+    }
+    if (stateReadout) {
+      stateReadout.textContent = runningCount > 0 ? `${runningCount} running` : 'Paused';
+      stateReadout.dataset.state = runningCount > 0 ? 'running' : 'paused';
+    }
+    if (zoomReadout) {
+      zoomReadout.textContent = 'No dish selected';
+    }
+    syncTooltipToggle();
+    updateHoverInfo();
+    syncCellOnlyPanels(false);
+    syncSelectedEntityTitles('No dish selected');
+    if (selectedName) selectedName.textContent = 'No dish selected';
+    if (selectedDetail) selectedDetail.textContent = 'Add another dish, or click any petri dish to inspect and control it.';
+    return;
+  }
+
   if (tickReadout) {
     tickReadout.textContent = `Tick ${simulation.state.tick}`;
   }
@@ -286,7 +622,7 @@ function updateHud(): void {
 
   const selected = inspectedTarget.kind === 'cell' ? simulation.selectedCell : null;
   syncCellOnlyPanels(Boolean(selected));
-  syncSelectedEntityTitles(selected ? selectedEntityLabel() : 'Petri dish');
+  syncSelectedEntityTitles(selected ? selectedEntityLabel() : `Petri dish ${activeDish.id}`);
   if (selected) {
     const awareness = simulation.awarenessRadius(selected);
     const detections = scanDetections(selected, awareness);
@@ -424,7 +760,7 @@ function setMeter(meter: HTMLMeterElement | null, value: number): void {
 }
 
 function updateDishStatsHud(): void {
-  if (selectedName) selectedName.textContent = 'Petri dish medium';
+  if (selectedName) selectedName.textContent = activeDish ? `Petri dish ${activeDish.id}` : 'No dish selected';
   if (selectedDetail) selectedDetail.textContent = describeDishState();
   setMeter(energyMeter, 0);
   setMeter(massMeter, 0);
@@ -532,21 +868,43 @@ function syncCellOnlyPanels(hasSelectedCell: boolean): void {
     dnaButtonsPanel.hidden = !hasSelectedCell;
   }
   if (dishActions) {
-    dishActions.hidden = inspectedTarget.kind !== 'dish';
+    dishActions.hidden = hasSelectedCell;
   }
+  if (addDishButton) {
+    addDishButton.hidden = Boolean(activeDish);
+  }
+  if (deleteDishButton) {
+    deleteDishButton.hidden = !activeDish;
+  }
+  dishActionButtons.forEach((button) => {
+    const action = button.dataset.dishAction;
+    if (action !== 'add' && action !== 'delete') {
+      button.hidden = !activeDish;
+    }
+  });
 }
 
 function restartScenario(): void {
+  const dish = requireActiveDish();
+  if (!dish) {
+    return;
+  }
   simulation.restart();
   inspectedTarget = { kind: 'dish', id: null };
+  dish.inspectedTarget = inspectedTarget;
   renderer.resetZoom();
   updateHud();
   showToast('Scenario restarted');
 }
 
 function randomScenario(): void {
+  const dish = requireActiveDish();
+  if (!dish) {
+    return;
+  }
   simulation.randomScenario();
   inspectedTarget = { kind: 'dish', id: null };
+  dish.inspectedTarget = inspectedTarget;
   renderer.resetZoom();
   updateHud();
   showToast('Random scenario started');
@@ -559,12 +917,26 @@ function saveGame(): void {
 
 function createSavePayload(): SaveData {
   return {
-    version: 1,
+    version: 2,
     savedAt: Date.now(),
-    simulation: simulation.exportState(),
-    inspectedTarget,
+    dishes: dishes.map(exportDish),
+    activeDishId: activeDish?.id ?? null,
     windowLayout: windowSystem.exportLayout(),
     tooltipsEnabled,
+  };
+}
+
+function exportDish(dish: DishInstance): DishSaveData {
+  const rect = dish.canvas.getBoundingClientRect();
+  return {
+    id: dish.id,
+    state: dish.simulation.exportState(),
+    inspectedTarget: dish.inspectedTarget,
+    view: dish.renderer.exportView(),
+    left: rect.left,
+    top: rect.top,
+    size: rect.width,
+    zIndex: dish.zIndex,
   };
 }
 
@@ -691,12 +1063,56 @@ function writeSaveSlots(slots: SaveSlot[]): void {
 }
 
 function applySaveData(payload: SaveData, message: string): void {
-  if (payload.version !== 1) {
+  if (payload.version !== 1 && payload.version !== 2) {
     showToast('Save version not supported');
     return;
   }
-  simulation.importState(payload.simulation);
-  inspectedTarget = payload.inspectedTarget ?? { kind: 'dish', id: null };
+  for (const dish of dishes) {
+    dish.renderer.dispose();
+    dish.canvas.remove();
+  }
+  dishes = [];
+  activeDish = null;
+  inspectedTarget = { kind: 'dish', id: null };
+  hoveredTarget = null;
+  nextDishId = 1;
+  nextDishZ = 1;
+
+  const savedDishes = payload.version === 2 && payload.dishes?.length
+    ? payload.dishes
+    : payload.simulation
+      ? [{
+        id: 1,
+        state: payload.simulation,
+        inspectedTarget: payload.inspectedTarget ?? { kind: 'dish', id: null },
+        view: { zoom: 1, cameraX: -48, cameraY: 0 },
+        left: window.innerWidth - 560 - 48,
+        top: window.innerHeight - 560 - 32,
+        size: 560,
+        zIndex: 1,
+      }]
+      : [];
+
+  for (const savedDish of savedDishes) {
+    createDish({
+      id: savedDish.id,
+      state: savedDish.state,
+      inspectedTarget: savedDish.inspectedTarget,
+      view: savedDish.view,
+      left: savedDish.left,
+      top: savedDish.top,
+      size: savedDish.size,
+      zIndex: savedDish.zIndex,
+      select: false,
+    });
+  }
+
+  const active = dishes.find((dish) => dish.id === payload.activeDishId) ?? null;
+  if (active) {
+    setActiveDish(active, active.inspectedTarget);
+  } else {
+    clearActiveDish();
+  }
   setTooltipsEnabled(payload.tooltipsEnabled ?? true, false);
   windowSystem.applyLayout(payload.windowLayout ?? {});
   updateHud();
@@ -778,8 +1194,15 @@ function finishDropItem(clientX: number, clientY: number): void {
     return;
   }
   const { kind, ghost } = activeDrop;
-  const position = renderer.screenToWorld(clientX, clientY);
-  const insideDish = distance(position, { x: 0, y: 0 }) <= simulation.state.boardRadius - 2;
+  const targetDish = dishAtPoint(clientX, clientY);
+  if (!targetDish) {
+    showToast('Drop inside a petri dish');
+    cancelActiveDrop();
+    return;
+  }
+  setActiveDish(targetDish, { kind: 'dish', id: null });
+  const position = targetDish.renderer.screenToWorld(clientX, clientY);
+  const insideDish = distance(position, { x: 0, y: 0 }) <= targetDish.simulation.state.boardRadius - 2;
   if (!insideDish) {
     showToast('Drop inside the petri dish');
     cancelActiveDrop();
@@ -792,13 +1215,22 @@ function finishDropItem(clientX: number, clientY: number): void {
   activeDrop = null;
 
   if (kind === 'cotton-candy') {
-    simulation.dropCottonCandy(position);
+    targetDish.simulation.dropCottonCandy(position);
     showToast('Cotton candy dissolved into glucose');
   } else {
-    simulation.dropCatPawn(position);
+    targetDish.simulation.dropCatPawn(position);
     showToast('Cat-pawn dissolved into poison');
   }
   updateHud();
+}
+
+function dishAtPoint(clientX: number, clientY: number): DishInstance | null {
+  return [...dishes]
+    .sort((left, right) => right.zIndex - left.zIndex)
+    .find((dish) => {
+      const rect = dish.canvas.getBoundingClientRect();
+      return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
+    }) ?? null;
 }
 
 function cancelActiveDrop(): void {
@@ -1099,5 +1531,3 @@ function setCollapsed(gameWindow: GameWindow, collapsed: boolean): void {
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
-
-requestAnimationFrame(animate);
