@@ -989,8 +989,9 @@ function syncCellOnlyPanels(hasSelectedCell: boolean): void {
   }
   dishActionButtons.forEach((button) => {
     const action = button.dataset.dishAction;
-    if (action !== 'add' && action !== 'delete') {
-      button.hidden = !activeDish;
+    const requiresNoDish = action === 'tutorial' || action === 'save' || action === 'load';
+    if (requiresNoDish) {
+      button.hidden = Boolean(activeDish);
     }
   });
 }
