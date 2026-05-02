@@ -1,7 +1,10 @@
 import './styles.css';
 import { CellSimulation } from './core/simulation';
 import type { Cell, DNAKey, ResourceKind, SimulationState, Vec2 } from './core/types';
+import { clamp, distance } from './core/vector';
 import { isRangeControlTarget, isTypingTarget, pulseButton } from './hud/dom';
+import { currentDirective, describeCellDirective, formatCellState, scanDetections } from './hud/entity-panel';
+import { currentDishPickerSignature, escapeHtml, formatDishPickerList, formatDishState, sanitizeDishName } from './hud/state-panel';
 import { createToastRegion } from './hud/toasts';
 import { hideTooltip, setupTooltips, syncTooltipToggle } from './hud/tooltips';
 import { createWindowSystem, type WindowLayout } from './hud/windows';
@@ -455,7 +458,7 @@ dishList?.addEventListener('input', (event) => {
   }
   dish.name = target.value.slice(0, 32);
   updateDishLabel(dish);
-  dishPickerSignature = currentDishPickerSignature();
+  dishPickerSignature = currentDishPickerSignature(dishes);
 });
 dishList?.addEventListener('change', (event) => {
   const target = event.target;
@@ -469,7 +472,7 @@ dishList?.addEventListener('change', (event) => {
   dish.name = sanitizeDishName(target.value, dish.id);
   target.value = dish.name;
   updateDishLabel(dish);
-  dishPickerSignature = currentDishPickerSignature();
+  dishPickerSignature = currentDishPickerSignature(dishes);
 });
 dishList?.addEventListener('keydown', (event) => {
   const target = event.target;
@@ -1264,7 +1267,7 @@ function updateHud(): void {
   updateDishStatsHud();
   if (selected) {
     const awareness = simulation.awarenessRadius(selected);
-    const detections = scanDetections(selected, awareness);
+    const detections = scanDetections(selected, awareness, simulation.state);
     const directive = currentDirective(selected, detections, awareness);
     updateSelectedEntityHud(selected);
     if (directiveHeading) {
@@ -1313,151 +1316,6 @@ function updateGameStatsHud(): void {
   }
 }
 
-function describeCellState(
-  cell: Cell,
-  detections: { resources: number; hazards: number; prey: number; rivals: number; nearestResource: number; nearestHazard: number },
-  awareness: number,
-): string {
-  const strongest = Object.entries(cell.genome).sort((a, b) => b[1] - a[1])[0];
-  return [
-    `ATP ${Math.round(cell.atp)}`,
-    `glucose ${Math.round(cell.glucose)}`,
-    `glycogen ${Math.round(cell.glycogen)}`,
-    `amino acids ${Math.round(cell.aminoAcids)}`,
-    `oxygen ${Math.round(cell.oxygen)}`,
-    `ROS ${Math.round(cell.ros)}`,
-    cell.autophagyRate > 0 ? `autophagy ${cell.autophagyRate.toFixed(2)}/tick` : 'autophagy off',
-    `Gen ${cell.generation}`,
-    `dominant DNA ${strongest[0]} ${strongest[1].toFixed(2)}`,
-    `sensor range ${awareness.toFixed(1)}`,
-    `detected ${detections.resources} molecules, ${detections.hazards} poison, ${detections.prey} prey, ${detections.rivals} rivals`,
-    `size ${cell.radius.toFixed(1)}`,
-  ].join(' · ');
-}
-
-function formatCellState(
-  cell: Cell,
-  detections: { resources: number; hazards: number; prey: number; rivals: number; nearestResource: number; nearestHazard: number },
-  awareness: number,
-): string {
-  const strongest = Object.entries(cell.genome).sort((a, b) => b[1] - a[1])[0];
-  const healthPercent = Math.round(cell.health * 100);
-  const healthState = cell.health <= 0.25 || cell.atp <= 5 || cell.mass <= 0.28
-    ? 'danger'
-    : cell.health <= 0.45 || cell.atp <= 15 || cell.ros >= 45
-      ? 'warning'
-      : 'stable';
-  const stats = [
-    [
-      'Health',
-      `${healthPercent}%`,
-      'Health is normalized from 0% to 100%. A cell dies when health reaches 0%, ATP falls below -10, or mass falls below 0.16. To save it: avoid poison, lower ROS by reducing mitochondria if needed, import amino acids for repair, and refill glucose or glycogen for ATP.',
-      healthState,
-    ],
-    ['Autophagy', `${cell.autophagyRate.toFixed(2)}/tick`, 'Autophagy is emergency self-eating: when glucose and glycogen are empty, the cell breaks down amino acids and mass for fuel, hurting health.', cell.autophagyRate > 0 ? 'danger' : undefined],
-    ['Gen', cell.generation.toString(), 'Generation counts how many divisions separate this cell from the starting population.'],
-    ['Size', cell.radius.toFixed(1), 'Cell size affects collision area, food intake, vulnerability, and whether the cell is ready to divide.'],
-    [
-      'Sensing',
-      `${awareness.toFixed(1)} · ${Math.round(simulation.sensingProfile(cell).clarity * 100)}%`,
-      'Sensing depends on signal transduction. ATP powers receptor resolution, amino acids maintain receptor proteins, oxygen supports processing speed, and ROS or damage reduce clarity.',
-    ],
-    ['DNA', `${strongest[0]} ${strongest[1].toFixed(2)}`, 'Dominant DNA is the strongest current trait shaping behavior, metabolism, sensing, and division priorities.'],
-    ['Nearby', `${detections.resources} molecules · ${detections.hazards} poison · ${detections.prey} prey · ${detections.rivals} rivals`, 'Nearby signals are what the cell can currently sense and use for movement, feeding, avoidance, or hunting decisions.'],
-  ];
-  return `<span class="cell-stat-grid">${stats.map(([label, value, tooltip, state]) => `<span class="cell-stat${state ? ` cell-stat-${state}` : ''}" data-tooltip="${tooltip}"><span>${label}</span><strong>${value}</strong></span>`).join('')}</span>`;
-}
-
-function describeCellDirective(
-  cell: Cell,
-  detections: { resources: number; hazards: number; prey: number; rivals: number; nearestResource: number; nearestHazard: number },
-  awareness: number,
-): string {
-  return `Current directive is inferred from ATP, amino acids, oxygen, ROS, nearby echoes, and DNA traits. Transport settings: glucose ${Math.round(cell.glucoseTransport * 100)}%, amino acids ${Math.round(cell.aminoTransport * 100)}%, mitochondria ${Math.round(cell.oxygenMetabolism * 100)}%, ribosome repair ${Math.round(cell.ribosomeActivity * 100)}%. Sensor range ${awareness.toFixed(1)} sees ${detections.resources} molecules, ${detections.hazards} hazards, ${detections.prey} prey, and ${detections.rivals} rivals.`;
-}
-
-function currentDirective(
-  cell: Cell,
-  detections: { resources: number; hazards: number; prey: number; rivals: number; nearestResource: number; nearestHazard: number },
-  awareness = simulation.awarenessRadius(cell),
-): string {
-  if (cell.ros > 55) {
-    return 'Neutralize oxidative stress';
-  }
-  if (cell.aminoAcids < 12) {
-    return detections.resources > 0 ? 'Seek amino acids for repair' : 'Preserve membrane proteins';
-  }
-  if (cell.health < 0.35 || cell.atp < 14) {
-    return detections.resources > 0 ? 'Transport glucose for emergency ATP' : 'Starve slowly and consume internal structure';
-  }
-  if (detections.hazards > 0 && detections.nearestHazard < awareness * 0.55) {
-    return 'Evade poison echo';
-  }
-  if (cell.atp > 92 && cell.aminoAcids > 55 && cell.mass > 1.12 && cell.genome.split > 0.4) {
-    return 'Prepare mitosis';
-  }
-  if (detections.prey > 0 && cell.genome.predator > 0.55) {
-    return 'Hunt smaller cells';
-  }
-  if (detections.resources > 0 && cell.genome.harvest >= cell.genome.predator) {
-    return 'Seek strongest molecule signal';
-  }
-  if (detections.rivals > 0 && cell.genome.caution > 0.7) {
-    return 'Keep distance from rival cells';
-  }
-  return 'Explore and map surroundings';
-}
-
-function scanDetections(cell: Cell, awareness: number, state: SimulationState = simulation.state): {
-  resources: number;
-  hazards: number;
-  prey: number;
-  rivals: number;
-  nearestResource: number;
-  nearestHazard: number;
-} {
-  let resources = 0;
-  let hazards = 0;
-  let prey = 0;
-  let rivals = 0;
-  let nearestResource = Infinity;
-  let nearestHazard = Infinity;
-
-  for (const resource of state.resources) {
-    const d = distance(cell.position, resource.position);
-    if (d <= awareness) {
-      resources += 1;
-      nearestResource = Math.min(nearestResource, d);
-    }
-  }
-  for (const hazard of state.hazards) {
-    const d = distance(cell.position, hazard.position);
-    if (d <= awareness + hazard.radius) {
-      hazards += 1;
-      nearestHazard = Math.min(nearestHazard, d);
-    }
-  }
-  for (const other of state.cells) {
-    if (other.id === cell.id) {
-      continue;
-    }
-    const d = distance(cell.position, other.position);
-    if (d <= awareness) {
-      if (cell.radius > other.radius * 1.08) {
-        prey += 1;
-      } else {
-        rivals += 1;
-      }
-    }
-  }
-
-  return { resources, hazards, prey, rivals, nearestResource, nearestHazard };
-}
-
-function distance(a: { x: number; y: number }, b: { x: number; y: number }): number {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
 function setMeter(meter: HTMLMeterElement | null, value: number): void {
   if (meter) {
     meter.value = Math.max(0, Math.min(1, value));
@@ -1470,13 +1328,13 @@ function updateDishStatsHud(): void {
     dishName.hidden = Boolean(activeDish);
     dishName.textContent = activeDish ? '' : 'No dish selected';
   }
-  if (dishDetail) dishDetail.innerHTML = formatDishState();
+  if (dishDetail) dishDetail.innerHTML = formatDishState(activeDish);
   if (dishList) {
     dishList.hidden = false;
     if (!dishList.contains(document.activeElement)) {
-      const signature = currentDishPickerSignature();
+      const signature = currentDishPickerSignature(dishes);
       if (signature !== dishPickerSignature) {
-        dishList.innerHTML = formatDishPickerList();
+        dishList.innerHTML = formatDishPickerList(dishes);
         dishPickerSignature = signature;
       }
     }
@@ -1485,69 +1343,6 @@ function updateDishStatsHud(): void {
   setMeter(massMeter, 0);
   setMeter(oxygenMeter, 0);
   setMeter(healthMeter, 0);
-}
-
-function formatDishState(): string {
-  if (!activeDish) {
-    return '<div class="dish-picker-empty">Select a dish from the Game window or click any petri dish to inspect it.</div>';
-  }
-  const resources = simulation.state.resources.reduce(
-    (counts, resource) => {
-      counts[resource.kind] += 1;
-      counts.totalAmount += resource.amount;
-      return counts;
-    },
-    { glucose: 0, 'amino-acid': 0, oxygen: 0, light: 0, totalAmount: 0 } as Record<'glucose' | 'amino-acid' | 'oxygen' | 'light', number> & { totalAmount: number },
-  );
-  const livingMass = simulation.state.cells.reduce((total, cell) => total + cell.mass, 0);
-  const avgAtp = simulation.state.cells.length
-    ? simulation.state.cells.reduce((total, cell) => total + cell.atp, 0) / simulation.state.cells.length
-    : 0;
-  const stats = [
-    ['Biomass', livingMass.toFixed(1)],
-    ['Avg ATP', avgAtp.toFixed(0)],
-    ['Resources', simulation.state.resources.length.toString()],
-    ['Glucose', resources.glucose.toString()],
-    ['Amino', resources['amino-acid'].toString()],
-    ['Oxygen', resources.oxygen.toString()],
-    ['Light', resources.light.toString()],
-    ['Poison', simulation.state.hazards.length.toString()],
-    ['Blocks', simulation.state.blocks.length.toString()],
-    ['Radius', simulation.state.boardRadius.toFixed(1)],
-  ];
-  return `<span class="dish-stat-grid">${stats.map(([label, value]) => `<span class="dish-stat"><span>${label}</span><strong>${value}</strong></span>`).join('')}</span>`;
-}
-
-function formatDishPickerList(): string {
-  if (dishes.length === 0) {
-    return '<div class="dish-picker-empty">No dishes yet.</div>';
-  }
-  return dishes.map((dish) => `
-    <div class="dish-picker-row">
-      <button type="button" class="dish-picker-icon" data-select-dish="${dish.id}" aria-label="Select ${escapeHtml(dish.name)}">◯</button>
-      <input type="text" data-rename-dish="${dish.id}" value="${escapeHtml(dish.name)}" aria-label="Rename ${escapeHtml(dish.name)}" />
-      <span>${dish.simulation.state.cells.length} cells</span>
-      <span>${dish.simulation.state.running ? 'Running' : 'Paused'}</span>
-    </div>
-  `).join('');
-}
-
-function currentDishPickerSignature(): string {
-  return dishes
-    .map((dish) => `${dish.id}:${dish.name}:${dish.simulation.state.cells.length}:${dish.simulation.state.running ? 1 : 0}`)
-    .join('|');
-}
-
-function sanitizeDishName(value: string, id: number): string {
-  return value.trim().replace(/\s+/g, ' ').slice(0, 32) || `Dish ${id}`;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 function updateSelectedEntityHud(selectedCell: Cell | null): void {
@@ -1561,11 +1356,11 @@ function updateSelectedEntityHud(selectedCell: Cell | null): void {
   }
   if (selectedCell) {
     const awareness = simulation.awarenessRadius(selectedCell);
-    const detections = scanDetections(selectedCell, awareness);
+    const detections = scanDetections(selectedCell, awareness, simulation.state);
     if (entityName) {
       entityName.hidden = true;
     }
-    if (entityDetail) entityDetail.innerHTML = formatCellState(selectedCell, detections, awareness);
+    if (entityDetail) entityDetail.innerHTML = formatCellState(selectedCell, detections, awareness, simulation.sensingProfile(selectedCell).clarity);
     return;
   }
   if (entityName) {
@@ -2383,14 +2178,4 @@ function setDelta(element: HTMLElement | null, value: number, inverted = false):
     parent.dataset.flow = good ? 'good' : bad ? 'bad' : 'flat';
     parent.style.setProperty('--net-size', `${Math.min(46, Math.abs(value) * 16)}%`);
   }
-}
-
-function setText(element: HTMLElement | null, value: string): void {
-  if (element) {
-    element.textContent = value;
-  }
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }

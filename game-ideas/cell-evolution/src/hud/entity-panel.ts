@@ -1,0 +1,115 @@
+import type { Cell, SimulationState } from '../core/types';
+import { distance } from '../core/vector';
+import { escapeHtml } from './state-panel';
+
+export type DetectionSummary = {
+  resources: number;
+  hazards: number;
+  prey: number;
+  rivals: number;
+  nearestResource: number;
+  nearestHazard: number;
+};
+
+type CellStatState = 'danger' | 'warning' | 'stable';
+type CellStat = [label: string, value: string, tooltip: string, state?: CellStatState];
+
+export function formatCellState(cell: Cell, detections: DetectionSummary, awareness: number, sensingClarity: number): string {
+  const strongest = Object.entries(cell.genome).sort((a, b) => b[1] - a[1])[0];
+  const healthPercent = Math.round(cell.health * 100);
+  const healthState = cell.health <= 0.25 || cell.atp <= 5 || cell.mass <= 0.28
+    ? 'danger'
+    : cell.health <= 0.45 || cell.atp <= 15 || cell.ros >= 45
+      ? 'warning'
+      : 'stable';
+  const stats: CellStat[] = [
+    [
+      'Health',
+      `${healthPercent}%`,
+      'Health is normalized from 0% to 100%. A cell dies when health reaches 0%, ATP falls below -10, or mass falls below 0.16. To save it: avoid poison, lower ROS by reducing mitochondria if needed, import amino acids for repair, and refill glucose or glycogen for ATP.',
+      healthState,
+    ],
+    ['Autophagy', `${cell.autophagyRate.toFixed(2)}/tick`, 'Autophagy is emergency self-eating: when glucose and glycogen are empty, the cell breaks down amino acids and mass for fuel, hurting health.', cell.autophagyRate > 0 ? 'danger' : undefined],
+    ['Gen', cell.generation.toString(), 'Generation counts how many divisions separate this cell from the starting population.'],
+    ['Size', cell.radius.toFixed(1), 'Cell size affects collision area, food intake, vulnerability, and whether the cell is ready to divide.'],
+    [
+      'Sensing',
+      `${awareness.toFixed(1)} · ${Math.round(sensingClarity * 100)}%`,
+      'Sensing depends on signal transduction. ATP powers receptor resolution, amino acids maintain receptor proteins, oxygen supports processing speed, and ROS or damage reduce clarity.',
+    ],
+    ['DNA', `${strongest[0]} ${strongest[1].toFixed(2)}`, 'Dominant DNA is the strongest current trait shaping behavior, metabolism, sensing, and division priorities.'],
+    ['Nearby', `${detections.resources} molecules · ${detections.hazards} poison · ${detections.prey} prey · ${detections.rivals} rivals`, 'Nearby signals are what the cell can currently sense and use for movement, feeding, avoidance, or hunting decisions.'],
+  ];
+  return `<span class="cell-stat-grid">${stats.map(([label, value, tooltip, state]) => `<span class="cell-stat${state ? ` cell-stat-${state}` : ''}" data-tooltip="${escapeHtml(tooltip)}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></span>`).join('')}</span>`;
+}
+
+export function describeCellDirective(cell: Cell, detections: DetectionSummary, awareness: number): string {
+  return `Current directive is inferred from ATP, amino acids, oxygen, ROS, nearby echoes, and DNA traits. Transport settings: glucose ${Math.round(cell.glucoseTransport * 100)}%, amino acids ${Math.round(cell.aminoTransport * 100)}%, mitochondria ${Math.round(cell.oxygenMetabolism * 100)}%, ribosome repair ${Math.round(cell.ribosomeActivity * 100)}%. Sensor range ${awareness.toFixed(1)} sees ${detections.resources} molecules, ${detections.hazards} hazards, ${detections.prey} prey, and ${detections.rivals} rivals.`;
+}
+
+export function currentDirective(cell: Cell, detections: DetectionSummary, awareness: number): string {
+  if (cell.ros > 55) {
+    return 'Neutralize oxidative stress';
+  }
+  if (cell.aminoAcids < 12) {
+    return detections.resources > 0 ? 'Seek amino acids for repair' : 'Preserve membrane proteins';
+  }
+  if (cell.health < 0.35 || cell.atp < 14) {
+    return detections.resources > 0 ? 'Transport glucose for emergency ATP' : 'Starve slowly and consume internal structure';
+  }
+  if (detections.hazards > 0 && detections.nearestHazard < awareness * 0.55) {
+    return 'Evade poison echo';
+  }
+  if (cell.atp > 92 && cell.aminoAcids > 55 && cell.mass > 1.12 && cell.genome.split > 0.4) {
+    return 'Prepare mitosis';
+  }
+  if (detections.prey > 0 && cell.genome.predator > 0.55) {
+    return 'Hunt smaller cells';
+  }
+  if (detections.resources > 0 && cell.genome.harvest >= cell.genome.predator) {
+    return 'Seek strongest molecule signal';
+  }
+  if (detections.rivals > 0 && cell.genome.caution > 0.7) {
+    return 'Keep distance from rival cells';
+  }
+  return 'Explore and map surroundings';
+}
+
+export function scanDetections(cell: Cell, awareness: number, state: SimulationState): DetectionSummary {
+  let resources = 0;
+  let hazards = 0;
+  let prey = 0;
+  let rivals = 0;
+  let nearestResource = Infinity;
+  let nearestHazard = Infinity;
+
+  for (const resource of state.resources) {
+    const d = distance(cell.position, resource.position);
+    if (d <= awareness) {
+      resources += 1;
+      nearestResource = Math.min(nearestResource, d);
+    }
+  }
+  for (const hazard of state.hazards) {
+    const d = distance(cell.position, hazard.position);
+    if (d <= awareness + hazard.radius) {
+      hazards += 1;
+      nearestHazard = Math.min(nearestHazard, d);
+    }
+  }
+  for (const other of state.cells) {
+    if (other.id === cell.id) {
+      continue;
+    }
+    const d = distance(cell.position, other.position);
+    if (d <= awareness) {
+      if (cell.radius > other.radius * 1.08) {
+        prey += 1;
+      } else {
+        rivals += 1;
+      }
+    }
+  }
+
+  return { resources, hazards, prey, rivals, nearestResource, nearestHazard };
+}
