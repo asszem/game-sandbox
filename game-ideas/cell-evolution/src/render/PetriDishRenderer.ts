@@ -880,9 +880,10 @@ export class PetriDishRenderer {
       bridge.rotation.z = Math.PI * 0.5;
       group.add(left, right, bridge);
     } else {
-      const rays = new THREE.Mesh(new THREE.RingGeometry(0.52, 1, 56), material);
-      const core = new THREE.Mesh(new THREE.CircleGeometry(0.42, 40), material);
-      group.add(rays, core);
+      const glow = new THREE.Mesh(new THREE.CircleGeometry(1, 56), material);
+      const core = new THREE.Mesh(new THREE.CircleGeometry(0.46, 40), material);
+      core.scale.setScalar(0.58);
+      group.add(glow, core);
     }
 
     return group;
