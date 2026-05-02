@@ -5,6 +5,13 @@ import { add, clamp, clampLength, distance, length, normalize, scale, sub, vec }
 const DNA_KEYS: DNAKey[] = ['motility', 'split', 'harvest', 'predator', 'caution'];
 const RESOURCE_KINDS: ResourceKind[] = ['glucose', 'amino-acid', 'oxygen', 'light'];
 
+type WorldSeedOptions = {
+  cellCount?: number;
+  resourceCounts?: Partial<Record<ResourceKind, number>>;
+  hazardCount?: number;
+  blockCount?: number;
+};
+
 export class CellSimulation {
   readonly state: SimulationState;
   private rng = new Rng(82421);
@@ -58,8 +65,8 @@ export class CellSimulation {
     this.resetWorld(82421, false);
   }
 
-  randomScenario(): void {
-    this.resetWorld(Date.now() ^ Math.floor(Math.random() * 0xffffffff), true);
+  randomScenario(options: WorldSeedOptions = {}): void {
+    this.resetWorld(Date.now() ^ Math.floor(Math.random() * 0xffffffff), true, options);
   }
 
   exportState(): SimulationState {
@@ -117,7 +124,34 @@ export class CellSimulation {
   }
 
   awarenessRadius(cell: Cell): number {
-    return 16 + cell.radius * 3.4 + cell.genome.caution * 16;
+    return this.sensingProfile(cell).radius;
+  }
+
+  sensingProfile(cell: Cell): { radius: number; clarity: number; processing: number } {
+    const baseRadius = 16 + cell.radius * 3.4 + cell.genome.caution * 16;
+    const atpResolution = clamp(cell.atp / 80, 0.18, 1.25);
+    const aminoIntegrity = clamp(cell.aminoAcids / 45, 0.25, 1.15);
+    const oxygenProcessing = clamp(cell.oxygen / 35, 0.35, 1.15);
+    const rosIntegrity = clamp(1 - Math.max(0, cell.ros - 18) / 82, 0.35, 1);
+    const healthIntegrity = clamp(cell.health, 0.3, 1);
+    const radius = baseRadius
+      * clamp(0.3 + atpResolution * 0.7, 0.3, 1.18)
+      * clamp(0.68 + oxygenProcessing * 0.32, 0.68, 1.08)
+      * clamp(0.78 + rosIntegrity * 0.22, 0.55, 1);
+    const clarity = clamp(
+      aminoIntegrity * 0.42
+        + atpResolution * 0.24
+        + oxygenProcessing * 0.16
+        + rosIntegrity * 0.12
+        + healthIntegrity * 0.06,
+      0.15,
+      1,
+    );
+    return {
+      radius,
+      clarity,
+      processing: clamp(oxygenProcessing * rosIntegrity, 0.2, 1),
+    };
   }
 
   step(): void {
@@ -137,7 +171,7 @@ export class CellSimulation {
     }
   }
 
-  private resetWorld(seed: number, randomized: boolean): void {
+  private resetWorld(seed: number, randomized: boolean, options: WorldSeedOptions = {}): void {
     this.rng = new Rng(seed);
     this.nextId = 1;
     this.events = [];
@@ -149,12 +183,14 @@ export class CellSimulation {
     this.state.resources = [];
     this.state.hazards = [];
     this.state.blocks = [];
-    this.seedWorld(randomized);
+    this.seedWorld(randomized, options);
   }
 
-  private seedWorld(randomized = false): void {
-    if (randomized) {
-      const blockCount = 3 + Math.floor(this.rng.range(0, 4));
+  private seedWorld(randomized = false, options: WorldSeedOptions = {}): void {
+    if (randomized || options.blockCount !== undefined) {
+      const blockCount = options.blockCount === undefined
+        ? 3 + Math.floor(this.rng.range(0, 4))
+        : clamp(Math.round(options.blockCount), 0, 24);
       for (let index = 0; index < blockCount; index += 1) {
         this.state.blocks.push(this.createBlock(this.findOpenPoint(this.state.boardRadius - 18, 10), this.rng.range(7, 18), this.rng.range(5, 16)));
       }
@@ -167,17 +203,32 @@ export class CellSimulation {
       );
     }
 
-    const cellCount = randomized ? 9 + Math.floor(this.rng.range(0, 18)) : 16;
+    const defaultCellCount = randomized ? 9 + Math.floor(this.rng.range(0, 18)) : 16;
+    const cellCount = options.cellCount === undefined
+      ? defaultCellCount
+      : clamp(Math.round(options.cellCount), 1, 80);
     for (let index = 0; index < cellCount; index += 1) {
       this.state.cells.push(this.createCell(this.findOpenPoint(68, 8), index % 3));
     }
 
-    const resourceCount = randomized ? 45 + Math.floor(this.rng.range(0, 70)) : 70;
-    for (let index = 0; index < resourceCount; index += 1) {
-      this.state.resources.push(this.createResource());
+    if (options.resourceCounts) {
+      for (const kind of RESOURCE_KINDS) {
+        const count = clamp(Math.round(options.resourceCounts[kind] ?? 0), 0, 100);
+        for (let index = 0; index < count; index += 1) {
+          this.state.resources.push(this.createResource(kind));
+        }
+      }
+    } else {
+      const resourceCount = randomized ? 45 + Math.floor(this.rng.range(0, 70)) : 70;
+      for (let index = 0; index < resourceCount; index += 1) {
+        this.state.resources.push(this.createResource());
+      }
     }
 
-    const hazardCount = randomized ? 5 + Math.floor(this.rng.range(0, 22)) : 14;
+    const defaultHazardCount = randomized ? 5 + Math.floor(this.rng.range(0, 22)) : 14;
+    const hazardCount = options.hazardCount === undefined
+      ? defaultHazardCount
+      : clamp(Math.round(options.hazardCount), 0, 80);
     for (let index = 0; index < hazardCount; index += 1) {
       this.state.hazards.push({
         id: this.nextId++,
@@ -272,8 +323,8 @@ export class CellSimulation {
     cell.energy = cell.atp;
   }
 
-  private createResource(): Resource {
-    const kind = this.rng.pick(RESOURCE_KINDS);
+  private createResource(resourceKind?: ResourceKind): Resource {
+    const kind = resourceKind ?? this.rng.pick(RESOURCE_KINDS);
     const position = this.findOpenPoint(84, kind === 'light' ? 8 : 4);
     return {
       id: this.nextId++,

@@ -113,8 +113,42 @@ async function exerciseDishLifecycle(page) {
   await clickBySelector(page, '[data-dish-action="delete"]');
   await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length === 1);
   await clickBySelector(page, '[data-dish-action="add"]');
+  await page.locator('#new-dish-modal-title', { hasText: 'New dish' }).waitFor();
+  await page.waitForFunction(() => {
+    const input = document.querySelector('#new-dish-cell-count-input');
+    const range = document.querySelector('#new-dish-cell-count-range');
+    const resources = [...document.querySelectorAll('[data-new-dish-resource]')];
+    const environment = [...document.querySelectorAll('[data-new-dish-environment]')];
+    return input instanceof HTMLInputElement
+      && range instanceof HTMLInputElement
+      && input.value === '10'
+      && range.value === '10'
+      && resources.length === 4
+      && resources.every((slider) => slider instanceof HTMLInputElement && slider.value === '20')
+      && environment.length === 2
+      && environment.every((slider) => slider instanceof HTMLInputElement && slider.value === '0');
+  });
+  await page.fill('#new-dish-cell-count-input', '12');
+  await page.evaluate(() => {
+    for (const slider of document.querySelectorAll('[data-new-dish-resource]')) {
+      slider.value = '0';
+      slider.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    const poison = document.querySelector('[data-new-dish-environment="poison"]');
+    const rock = document.querySelector('[data-new-dish-environment="rock"]');
+    poison.value = '2';
+    poison.dispatchEvent(new Event('input', { bubbles: true }));
+    rock.value = '1';
+    rock.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await clickBySelector(page, '#new-dish-create');
   await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length === 2);
   await page.waitForFunction(() => document.querySelectorAll('.dish-canvas.is-selected').length === 1);
+  await page.waitForFunction(() => document.querySelector('#population-readout')?.textContent === '12 cells');
+  await page.waitForFunction(() => {
+    const text = document.querySelector('#dish-detail')?.textContent ?? '';
+    return text.includes('Poison2') && text.includes('Blocks1');
+  });
 }
 
 async function exerciseSaveSlot(page) {

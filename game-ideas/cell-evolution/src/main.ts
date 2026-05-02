@@ -63,12 +63,22 @@ type GameWindow = {
 };
 
 type DropItemKind = 'cotton-candy' | 'cat-pawn';
+type NewDishResourceKey = 'glucose' | 'amino-acid' | 'oxygen' | 'light';
+type NewDishSetup = {
+  cellCount?: number;
+  resourceCounts?: Partial<Record<NewDishResourceKey, number>>;
+  hazardCount?: number;
+  blockCount?: number;
+};
 
 const SAVE_KEY = 'cell-evolution-save-v1';
 const SAVE_SLOTS_KEY = 'cell-evolution-save-slots-v1';
 const SAVE_SLOT_COUNT = 5;
 const MIN_DISH_SIZE = 320;
 const MAX_DISH_SIZE = 760;
+const NEW_DISH_DEFAULT_CELL_COUNT = 10;
+const NEW_DISH_MIN_CELL_COUNT = 1;
+const NEW_DISH_MAX_CELL_COUNT = 40;
 
 const dishLayer = document.querySelector<HTMLElement>('#dish-layer');
 if (!dishLayer) {
@@ -135,6 +145,14 @@ const rosDelta = document.querySelector<HTMLElement>('#ros-delta');
 const autophagyDelta = document.querySelector<HTMLElement>('#autophagy-delta');
 const toastRegion = document.querySelector<HTMLElement>('#toast-region');
 const tooltipLayer = document.querySelector<HTMLElement>('#tooltip-layer');
+const newDishModal = document.querySelector<HTMLElement>('#new-dish-modal');
+const newDishModalClose = document.querySelector<HTMLButtonElement>('#new-dish-modal-close');
+const newDishCellCountRange = document.querySelector<HTMLInputElement>('#new-dish-cell-count-range');
+const newDishCellCountInput = document.querySelector<HTMLInputElement>('#new-dish-cell-count-input');
+const newDishResourceSliders = document.querySelectorAll<HTMLInputElement>('[data-new-dish-resource]');
+const newDishEnvironmentSliders = document.querySelectorAll<HTMLInputElement>('[data-new-dish-environment]');
+const newDishCancel = document.querySelector<HTMLButtonElement>('#new-dish-cancel');
+const newDishCreate = document.querySelector<HTMLButtonElement>('#new-dish-create');
 const saveModal = document.querySelector<HTMLElement>('#save-modal');
 const saveModalTitle = document.querySelector<HTMLElement>('#save-modal-title');
 const saveModalClose = document.querySelector<HTMLButtonElement>('#save-modal-close');
@@ -158,10 +176,10 @@ dishLayerElement.addEventListener('pointerdown', (event) => {
 });
 
 window.addEventListener('keydown', (event) => {
-  if (isTypingTarget(event.target)) {
-    return;
-  }
   if (event.code === 'Space') {
+    if (isTypingTarget(event.target) && !isRangeControlTarget(event.target)) {
+      return;
+    }
     event.preventDefault();
     if (event.shiftKey) {
       toggleAllDishesRunning();
@@ -173,6 +191,10 @@ window.addEventListener('keydown', (event) => {
     }
     simulation.toggleRunning();
     updateHud();
+    return;
+  }
+  if (isTypingTarget(event.target)) {
+    return;
   }
   if (event.code === 'KeyR') {
     event.preventDefault();
@@ -202,6 +224,10 @@ window.addEventListener('keydown', (event) => {
   if (event.code === 'Escape' && saveModal && !saveModal.hidden) {
     event.preventDefault();
     closeSaveModal();
+  }
+  if (event.code === 'Escape' && newDishModal && !newDishModal.hidden) {
+    event.preventDefault();
+    closeNewDishModal();
   }
 });
 
@@ -273,7 +299,7 @@ dishActionButtons.forEach((button) => {
   button.addEventListener('click', () => {
     const action = button.dataset.dishAction;
     if (action === 'add') {
-      addDish();
+      openNewDishModal();
     }
     if (action === 'delete') {
       deleteActiveDish();
@@ -293,6 +319,34 @@ dishActionButtons.forEach((button) => {
     if (action === 'load') {
       openSaveModal('load');
     }
+  });
+});
+
+newDishModalClose?.addEventListener('click', closeNewDishModal);
+newDishCancel?.addEventListener('click', closeNewDishModal);
+newDishCreate?.addEventListener('click', () => {
+  addDish(readNewDishSetup());
+  closeNewDishModal();
+});
+newDishModal?.addEventListener('click', (event) => {
+  if (event.target === newDishModal) {
+    closeNewDishModal();
+  }
+});
+newDishCellCountRange?.addEventListener('input', () => {
+  setNewDishCellCount(Number(newDishCellCountRange.value));
+});
+newDishCellCountInput?.addEventListener('input', () => {
+  setNewDishCellCount(Number(newDishCellCountInput.value));
+});
+newDishResourceSliders.forEach((slider) => {
+  slider.addEventListener('input', () => {
+    syncRangeOutput(slider);
+  });
+});
+newDishEnvironmentSliders.forEach((slider) => {
+  slider.addEventListener('input', () => {
+    syncRangeOutput(slider);
   });
 });
 
@@ -380,6 +434,7 @@ function createDish(options: {
   zIndex?: number;
   id?: number;
   select?: boolean;
+  setup?: NewDishSetup;
 } = {}): DishInstance {
   const canvas = document.createElement('canvas');
   canvas.className = 'dish-canvas';
@@ -395,7 +450,7 @@ function createDish(options: {
   if (options.state) {
     dishSimulation.importState(options.state);
   } else {
-    dishSimulation.randomScenario();
+    dishSimulation.randomScenario(options.setup);
   }
   const dishRenderer = new PetriDishRenderer(canvas, {
     renderBackground: false,
@@ -588,7 +643,7 @@ function requireActiveDish(): DishInstance | null {
   return activeDish;
 }
 
-function addDish(): void {
+function addDish(setup: NewDishSetup = {}): void {
   const size = Math.min(560, Math.max(400, Math.round(window.innerWidth * 0.32)));
   const offset = (dishes.length % 5) * 34;
   const dish = createDish({
@@ -596,9 +651,97 @@ function addDish(): void {
     top: clamp(window.innerHeight - size - 40 - offset, 88, Math.max(88, window.innerHeight - size - 24)),
     size,
     select: true,
+    setup,
   });
   setActiveDish(dish, { kind: 'dish', id: null });
-  showToast('Petri dish added');
+  showToast('New dish added');
+}
+
+function openNewDishModal(): void {
+  if (!newDishModal) {
+    addDish(defaultNewDishSetup());
+    return;
+  }
+  setNewDishCellCount(NEW_DISH_DEFAULT_CELL_COUNT);
+  resetNewDishRangeControls();
+  newDishModal.hidden = false;
+  newDishCellCountRange?.focus();
+}
+
+function closeNewDishModal(): void {
+  if (newDishModal) {
+    newDishModal.hidden = true;
+  }
+}
+
+function setNewDishCellCount(value: number): number {
+  const next = clamp(Math.round(Number.isFinite(value) ? value : NEW_DISH_DEFAULT_CELL_COUNT), NEW_DISH_MIN_CELL_COUNT, NEW_DISH_MAX_CELL_COUNT);
+  if (newDishCellCountRange) {
+    newDishCellCountRange.value = String(next);
+  }
+  if (newDishCellCountInput) {
+    newDishCellCountInput.value = String(next);
+  }
+  return next;
+}
+
+function readNewDishCellCount(): number {
+  const source = newDishCellCountInput?.value || newDishCellCountRange?.value || String(NEW_DISH_DEFAULT_CELL_COUNT);
+  return setNewDishCellCount(Number(source));
+}
+
+function defaultNewDishSetup(): NewDishSetup {
+  return {
+    cellCount: NEW_DISH_DEFAULT_CELL_COUNT,
+    resourceCounts: {
+      glucose: 20,
+      'amino-acid': 20,
+      oxygen: 20,
+      light: 20,
+    },
+    hazardCount: 0,
+    blockCount: 0,
+  };
+}
+
+function resetNewDishRangeControls(): void {
+  newDishResourceSliders.forEach((slider) => {
+    slider.value = '20';
+    syncRangeOutput(slider);
+  });
+  newDishEnvironmentSliders.forEach((slider) => {
+    slider.value = '0';
+    syncRangeOutput(slider);
+  });
+}
+
+function readNewDishSetup(): NewDishSetup {
+  const setup = defaultNewDishSetup();
+  setup.cellCount = readNewDishCellCount();
+  setup.resourceCounts = {};
+  newDishResourceSliders.forEach((slider) => {
+    const key = slider.dataset.newDishResource as NewDishResourceKey | undefined;
+    if (key) {
+      setup.resourceCounts![key] = clamp(Math.round(Number(slider.value)), Number(slider.min || 0), Number(slider.max || 100));
+    }
+  });
+  newDishEnvironmentSliders.forEach((slider) => {
+    const count = clamp(Math.round(Number(slider.value)), Number(slider.min || 0), Number(slider.max || 100));
+    if (slider.dataset.newDishEnvironment === 'poison') {
+      setup.hazardCount = count;
+    }
+    if (slider.dataset.newDishEnvironment === 'rock') {
+      setup.blockCount = count;
+    }
+  });
+  return setup;
+}
+
+function syncRangeOutput(slider: HTMLInputElement): void {
+  const output = slider.closest('label')?.querySelector('output');
+  if (output) {
+    output.textContent = slider.value;
+  }
 }
 
 function deleteActiveDish(): void {
@@ -777,16 +920,14 @@ function formatCellState(
       'Health is normalized from 0% to 100%. A cell dies when health reaches 0%, ATP falls below -10, or mass falls below 0.16. To save it: avoid poison, lower ROS by reducing mitochondria if needed, import amino acids for repair, and refill glucose or glycogen for ATP.',
       healthState,
     ],
-    ['ATP', Math.round(cell.atp).toString(), 'ATP is adenosine triphosphate, the immediate energy reserve used for movement, transport, repair, and division.'],
-    ['Amino Acids', Math.round(cell.aminoAcids).toString(), 'Amino acids are building material for repair proteins, enzymes, growth, and daughter-cell structure.'],
-    ['Glucose', Math.round(cell.glucose).toString(), 'Glucose is immediate fuel measured 0 to 100. The cell burns it first with oxygen to make ATP; surplus above 80 is packed into glycogen.'],
-    ['Glycogen', Math.round(cell.glycogen).toString(), 'Glycogen is compact glucose storage measured 0 to 200. The cell unpacks it when immediate glucose is low, before resorting to autophagy.'],
     ['Autophagy', `${cell.autophagyRate.toFixed(2)}/tick`, 'Autophagy is emergency self-eating: when glucose and glycogen are empty, the cell breaks down amino acids and mass for fuel, hurting health.', cell.autophagyRate > 0 ? 'danger' : undefined],
-    ['Oxygen', Math.round(cell.oxygen).toString(), 'Oxygen lets mitochondria turn glucose into ATP efficiently. More oxygen metabolism can also create ROS waste.'],
-    ['ROS', Math.round(cell.ros).toString(), 'ROS means Reactive Oxygen Species: oxidative waste from metabolism that damages health unless repaired with ATP and amino acids.'],
     ['Gen', cell.generation.toString(), 'Generation counts how many divisions separate this cell from the starting population.'],
     ['Size', cell.radius.toFixed(1), 'Cell size affects collision area, food intake, vulnerability, and whether the cell is ready to divide.'],
-    ['Sensor', awareness.toFixed(1), 'Sensor range is how far this cell can detect resources, hazards, prey, and rival cells.'],
+    [
+      'Sensing',
+      `${awareness.toFixed(1)} · ${Math.round(simulation.sensingProfile(cell).clarity * 100)}%`,
+      'Sensing depends on signal transduction. ATP powers receptor resolution, amino acids maintain receptor proteins, oxygen supports processing speed, and ROS or damage reduce clarity.',
+    ],
     ['DNA', `${strongest[0]} ${strongest[1].toFixed(2)}`, 'Dominant DNA is the strongest current trait shaping behavior, metabolism, sensing, and division priorities.'],
     ['Nearby', `${detections.resources} molecules · ${detections.hazards} poison · ${detections.prey} prey · ${detections.rivals} rivals`, 'Nearby signals are what the cell can currently sense and use for movement, feeding, avoidance, or hunting decisions.'],
   ];
@@ -903,7 +1044,7 @@ function updateDishStatsHud(): void {
 
 function formatDishState(): string {
   if (!activeDish) {
-    return 'Add another dish, or click any petri dish to inspect and control it.';
+    return 'Add a new dish, or click any petri dish to inspect and control it.';
   }
   const resources = simulation.state.resources.reduce(
     (counts, resource) => {
@@ -1604,6 +1745,10 @@ function pulseButton(button: HTMLButtonElement): void {
 
 function isTypingTarget(target: EventTarget | null): boolean {
   return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
+}
+
+function isRangeControlTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLInputElement && target.type === 'range';
 }
 
 function setupTooltips(): void {

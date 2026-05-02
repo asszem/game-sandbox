@@ -572,11 +572,14 @@ export class PetriDishRenderer {
       return;
     }
 
-    const awareness = this.awarenessRadius(selected);
+    const sensing = this.sensingProfile(selected);
+    const awareness = sensing.radius;
     const pulse = 1;
     this.sensorField.visible = true;
     this.sensorRim.visible = true;
     this.sensorRays.visible = true;
+    this.sensorField.material.opacity = 0.025 + sensing.clarity * 0.055;
+    this.sensorRim.material.opacity = 0.18 + sensing.clarity * 0.36;
     this.sensorField.position.set(selected.position.x, selected.position.y, 1.6);
     this.sensorRim.position.copy(this.sensorField.position);
     this.sensorField.scale.setScalar(awareness * pulse);
@@ -590,7 +593,7 @@ export class PetriDishRenderer {
       if (d > awareness || d <= 0.01) {
         return;
       }
-      positions.push(selected.position.x, selected.position.y, 5.8, selected.position.x + dx * strength, selected.position.y + dy * strength, 5.8);
+      positions.push(selected.position.x, selected.position.y, 5.8, selected.position.x + dx * strength * sensing.clarity, selected.position.y + dy * strength * sensing.clarity, 5.8);
     };
 
     for (const resource of state.resources) {
@@ -608,11 +611,39 @@ export class PetriDishRenderer {
     this.sensorRays.geometry.dispose();
     this.sensorRays.geometry = new THREE.BufferGeometry();
     this.sensorRays.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    this.sensorRays.material.opacity = state.running ? 0.38 + Math.sin(time * 0.01) * 0.12 : 0.38;
+    this.sensorRays.material.opacity = (state.running ? 0.22 + Math.sin(time * 0.01) * 0.08 : 0.22) * sensing.clarity * sensing.processing;
   }
 
   private awarenessRadius(cell: Cell): number {
-    return 16 + cell.radius * 3.4 + cell.genome.caution * 16;
+    return this.sensingProfile(cell).radius;
+  }
+
+  private sensingProfile(cell: Cell): { radius: number; clarity: number; processing: number } {
+    const clamp = THREE.MathUtils.clamp;
+    const baseRadius = 16 + cell.radius * 3.4 + cell.genome.caution * 16;
+    const atpResolution = clamp(cell.atp / 80, 0.18, 1.25);
+    const aminoIntegrity = clamp(cell.aminoAcids / 45, 0.25, 1.15);
+    const oxygenProcessing = clamp(cell.oxygen / 35, 0.35, 1.15);
+    const rosIntegrity = clamp(1 - Math.max(0, cell.ros - 18) / 82, 0.35, 1);
+    const healthIntegrity = clamp(cell.health, 0.3, 1);
+    const radius = baseRadius
+      * clamp(0.3 + atpResolution * 0.7, 0.3, 1.18)
+      * clamp(0.68 + oxygenProcessing * 0.32, 0.68, 1.08)
+      * clamp(0.78 + rosIntegrity * 0.22, 0.55, 1);
+    const clarity = clamp(
+      aminoIntegrity * 0.42
+        + atpResolution * 0.24
+        + oxygenProcessing * 0.16
+        + rosIntegrity * 0.12
+        + healthIntegrity * 0.06,
+      0.15,
+      1,
+    );
+    return {
+      radius,
+      clarity,
+      processing: clamp(oxygenProcessing * rosIntegrity, 0.2, 1),
+    };
   }
 
   private createCellVisual(cell: Cell): CellVisual {

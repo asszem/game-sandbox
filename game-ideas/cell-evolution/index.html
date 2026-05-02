@@ -50,10 +50,10 @@
           </div>
           <div class="panel-head">
             <h3 id="dish-name">No dish selected</h3>
-            <p id="dish-detail">Add another dish, or click any petri dish to inspect and control it.</p>
+            <p id="dish-detail">Add a new dish, or click any petri dish to inspect and control it.</p>
           </div>
           <div class="dish-actions" aria-label="petri dish actions">
-            <button type="button" data-dish-action="add">Add another dish</button>
+            <button type="button" data-dish-action="add">Add new dish</button>
             <button type="button" data-dish-action="delete">Delete dish</button>
             <button type="button" data-dish-action="tutorial">Start tutorial</button>
             <button type="button" data-dish-action="restart">Restart Same Dish</button>
@@ -73,30 +73,34 @@
             <p id="entity-detail">Select a dish, then click a cell, resource, poison cloud, or mineral block.</p>
           </div>
           <div class="metabolic-dashboard" aria-label="metabolic engine dashboard" hidden>
-            <div class="metabolic-triangle" data-tooltip="Cell metabolism consumes current glucose input first, then unpacks glycogen storage, then triggers autophagy if both fuel sources are empty.">
-              <svg class="metabolic-flow-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                <path class="flow-path flow-path-glucose" d="M 29 40 L 45 65" pathLength="100"></path>
-                <path class="flow-path flow-path-glycogen" d="M 22 38 L 22 62" pathLength="100"></path>
-                <path class="flow-path flow-path-amino" d="M 71 40 L 55 65" pathLength="100"></path>
-                <path class="flow-path flow-path-oxygen" d="M 50 34 L 50 64" pathLength="100"></path>
-              </svg>
-              <div class="metabolic-node node-glucose" data-tooltip="What it is: Glucose is the cell's immediate fuel buffer.&#10;&#10;More detail: It is measured from 0 to 100. The cell burns glucose first to make ATP, and surplus above 80 can be packed into glycogen storage.&#10;&#10;How to get it: Touch glucose molecules, increase Fuel uptake, or sit inside light blooms so photosynthesis can add glucose."><span>Glucose</span><strong id="glucose-rate" class="resource-readout"><span class="resource-value">0</span><small id="glucose-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
-              <div class="metabolic-node node-glycogen" data-tooltip="What it is: Glycogen is stored glucose.&#10;&#10;More detail: It is measured from 0 to 200. The cell packs surplus glucose into glycogen and unpacks it when immediate glucose runs out.&#10;&#10;How to get it: Keep glucose above 80 while the cell has ATP available, then surplus glucose is converted into glycogen."><span>Glycogen</span><strong id="glycogen-rate" class="resource-readout"><span class="resource-value">0</span><small id="glycogen-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
-              <div class="metabolic-node node-amino" data-tooltip="What it is: Amino acids are repair and growth material.&#10;&#10;More detail: The cell spends amino acids on membrane repair, enzymes, antioxidant response, growth, and division rather than direct fuel.&#10;&#10;How to get it: Touch amino-acid clusters and increase Repair material uptake to import them faster."><span>Amino Acids</span><strong id="amino-rate" class="resource-readout"><span class="resource-value">0</span><small id="amino-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
-              <div class="metabolic-node node-oxygen" data-tooltip="What it is: Oxygen supports efficient ATP production.&#10;&#10;More detail: It is stored briefly and consumed by oxygen metabolism. Higher oxygen use increases ATP output from glucose but also raises ROS stress.&#10;&#10;How to get it: Touch oxygen pockets, increase ATP production rate to import oxygen, or sit in light where oxygen rises slightly."><span>Oxygen</span><strong id="oxygen-rate" class="resource-readout"><span class="resource-value">0</span><small id="oxygen-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
-              <div class="metabolic-core" data-tooltip="What it is: ATP is the cell's immediate energy currency.&#10;&#10;More detail: Movement, transport, repair, antioxidant response, growth, and division all spend ATP. Oxygen metabolism converts glucose into ATP more efficiently.&#10;&#10;How to get it: Keep glucose and oxygen available, tune ATP production rate upward, and avoid excessive movement or repair costs."><span>ATP</span><strong id="atp-core" class="resource-readout"><span class="resource-value">0</span><small id="atp-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
+            <div class="metabolic-board" data-tooltip="Internal stores show what this cell has now. The conversion map shows how sliders push those stores into energy, storage, repair, and waste.">
+              <div class="metabolic-stores" aria-label="internal cell stores">
+                <div class="metabolic-store node-glucose" data-tooltip="What it is: Glucose is the cell's immediate fuel buffer.&#10;&#10;More detail: It is measured from 0 to 100. The cell burns glucose first to make ATP, and surplus above 80 can be packed into glycogen storage.&#10;&#10;How to get it: Touch glucose molecules, increase Fuel uptake, or sit inside light blooms so photosynthesis can add glucose."><i class="store-icon icon-glucose" aria-hidden="true"></i><span>Glucose</span><strong id="glucose-rate" class="resource-readout"><span class="resource-value">0</span><small id="glucose-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
+                <div class="metabolic-store node-glycogen" data-tooltip="What it is: Glycogen is stored glucose.&#10;&#10;More detail: It is measured from 0 to 200. The cell packs surplus glucose into glycogen and unpacks it when immediate glucose runs out.&#10;&#10;How to get it: Keep glucose above 80 while the cell has ATP available, then surplus glucose is converted into glycogen."><i class="store-icon icon-glycogen" aria-hidden="true"></i><span>Glycogen</span><strong id="glycogen-rate" class="resource-readout"><span class="resource-value">0</span><small id="glycogen-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
+                <div class="metabolic-store node-oxygen" data-tooltip="What it is: Oxygen supports efficient ATP production.&#10;&#10;More detail: It is stored briefly and consumed by oxygen metabolism. Higher oxygen use increases ATP output from glucose but also raises ROS stress.&#10;&#10;How to get it: Touch oxygen pockets, increase ATP production rate to import oxygen, or sit in light where oxygen rises slightly."><i class="store-icon icon-oxygen" aria-hidden="true"></i><span>Oxygen</span><strong id="oxygen-rate" class="resource-readout"><span class="resource-value">0</span><small id="oxygen-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
+                <div class="metabolic-store node-amino" data-tooltip="What it is: Amino acids are repair and growth material.&#10;&#10;More detail: The cell spends amino acids on membrane repair, enzymes, antioxidant response, growth, and division rather than direct fuel.&#10;&#10;How to get it: Touch amino-acid clusters and increase Repair material uptake to import them faster."><i class="store-icon icon-amino" aria-hidden="true"></i><span>Amino Acids</span><strong id="amino-rate" class="resource-readout"><span class="resource-value">0</span><small id="amino-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
+                <div class="metabolic-store metabolic-core" data-tooltip="What it is: ATP is the cell's immediate energy currency.&#10;&#10;More detail: Movement, transport, repair, antioxidant response, growth, and division all spend ATP. Oxygen metabolism converts glucose into ATP more efficiently.&#10;&#10;How to get it: Keep glucose and oxygen available, tune ATP production rate upward, and avoid excessive movement or repair costs."><i class="store-icon icon-atp" aria-hidden="true"></i><span>ATP</span><strong id="atp-core" class="resource-readout"><span class="resource-value">0</span><small id="atp-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
+              </div>
+              <div class="conversion-map" aria-label="metabolic conversion map">
+                <div class="conversion-row conversion-energy"><span>Glucose + Oxygen</span><b class="conversion-flow flow-path flow-path-glucose"></b><strong>ATP</strong><em>ROS</em></div>
+                <div class="conversion-row conversion-storage"><span>Glucose overflow</span><b class="conversion-flow flow-path flow-path-glycogen"></b><strong>Glycogen</strong></div>
+                <div class="conversion-row conversion-repair"><span>Amino Acids</span><b class="conversion-flow flow-path flow-path-amino"></b><strong>Repair · Sensors · Growth</strong></div>
+              </div>
             </div>
             <div class="channel-controls" aria-label="cell metabolism controls">
               <label data-tooltip="Fuel uptake opens glucose membrane channels. Higher values refill the immediate glucose buffer faster when touching glucose, but spend transport energy and exhaust nearby food.">
                 <span>Fuel uptake <output data-control-value="glucoseTransport">50%</output></span>
+                <small>Impacts Glucose intake · ATP transport cost</small>
                 <input data-control="glucoseTransport" type="range" min="0" max="100" value="50" />
               </label>
               <label data-tooltip="Repair material uptake opens amino-acid transporters. Higher values build protein and membrane reserves faster, but still cost ATP to operate.">
                 <span>Repair material uptake <output data-control-value="aminoTransport">50%</output></span>
+                <small>Impacts Amino intake · repair capacity</small>
                 <input data-control="aminoTransport" type="range" min="0" max="100" value="50" />
               </label>
               <label data-tooltip="ATP production rate controls oxygen-driven mitochondrial metabolism. Higher values make ATP faster, but also create more ROS, Reactive Oxygen Species.">
                 <span>ATP production rate <output data-control-value="oxygenMetabolism">50%</output></span>
+                <small>Impacts ATP output · Oxygen use · ROS</small>
                 <input data-control="oxygenMetabolism" type="range" min="0" max="100" value="50" />
               </label>
             </div>
@@ -197,6 +201,44 @@
       </aside>
       <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
       <div id="tooltip-layer" class="tooltip-layer" role="tooltip" hidden></div>
+      <div id="new-dish-modal" class="modal-backdrop" hidden>
+        <div class="setup-modal" role="dialog" aria-modal="true" aria-labelledby="new-dish-modal-title">
+          <div class="modal-titlebar">
+            <h2 id="new-dish-modal-title">New dish</h2>
+            <button id="new-dish-modal-close" class="modal-close" type="button" aria-label="Close new dish menu">×</button>
+          </div>
+          <div class="new-dish-body">
+            <section class="setup-section" aria-labelledby="new-dish-cells-title">
+              <h3 id="new-dish-cells-title">Cells</h3>
+              <label class="cell-count-control">
+                <span>Number of cells</span>
+                <input id="new-dish-cell-count-range" type="range" min="1" max="40" value="10" />
+                <input id="new-dish-cell-count-input" type="number" min="1" max="40" value="10" inputmode="numeric" />
+              </label>
+            </section>
+            <section class="setup-section" aria-labelledby="new-dish-resources-title">
+              <h3 id="new-dish-resources-title">Resources</h3>
+              <div class="resource-setup-list" aria-label="new dish resource distribution">
+                <label><strong>Glucose <output>20</output></strong><input data-new-dish-resource="glucose" type="range" min="0" max="60" value="20" /><small>Amount per molecule 0.45-1.00</small></label>
+                <label><strong>Amino Acids <output>20</output></strong><input data-new-dish-resource="amino-acid" type="range" min="0" max="60" value="20" /><small>Amount per cluster 0.45-1.00</small></label>
+                <label><strong>Oxygen <output>20</output></strong><input data-new-dish-resource="oxygen" type="range" min="0" max="60" value="20" /><small>Amount per pocket 0.45-1.00</small></label>
+                <label><strong>Light <output>20</output></strong><input data-new-dish-resource="light" type="range" min="0" max="60" value="20" /><small>Intensity per bloom 0.45-1.00</small></label>
+              </div>
+            </section>
+            <section class="setup-section" aria-labelledby="new-dish-environment-title">
+              <h3 id="new-dish-environment-title">Environment</h3>
+              <div class="resource-setup-list" aria-label="new dish environment hazards">
+                <label><strong>Poison <output>0</output></strong><input data-new-dish-environment="poison" type="range" min="0" max="40" value="0" /><small>Potency per cloud 0.45-1.00</small></label>
+                <label><strong>Rock <output>0</output></strong><input data-new-dish-environment="rock" type="range" min="0" max="18" value="0" /><small>Mineral blocks with randomized shape and size</small></label>
+              </div>
+            </section>
+            <div class="modal-actions">
+              <button id="new-dish-cancel" type="button">Cancel</button>
+              <button id="new-dish-create" type="button">Create dish</button>
+            </div>
+          </div>
+        </div>
+      </div>
       <div id="save-modal" class="modal-backdrop" hidden>
         <div class="save-modal" role="dialog" aria-modal="true" aria-labelledby="save-modal-title">
           <div class="modal-titlebar">
