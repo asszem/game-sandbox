@@ -28,6 +28,7 @@ export type Cell = {
   oxygenMetabolism: number;
   ribosomeActivity: number;
   atpRate: number;
+  glucoseRate: number;
   aminoRate: number;
   oxygenRate: number;
   rosRate: number;

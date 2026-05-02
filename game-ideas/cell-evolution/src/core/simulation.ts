@@ -233,6 +233,7 @@ export class CellSimulation {
       oxygenMetabolism: this.rng.range(0.3, 0.6),
       ribosomeActivity: this.rng.range(0.35, 0.65),
       atpRate: 0,
+      glucoseRate: 0,
       aminoRate: 0,
       oxygenRate: 0,
       rosRate: 0,
@@ -253,6 +254,7 @@ export class CellSimulation {
     cell.oxygenMetabolism ??= 0.45;
     cell.ribosomeActivity ??= 0.5;
     cell.atpRate ??= 0;
+    cell.glucoseRate ??= 0;
     cell.aminoRate ??= 0;
     cell.oxygenRate ??= 0;
     cell.rosRate ??= 0;
@@ -280,6 +282,7 @@ export class CellSimulation {
     const beforeAmino = cell.aminoAcids;
     const beforeOxygen = cell.oxygen;
     const beforeRos = cell.ros;
+    cell.glucoseRate = 0;
     cell.age += 1;
     cell.signalPhase += 0.12 + cell.genome.motility * 0.04;
 
@@ -546,6 +549,7 @@ export class CellSimulation {
     cell.atp -= transportCost;
     const uptake = consumedAmount * (0.7 + cell.genome.harvest * 0.55);
     if (resource.kind === 'glucose') {
+      cell.glucoseRate += uptake;
       cell.atp += uptake * (10 + cell.oxygen * 0.12);
       cell.ros += uptake * (cell.oxygen / 100) * 0.7;
     }

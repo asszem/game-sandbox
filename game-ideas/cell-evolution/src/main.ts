@@ -114,6 +114,7 @@ const glucoseRate = document.querySelector<HTMLElement>('#glucose-rate');
 const aminoRate = document.querySelector<HTMLElement>('#amino-rate');
 const oxygenRate = document.querySelector<HTMLElement>('#oxygen-rate');
 const atpDelta = document.querySelector<HTMLElement>('#atp-delta');
+const glucoseDelta = document.querySelector<HTMLElement>('#glucose-delta');
 const aminoDelta = document.querySelector<HTMLElement>('#amino-delta');
 const oxygenDelta = document.querySelector<HTMLElement>('#oxygen-delta');
 const rosDelta = document.querySelector<HTMLElement>('#ros-delta');
@@ -133,6 +134,7 @@ let tooltipsEnabled = true;
 let activeDrop: { pointerId: number | null; kind: DropItemKind; ghost: HTMLElement } | null = null;
 let suppressDropClick = false;
 let saveModalMode: 'save' | 'load' = 'save';
+let fittedEntityTargetKey = '';
 
 dishLayerElement.addEventListener('pointerdown', (event) => {
   if (event.target === dishLayerElement) {
@@ -610,6 +612,7 @@ function updateHud(): void {
     if (directiveDetail) {
       directiveDetail.textContent = 'Select a dish, then select a cell to influence membrane transport and DNA directives.';
     }
+    fitEntityWindowForSelection();
     return;
   }
 
@@ -651,6 +654,7 @@ function updateHud(): void {
     syncMetabolicDashboard(selected);
     syncTransportControls(selected);
     setDnaEnabled(true);
+    fitEntityWindowForSelection();
     return;
   }
 
@@ -666,6 +670,7 @@ function updateHud(): void {
       ? `Select a cell in dish ${activeDish.id} to influence membrane transport and DNA directives.`
       : 'Select a dish, then select a cell to influence membrane transport and DNA directives.';
   }
+  fitEntityWindowForSelection();
 }
 
 function describeCellState(
@@ -674,7 +679,38 @@ function describeCellState(
   awareness: number,
 ): string {
   const strongest = Object.entries(cell.genome).sort((a, b) => b[1] - a[1])[0];
-  return `ATP ${Math.round(cell.atp)} · amino acids ${Math.round(cell.aminoAcids)} · oxygen ${Math.round(cell.oxygen)} · ROS ${Math.round(cell.ros)} · Gen ${cell.generation} · dominant DNA ${strongest[0]} ${strongest[1].toFixed(2)} · sensor range ${awareness.toFixed(1)} · detected ${detections.resources} molecules, ${detections.hazards} poison, ${detections.prey} prey, ${detections.rivals} rivals · size ${cell.radius.toFixed(1)}`;
+  return [
+    `ATP ${Math.round(cell.atp)}`,
+    `amino acids ${Math.round(cell.aminoAcids)}`,
+    `oxygen ${Math.round(cell.oxygen)}`,
+    `ROS ${Math.round(cell.ros)}`,
+    `Gen ${cell.generation}`,
+    `dominant DNA ${strongest[0]} ${strongest[1].toFixed(2)}`,
+    `sensor range ${awareness.toFixed(1)}`,
+    `detected ${detections.resources} molecules, ${detections.hazards} poison, ${detections.prey} prey, ${detections.rivals} rivals`,
+    `size ${cell.radius.toFixed(1)}`,
+  ].join(' · ');
+}
+
+function formatCellState(
+  cell: Cell,
+  detections: { resources: number; hazards: number; prey: number; rivals: number; nearestResource: number; nearestHazard: number },
+  awareness: number,
+): string {
+  const strongest = Object.entries(cell.genome).sort((a, b) => b[1] - a[1])[0];
+  const stats = [
+    ['ATP', Math.round(cell.atp).toString(), 'ATP is adenosine triphosphate, the immediate energy reserve used for movement, transport, repair, and division.'],
+    ['Amino', Math.round(cell.aminoAcids).toString(), 'Amino acids are building material for repair proteins, enzymes, growth, and daughter-cell structure.'],
+    ['Glucose', `${cell.glucoseRate.toFixed(2)}/tick`, 'Glucose is fuel intake, not stored as a separate reserve in this model. The cell converts imported glucose into ATP immediately.'],
+    ['Oxygen', Math.round(cell.oxygen).toString(), 'Oxygen lets mitochondria turn glucose into ATP efficiently. More oxygen metabolism can also create ROS waste.'],
+    ['ROS', Math.round(cell.ros).toString(), 'ROS means Reactive Oxygen Species: oxidative waste from metabolism that damages health unless repaired with ATP and amino acids.'],
+    ['Gen', cell.generation.toString(), 'Generation counts how many divisions separate this cell from the starting population.'],
+    ['Size', cell.radius.toFixed(1), 'Cell size affects collision area, food intake, vulnerability, and whether the cell is ready to divide.'],
+    ['Sensor', awareness.toFixed(1), 'Sensor range is how far this cell can detect resources, hazards, prey, and rival cells.'],
+    ['DNA', `${strongest[0]} ${strongest[1].toFixed(2)}`, 'Dominant DNA is the strongest current trait shaping behavior, metabolism, sensing, and division priorities.'],
+    ['Nearby', `${detections.resources} molecules · ${detections.hazards} poison · ${detections.prey} prey · ${detections.rivals} rivals`, 'Nearby signals are what the cell can currently sense and use for movement, feeding, avoidance, or hunting decisions.'],
+  ];
+  return `<span class="cell-stat-grid">${stats.map(([label, value, tooltip]) => `<span class="cell-stat" data-tooltip="${tooltip}"><span>${label}</span><strong>${value}</strong></span>`).join('')}</span>`;
 }
 
 function describeCellDirective(
@@ -803,16 +839,24 @@ function describeDishState(): string {
 
 function updateSelectedEntityHud(selectedCell: Cell | null): void {
   if (!activeDish) {
-    if (entityName) entityName.textContent = 'No entity selected';
+    if (entityName) {
+      entityName.hidden = false;
+      entityName.textContent = 'No entity selected';
+    }
     if (entityDetail) entityDetail.textContent = 'Select a dish, then click a cell, resource, poison cloud, or mineral block.';
     return;
   }
   if (selectedCell) {
     const awareness = simulation.awarenessRadius(selectedCell);
     const detections = scanDetections(selectedCell, awareness);
-    if (entityName) entityName.textContent = `Cell ${selectedCell.id}`;
-    if (entityDetail) entityDetail.textContent = describeCellState(selectedCell, detections, awareness);
+    if (entityName) {
+      entityName.hidden = true;
+    }
+    if (entityDetail) entityDetail.innerHTML = formatCellState(selectedCell, detections, awareness);
     return;
+  }
+  if (entityName) {
+    entityName.hidden = false;
   }
   if (inspectedTarget.kind === 'dish') {
     if (entityName) entityName.textContent = 'No entity selected';
@@ -821,6 +865,15 @@ function updateSelectedEntityHud(selectedCell: Cell | null): void {
   }
   if (entityName) entityName.textContent = targetLabel(inspectedTarget);
   if (entityDetail) entityDetail.textContent = describeHoverTarget(inspectedTarget);
+}
+
+function fitEntityWindowForSelection(): void {
+  const key = activeDish ? `${activeDish.id}:${inspectedTarget.kind}:${inspectedTarget.id ?? 'dish'}` : 'none';
+  if (key === fittedEntityTargetKey) {
+    return;
+  }
+  fittedEntityTargetKey = key;
+  windowSystem.fitHeight('entity');
 }
 
 function updateHoverInfo(): void {
@@ -899,11 +952,15 @@ function syncWindowTitles(entityLabel: string): void {
     dishWindowTitle.textContent = `${dishLabel} / State`;
   }
   if (entityWindowTitle) {
-    entityWindowTitle.textContent = activeDish ? `${dishLabel} / ${entityLabel}` : 'No dish / Entity';
+    entityWindowTitle.textContent = activeDish && inspectedTarget.kind === 'cell'
+      ? `${dishLabel} / ${entityLabel} Metabolism`
+      : activeDish
+        ? `${dishLabel} / ${entityLabel}`
+        : 'No dish / Entity';
   }
   if (directivesWindowTitle) {
     directivesWindowTitle.textContent = activeDish && inspectedTarget.kind === 'cell'
-      ? `${dishLabel} / ${entityLabel} Directives`
+      ? `${dishLabel} / ${entityLabel} Metabolism`
       : `${dishLabel} / Directives`;
   }
 }
@@ -1361,27 +1418,28 @@ function syncTransportControls(cell: Cell | null): void {
 
 function syncMetabolicDashboard(cell: Cell | null): void {
   setText(atpCore, cell ? String(Math.round(cell.atp)) : '0');
-  setText(glucoseRate, cell ? `${Math.round(cell.glucoseTransport * 100)}%` : '0');
-  setText(aminoRate, cell ? `${Math.round(cell.aminoTransport * 100)}%` : '0');
-  setText(oxygenRate, cell ? `${Math.round(cell.oxygenMetabolism * 100)}%` : '0');
+  setText(glucoseRate, cell ? `${cell.glucoseRate.toFixed(2)}/t` : '0');
+  setText(aminoRate, cell ? String(Math.round(cell.aminoAcids)) : '0');
+  setText(oxygenRate, cell ? String(Math.round(cell.oxygen)) : '0');
   setDelta(atpDelta, cell?.atpRate ?? 0);
+  setDelta(glucoseDelta, cell?.glucoseRate ?? 0);
   setDelta(aminoDelta, cell?.aminoRate ?? 0);
   setDelta(oxygenDelta, cell?.oxygenRate ?? 0);
   setDelta(rosDelta, cell?.rosRate ?? 0, true);
 
   const root = document.querySelector<HTMLElement>('.metabolic-dashboard');
   if (root && cell) {
-    root.style.setProperty('--glucose-flow', `${2 + cell.glucoseTransport * 7}px`);
-    root.style.setProperty('--amino-flow', `${2 + cell.aminoTransport * 6}px`);
-    root.style.setProperty('--oxygen-flow', `${2 + cell.oxygenMetabolism * 7}px`);
+    root.style.setProperty('--glucose-flow', `${3 + cell.glucoseTransport * 5}px`);
+    root.style.setProperty('--amino-flow', `${3 + cell.aminoTransport * 5}px`);
+    root.style.setProperty('--oxygen-flow', `${3 + cell.oxygenMetabolism * 5}px`);
     root.style.setProperty('--glucose-speed', `${Math.round(1200 - cell.glucoseTransport * 650)}ms`);
     root.style.setProperty('--amino-speed', `${Math.round(1250 - cell.aminoTransport * 560)}ms`);
     root.style.setProperty('--oxygen-speed', `${Math.round(1200 - cell.oxygenMetabolism * 650)}ms`);
     root.classList.toggle('is-toxic', cell.ros > 45);
   } else if (root) {
-    root.style.setProperty('--glucose-flow', '2px');
-    root.style.setProperty('--amino-flow', '2px');
-    root.style.setProperty('--oxygen-flow', '2px');
+    root.style.setProperty('--glucose-flow', '3px');
+    root.style.setProperty('--amino-flow', '3px');
+    root.style.setProperty('--oxygen-flow', '3px');
     root.style.setProperty('--glucose-speed', '1100ms');
     root.style.setProperty('--amino-speed', '1100ms');
     root.style.setProperty('--oxygen-speed', '1100ms');
@@ -1423,16 +1481,42 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 function setupTooltips(): void {
-  const targets = document.querySelectorAll<HTMLElement>('[data-tooltip]');
-  targets.forEach((target) => {
-    target.addEventListener('pointerenter', () => showTooltip(target));
-    target.addEventListener('pointermove', () => positionTooltip(target));
-    target.addEventListener('pointerleave', hideTooltip);
-    target.addEventListener('focus', () => showTooltip(target));
-    target.addEventListener('blur', hideTooltip);
+  document.addEventListener('pointerover', (event) => {
+    const target = tooltipTarget(event.target);
+    if (target) {
+      showTooltip(target);
+    }
+  });
+  document.addEventListener('pointermove', (event) => {
+    const target = tooltipTarget(event.target);
+    if (target) {
+      positionTooltip(target);
+    }
+  });
+  document.addEventListener('pointerout', (event) => {
+    const target = tooltipTarget(event.target);
+    if (target && !target.contains(event.relatedTarget as Node | null)) {
+      hideTooltip();
+    }
+  });
+  document.addEventListener('focusin', (event) => {
+    const target = tooltipTarget(event.target);
+    if (target) {
+      showTooltip(target);
+    }
+  });
+  document.addEventListener('focusout', (event) => {
+    const target = tooltipTarget(event.target);
+    if (target) {
+      hideTooltip();
+    }
   });
   window.addEventListener('scroll', hideTooltip, true);
   window.addEventListener('resize', hideTooltip);
+}
+
+function tooltipTarget(target: EventTarget | null): HTMLElement | null {
+  return target instanceof Element ? target.closest<HTMLElement>('[data-tooltip]') : null;
 }
 
 function showTooltip(target: HTMLElement): void {
@@ -1519,6 +1603,13 @@ function createWindowSystem() {
         setCollapsed(gameWindow, saved.collapsed, false);
       }
     },
+    fitHeight(id: string): void {
+      const gameWindow = windows.find((item) => item.id === id);
+      if (!gameWindow || gameWindow.element.classList.contains('is-collapsed')) {
+        return;
+      }
+      requestAnimationFrame(() => fitWindowHeightToContent(gameWindow));
+    },
   };
 }
 
@@ -1593,7 +1684,13 @@ function fitWindowHeightToContent(gameWindow: GameWindow): void {
   }
   const rect = gameWindow.element.getBoundingClientRect();
   const desiredHeight = Math.ceil(titlebar.offsetHeight + body.scrollHeight + 2);
-  const maxHeight = Math.max(72, window.innerHeight - rect.top - 8);
+  const desiredTop = desiredHeight > window.innerHeight - rect.top - 8
+    ? clamp(window.innerHeight - desiredHeight - 8, 8, rect.top)
+    : rect.top;
+  if (desiredTop !== rect.top) {
+    gameWindow.element.style.top = `${desiredTop}px`;
+  }
+  const maxHeight = Math.max(72, window.innerHeight - desiredTop - 8);
   gameWindow.element.style.height = `${clamp(desiredHeight, 72, maxHeight)}px`;
 }
 

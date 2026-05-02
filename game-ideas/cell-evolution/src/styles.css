@@ -122,6 +122,34 @@ h1 {
   font-size: 12px;
 }
 
+.cell-stat-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.cell-stat {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: baseline;
+  gap: 4px;
+  padding: 4px 7px;
+  border: 1px solid rgba(213, 239, 224, 0.12);
+  border-radius: 6px;
+  background: rgba(4, 9, 16, 0.48);
+  line-height: 1.1;
+}
+
+.cell-stat span {
+  color: rgba(235, 246, 226, 0.58);
+}
+
+.cell-stat strong {
+  color: #f7fff3;
+  font-weight: 700;
+}
+
 .game-window {
   position: fixed;
   z-index: 3;
@@ -499,9 +527,9 @@ h3 {
 }
 
 .metabolic-dashboard {
-  --glucose-flow: 2px;
-  --amino-flow: 2px;
-  --oxygen-flow: 2px;
+  --glucose-flow: 3px;
+  --amino-flow: 3px;
+  --oxygen-flow: 3px;
   --glucose-speed: 1100ms;
   --amino-speed: 1100ms;
   --oxygen-speed: 1100ms;
@@ -512,11 +540,11 @@ h3 {
 
 .metabolic-triangle {
   position: relative;
-  height: 186px;
+  height: 224px;
   border: 1px solid rgba(68, 255, 203, 0.16);
   border-radius: 8px;
   background:
-    radial-gradient(circle at 50% 58%, rgba(255, 246, 158, 0.11), transparent 23%),
+    radial-gradient(circle at 50% 76%, rgba(255, 246, 158, 0.11), transparent 21%),
     linear-gradient(120deg, rgba(255, 230, 46, 0.08), transparent 34%),
     linear-gradient(238deg, rgba(97, 255, 189, 0.08), transparent 36%),
     rgba(255, 255, 255, 0.025);
@@ -534,21 +562,24 @@ h3 {
   box-shadow: 0 0 18px rgba(24, 255, 200, 0.18);
   color: #f7fff3;
   font-size: 10px;
+  line-height: 1.05;
   text-align: center;
   z-index: 3;
   cursor: help;
 }
 
 .metabolic-node {
-  width: 68px;
-  height: 68px;
+  width: 60px;
+  height: 60px;
+  padding: 7px;
 }
 
 .metabolic-core {
   left: 50%;
-  top: 58%;
-  width: 66px;
-  height: 66px;
+  top: 76%;
+  width: 60px;
+  height: 60px;
+  padding: 7px;
   transform: translate(-50%, -50%);
   border-color: rgba(255, 246, 158, 0.82);
   background:
@@ -561,80 +592,88 @@ h3 {
 
 .metabolic-node span,
 .metabolic-core span {
+  max-width: 48px;
   color: rgba(247, 255, 243, 0.72);
+  line-height: 1.05;
+  overflow-wrap: anywhere;
 }
 
 .metabolic-node strong,
 .metabolic-core strong {
   color: #f9ff4d;
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1;
+  text-shadow:
+    0 0 7px rgba(249, 255, 77, 0.45),
+    0 1px 0 rgba(0, 0, 0, 0.7);
 }
 
 .node-glucose {
-  left: 12px;
-  bottom: 10px;
+  left: 22%;
+  top: 25%;
+  transform: translate(-50%, -50%);
   border-color: rgba(255, 230, 46, 0.78);
   box-shadow: 0 0 18px rgba(255, 230, 46, 0.3);
 }
 
 .node-amino {
-  right: 12px;
-  bottom: 10px;
+  left: 78%;
+  top: 25%;
+  transform: translate(-50%, -50%);
   border-color: rgba(97, 255, 189, 0.72);
   box-shadow: 0 0 18px rgba(97, 255, 189, 0.28);
 }
 
 .node-oxygen {
   left: 50%;
-  top: 8px;
-  transform: translateX(-50%);
+  top: 18%;
+  transform: translate(-50%, -50%);
   border-color: rgba(54, 215, 255, 0.76);
   box-shadow: 0 0 18px rgba(54, 215, 255, 0.3);
 }
 
-.flow {
+.metabolic-flow-svg {
   position: absolute;
-  left: 50%;
-  top: 58%;
-  width: 46%;
-  height: var(--glucose-flow);
-  transform-origin: left center;
-  border-radius: 999px;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      transparent 0 8px,
-      currentColor 8px 18px,
-      transparent 18px 30px
-    );
-  background-size: 60px 100%;
-  filter: drop-shadow(0 0 5px currentColor);
-  opacity: 0.78;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
   z-index: 1;
+  pointer-events: none;
 }
 
-.flow-glucose {
-  color: rgba(255, 230, 46, 0.9);
-  height: var(--glucose-flow);
-  transform: rotate(152deg);
-  animation: metabolic-flow var(--glucose-speed) linear infinite;
+.flow-path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 10 12;
+  stroke-dashoffset: 0;
+  opacity: 0.84;
+  filter: drop-shadow(0 0 4px currentColor);
+  animation: metabolic-flow 1100ms linear infinite;
 }
 
-.flow-amino {
+.flow-path-glucose {
+  color: rgba(255, 230, 46, 0.92);
+  stroke: currentColor;
+  stroke-width: var(--glucose-flow);
+  animation-duration: var(--glucose-speed);
+}
+
+.flow-path-amino {
   color: rgba(97, 255, 189, 0.82);
-  height: var(--amino-flow);
-  transform: rotate(28deg);
-  animation: metabolic-flow var(--amino-speed) linear infinite;
+  stroke: currentColor;
+  stroke-width: var(--amino-flow);
+  animation-duration: var(--amino-speed);
 }
 
-.flow-oxygen {
+.flow-path-oxygen {
   color: rgba(54, 215, 255, 0.9);
-  height: var(--oxygen-flow);
-  transform: rotate(-90deg);
-  animation: metabolic-flow var(--oxygen-speed) linear infinite;
+  stroke: currentColor;
+  stroke-width: var(--oxygen-flow);
+  animation-duration: var(--oxygen-speed);
 }
 
-.metabolic-dashboard.is-toxic .flow {
+.metabolic-dashboard.is-toxic .flow-path {
   filter:
     drop-shadow(0 0 5px currentColor)
     drop-shadow(0 0 9px rgba(255, 102, 46, 0.45));
@@ -642,19 +681,19 @@ h3 {
 
 @keyframes metabolic-flow {
   from {
-    background-position: 60px 0;
+    stroke-dashoffset: 22;
   }
   to {
-    background-position: 0 0;
+    stroke-dashoffset: 0;
   }
 }
 
 .flow-control {
   position: absolute;
   left: 50%;
-  top: 58%;
+  top: 76%;
   z-index: 4;
-  width: 142px;
+  width: 86px;
   height: 18px;
   margin: 0;
   transform-origin: left center;
@@ -665,20 +704,20 @@ h3 {
 
 .control-glucose {
   color: #ffe62e;
-  transform: rotate(152deg) translateX(24px);
+  transform: rotate(-123deg) translateX(40px);
   accent-color: #ffe62e;
 }
 
 .control-amino {
   color: #61ffbd;
-  transform: rotate(28deg) translateX(24px);
+  transform: rotate(-57deg) translateX(40px);
   accent-color: #61ffbd;
 }
 
 .control-oxygen {
   color: #36d7ff;
-  width: 118px;
-  transform: rotate(-90deg) translateX(24px);
+  width: 90px;
+  transform: rotate(-90deg) translateX(40px);
   accent-color: #36d7ff;
 }
 
@@ -705,9 +744,48 @@ h3 {
   opacity: 0.45;
 }
 
+.channel-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.channel-controls label {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid rgba(68, 255, 203, 0.2);
+  border-radius: 8px;
+  background: rgba(4, 9, 16, 0.62);
+  cursor: help;
+}
+
+.channel-controls span {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: rgba(247, 255, 243, 0.72);
+  font-size: 10px;
+  line-height: 1.15;
+}
+
+.channel-controls output {
+  color: #f9ff4d;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.channel-controls input {
+  width: 100%;
+  min-width: 0;
+  accent-color: #18ffc8;
+  cursor: pointer;
+}
+
 .tri-gauges {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
 
