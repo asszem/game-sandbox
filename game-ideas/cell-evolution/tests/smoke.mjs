@@ -40,6 +40,7 @@ async function runSmoke() {
 
     await page.goto(serverUrl, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length === 2, null, { timeout: INITIAL_RENDER_TIMEOUT_MS });
+    await exerciseHoverWithoutSelection(page);
     const firstDish = await dishCenter(page, 0);
     await page.mouse.click(firstDish.x, firstDish.y);
     await page.keyboard.press('Space');
@@ -109,6 +110,16 @@ async function dishCenter(page, index) {
     const rect = canvas.getBoundingClientRect();
     return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   }, index);
+}
+
+async function exerciseHoverWithoutSelection(page) {
+  await page.waitForFunction(() => document.querySelectorAll('.dish-canvas.is-selected').length === 0);
+  const firstDish = await dishCenter(page, 0);
+  await page.mouse.move(firstDish.x, firstDish.y);
+  await page.waitForFunction(() => {
+    const title = document.querySelector('#hover-name')?.textContent ?? '';
+    return title.startsWith('Dish ');
+  });
 }
 
 async function exerciseDishLifecycle(page) {
@@ -185,20 +196,15 @@ async function exerciseDishPicker(page) {
   });
   await page.waitForFunction(() => document.querySelector('[data-dish-action="tutorial"]')?.hidden === false);
   await page.waitForFunction(() => document.querySelectorAll('[data-rename-dish]').length >= 1);
-  await page.evaluate(() => {
-    const input = document.querySelector('[data-rename-dish]');
-    if (!(input instanceof HTMLInputElement)) {
-      throw new Error('Missing dish rename input');
-    }
-    input.value = 'Training Dish';
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-  });
+  const firstRename = page.locator('[data-rename-dish]').first();
+  await firstRename.fill('Training Dish');
+  await firstRename.press('Enter');
   await page.evaluate(() => {
     const icon = document.querySelector('[data-select-dish]');
     if (!(icon instanceof HTMLButtonElement)) {
       throw new Error('Missing dish select icon');
     }
-    icon.click();
+    icon.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
   });
   await page.waitForFunction(() => document.querySelector('#dish-window-title')?.textContent === 'Training Dish | State');
   await page.waitForFunction(() => document.querySelector('[data-dish-action="tutorial"]')?.hidden === true);

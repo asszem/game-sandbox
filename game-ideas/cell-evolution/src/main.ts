@@ -183,11 +183,13 @@ let lastTime = performance.now();
 const tickMs = 150;
 let inspectedTarget: MapPick = { kind: 'dish', id: null };
 let hoveredTarget: MapPick | null = { kind: 'dish', id: null };
+let hoveredDish: DishInstance | null = null;
 let tooltipsEnabled = true;
 let activeDrop: { pointerId: number | null; kind: DropItemKind; ghost: HTMLElement } | null = null;
 let suppressDropClick = false;
 let saveModalMode: 'save' | 'load' = 'save';
 let fittedEntityTargetKey = '';
+let dishPickerSignature = '';
 let tutorialMode = false;
 let tutorialStepIndex = 0;
 let tutorialEnteredStep: TutorialStepId | null = null;
@@ -422,18 +424,32 @@ newDishEnvironmentSliders.forEach((slider) => {
     syncRangeOutput(slider);
   });
 });
-dishList?.addEventListener('click', (event) => {
+dishList?.addEventListener('pointerdown', (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) {
     return;
   }
   const selectButton = target.closest<HTMLButtonElement>('[data-select-dish]');
   if (selectButton) {
+    event.preventDefault();
     const dish = dishes.find((item) => item.id === Number(selectButton.dataset.selectDish));
     if (dish) {
       setActiveDish(dish, dish.inspectedTarget);
     }
   }
+});
+dishList?.addEventListener('input', (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement) || !target.dataset.renameDish) {
+    return;
+  }
+  const dish = dishes.find((item) => item.id === Number(target.dataset.renameDish));
+  if (!dish) {
+    return;
+  }
+  dish.name = target.value.slice(0, 32);
+  updateDishLabel(dish);
+  dishPickerSignature = currentDishPickerSignature();
 });
 dishList?.addEventListener('change', (event) => {
   const target = event.target;
@@ -447,7 +463,7 @@ dishList?.addEventListener('change', (event) => {
   dish.name = sanitizeDishName(target.value, dish.id);
   target.value = dish.name;
   updateDishLabel(dish);
-  updateHud();
+  dishPickerSignature = currentDishPickerSignature();
 });
 dishList?.addEventListener('keydown', (event) => {
   const target = event.target;
@@ -695,18 +711,18 @@ function bindDishEvents(dish: DishInstance): void {
       return;
     }
     const target = dish.renderer.pickAtScreenPosition(event.clientX, event.clientY, dish.simulation.state);
-    if (!sameTarget(dish.hoveredTarget, target)) {
+    if (!sameTarget(dish.hoveredTarget, target) || hoveredDish !== dish) {
       dish.hoveredTarget = target;
-      if (activeDish === dish) {
-        hoveredTarget = target;
-        updateHud();
-      }
+      hoveredDish = dish;
+      hoveredTarget = target;
+      updateHud();
     }
   });
 
   dish.canvas.addEventListener('pointerleave', () => {
     dish.hoveredTarget = null;
-    if (activeDish === dish) {
+    if (hoveredDish === dish) {
+      hoveredDish = null;
       hoveredTarget = null;
       updateHud();
     }
@@ -735,7 +751,10 @@ function setActiveDish(dish: DishInstance, target: MapPick = { kind: 'dish', id:
   simulation = dish.simulation;
   renderer = dish.renderer;
   inspectedTarget = target;
-  hoveredTarget = dish.hoveredTarget;
+  if (!hoveredDish || hoveredDish === dish) {
+    hoveredDish = dish;
+    hoveredTarget = dish.hoveredTarget;
+  }
   dish.inspectedTarget = target;
   dish.simulation.selectCell(target.kind === 'cell' ? target.id : null);
   dish.zIndex = nextDishZ;
@@ -749,6 +768,7 @@ function setActiveDish(dish: DishInstance, target: MapPick = { kind: 'dish', id:
 function clearActiveDish(): void {
   activeDish = null;
   inspectedTarget = { kind: 'dish', id: null };
+  hoveredDish = null;
   hoveredTarget = null;
   for (const dish of dishes) {
     dish.simulation.selectCell(null);
@@ -939,6 +959,8 @@ function createTutorialWorld(): void {
   }
   dishes = [];
   activeDish = null;
+  hoveredDish = null;
+  hoveredTarget = null;
   nextDishId = 1;
   nextDishZ = 1;
   const size = Math.min(560, Math.max(430, Math.round(window.innerWidth * 0.36)));
@@ -1228,7 +1250,7 @@ function updateHud(): void {
   if (selected) {
     const awareness = simulation.awarenessRadius(selected);
     const detections = scanDetections(selected, awareness);
-    const directive = currentDirective(selected, detections);
+    const directive = currentDirective(selected, detections, awareness);
     updateSelectedEntityHud(selected);
     if (directiveHeading) {
       directiveHeading.textContent = directive;
@@ -1342,35 +1364,36 @@ function describeCellDirective(
 function currentDirective(
   cell: Cell,
   detections: { resources: number; hazards: number; prey: number; rivals: number; nearestResource: number; nearestHazard: number },
+  awareness = simulation.awarenessRadius(cell),
 ): string {
   if (cell.ros > 55) {
-    return 'neutralize oxidative stress';
+    return 'Neutralize oxidative stress';
   }
   if (cell.aminoAcids < 12) {
-    return detections.resources > 0 ? 'seek amino acids for repair' : 'preserve membrane proteins';
+    return detections.resources > 0 ? 'Seek amino acids for repair' : 'Preserve membrane proteins';
   }
   if (cell.health < 0.35 || cell.atp < 14) {
-    return detections.resources > 0 ? 'transport glucose for emergency ATP' : 'starve slowly and consume internal structure';
+    return detections.resources > 0 ? 'Transport glucose for emergency ATP' : 'Starve slowly and consume internal structure';
   }
-  if (detections.hazards > 0 && detections.nearestHazard < simulation.awarenessRadius(cell) * 0.55) {
-    return 'evade poison echo';
+  if (detections.hazards > 0 && detections.nearestHazard < awareness * 0.55) {
+    return 'Evade poison echo';
   }
   if (cell.atp > 92 && cell.aminoAcids > 55 && cell.mass > 1.12 && cell.genome.split > 0.4) {
-    return 'prepare mitosis';
+    return 'Prepare mitosis';
   }
   if (detections.prey > 0 && cell.genome.predator > 0.55) {
-    return 'hunt smaller cell';
+    return 'Hunt smaller cells';
   }
   if (detections.resources > 0 && cell.genome.harvest >= cell.genome.predator) {
-    return 'seek strongest molecule signal';
+    return 'Seek strongest molecule signal';
   }
   if (detections.rivals > 0 && cell.genome.caution > 0.7) {
-    return 'keep distance from rival cells';
+    return 'Keep distance from rival cells';
   }
-  return 'explore and map surroundings';
+  return 'Explore and map surroundings';
 }
 
-function scanDetections(cell: Cell, awareness: number): {
+function scanDetections(cell: Cell, awareness: number, state: SimulationState = simulation.state): {
   resources: number;
   hazards: number;
   prey: number;
@@ -1385,21 +1408,21 @@ function scanDetections(cell: Cell, awareness: number): {
   let nearestResource = Infinity;
   let nearestHazard = Infinity;
 
-  for (const resource of simulation.state.resources) {
+  for (const resource of state.resources) {
     const d = distance(cell.position, resource.position);
     if (d <= awareness) {
       resources += 1;
       nearestResource = Math.min(nearestResource, d);
     }
   }
-  for (const hazard of simulation.state.hazards) {
+  for (const hazard of state.hazards) {
     const d = distance(cell.position, hazard.position);
     if (d <= awareness + hazard.radius) {
       hazards += 1;
       nearestHazard = Math.min(nearestHazard, d);
     }
   }
-  for (const other of simulation.state.cells) {
+  for (const other of state.cells) {
     if (other.id === cell.id) {
       continue;
     }
@@ -1435,7 +1458,16 @@ function updateDishStatsHud(): void {
   if (dishDetail) dishDetail.innerHTML = formatDishState();
   if (dishList) {
     dishList.hidden = Boolean(activeDish);
-    dishList.innerHTML = activeDish ? '' : formatDishPickerList();
+    if (activeDish) {
+      dishList.innerHTML = '';
+      dishPickerSignature = '';
+    } else if (!dishList.contains(document.activeElement)) {
+      const signature = currentDishPickerSignature();
+      if (signature !== dishPickerSignature) {
+        dishList.innerHTML = formatDishPickerList();
+        dishPickerSignature = signature;
+      }
+    }
   }
   setMeter(energyMeter, 0);
   setMeter(massMeter, 0);
@@ -1488,6 +1520,12 @@ function formatDishPickerList(): string {
   `).join('');
 }
 
+function currentDishPickerSignature(): string {
+  return dishes
+    .map((dish) => `${dish.id}:${dish.name}:${dish.simulation.state.cells.length}:${dish.simulation.state.running ? 1 : 0}`)
+    .join('|');
+}
+
 function sanitizeDishName(value: string, id: number): string {
   return value.trim().replace(/\s+/g, ' ').slice(0, 32) || `Dish ${id}`;
 }
@@ -1526,8 +1564,8 @@ function updateSelectedEntityHud(selectedCell: Cell | null): void {
     if (entityDetail) entityDetail.textContent = `Dish ${activeDish.id} is selected. Click an entity inside this dish to inspect it.`;
     return;
   }
-  if (entityName) entityName.textContent = targetLabel(inspectedTarget);
-  if (entityDetail) entityDetail.innerHTML = formatHoverTarget(inspectedTarget);
+  if (entityName) entityName.textContent = targetLabel(inspectedTarget, activeDish);
+  if (entityDetail) entityDetail.innerHTML = formatHoverTarget(inspectedTarget, activeDish);
 }
 
 function fitEntityWindowForSelection(): void {
@@ -1543,30 +1581,34 @@ function updateHoverInfo(): void {
   if (!hoverName || !hoverDetail) {
     return;
   }
-  if (!hoveredTarget) {
+  const sourceDish = hoveredDish ?? activeDish;
+  if (!hoveredTarget || !sourceDish) {
     hoverName.textContent = 'Nothing under pointer';
     hoverDetail.innerHTML = '<div class="hover-fact-grid"><span class="hover-fact" data-tooltip="Move over any dish item to see a compact breakdown here."><span>Hint</span><strong>Hover a dish entity</strong></span></div>';
     return;
   }
-  hoverName.textContent = targetLabel(hoveredTarget);
-  hoverDetail.innerHTML = formatHoverTarget(hoveredTarget);
+  const label = targetLabel(hoveredTarget, sourceDish);
+  hoverName.textContent = hoveredTarget.kind === 'dish' ? sourceDish.name : `${sourceDish.name} | ${label}`;
+  hoverDetail.innerHTML = formatHoverTarget(hoveredTarget, sourceDish);
 }
 
-function formatHoverTarget(target: MapPick): string {
+function formatHoverTarget(target: MapPick, dish: DishInstance): string {
+  const sourceSimulation = dish.simulation;
+  const state = sourceSimulation.state;
   if (target.kind === 'cell') {
-    const cell = simulation.state.cells.find((item) => item.id === target.id);
+    const cell = state.cells.find((item) => item.id === target.id);
     if (!cell) return hoverFacts([['Status', 'Signal lost', 'The hovered cell no longer exists in this dish.']]);
-    const awareness = simulation.awarenessRadius(cell);
-    const detections = scanDetections(cell, awareness);
+    const awareness = sourceSimulation.awarenessRadius(cell);
+    const detections = scanDetections(cell, awareness, state);
     return hoverFacts([
-      ['Directive', currentDirective(cell, detections), 'What this cell is currently trying to do based on internal state, DNA, and nearby signals.'],
+      ['Directive', currentDirective(cell, detections, awareness), 'What this cell is currently trying to do based on internal state, DNA, and nearby signals.'],
       ['ATP', Math.round(cell.atp).toString(), 'Immediate energy used for movement, transport, repair, growth, and division.'],
       ['Health', `${Math.round(cell.health * 100)}%`, 'Cell survival condition. Poison, starvation, ROS, and low materials lower it.'],
       ['Sensing', awareness.toFixed(1), 'How far this cell can detect resources, poison, prey, and rivals.'],
     ]);
   }
   if (target.kind === 'resource') {
-    const resource = simulation.state.resources.find((item) => item.id === target.id);
+    const resource = state.resources.find((item) => item.id === target.id);
     if (!resource) return hoverFacts([['Status', 'Consumed', 'This resource was consumed or moved out of range.']]);
     return hoverFacts([
       ['Kind', resourceLabel(resource.kind), 'The resource type determines which internal store it can refill.'],
@@ -1576,7 +1618,7 @@ function formatHoverTarget(target: MapPick): string {
     ]);
   }
   if (target.kind === 'hazard') {
-    const hazard = simulation.state.hazards.find((item) => item.id === target.id);
+    const hazard = state.hazards.find((item) => item.id === target.id);
     if (!hazard) return hoverFacts([['Status', 'Faded', 'This poison cloud is no longer present.']]);
     return hoverFacts([
       ['Kind', 'Poison cloud', 'Hazards damage cells that overlap them.'],
@@ -1586,7 +1628,7 @@ function formatHoverTarget(target: MapPick): string {
     ]);
   }
   if (target.kind === 'block') {
-    const block = simulation.state.blocks.find((item) => item.id === target.id);
+    const block = state.blocks.find((item) => item.id === target.id);
     if (!block) return hoverFacts([['Status', 'Gone', 'This mineral block is no longer present.']]);
     return hoverFacts([
       ['Kind', 'Mineral block', 'A solid obstacle. Cells cannot overlap or harvest it.'],
@@ -1596,10 +1638,10 @@ function formatHoverTarget(target: MapPick): string {
     ]);
   }
   return hoverFacts([
-    ['Medium', activeDish ? activeDish.name : 'Petri dish', 'Open agar medium inside the selected petri dish.'],
-    ['Cells', simulation.state.cells.length.toString(), 'Living cells currently in this dish.'],
-    ['Resources', simulation.state.resources.length.toString(), 'Glucose, amino acid, oxygen, and light markers in this dish.'],
-    ['Poison', simulation.state.hazards.length.toString(), 'Hazard clouds currently in this dish.'],
+    ['Medium', dish.name, 'Open agar medium inside this petri dish.'],
+    ['Cells', state.cells.length.toString(), 'Living cells currently in this dish.'],
+    ['Resources', state.resources.length.toString(), 'Glucose, amino acid, oxygen, and light markers in this dish.'],
+    ['Poison', state.hazards.length.toString(), 'Hazard clouds currently in this dish.'],
   ]);
 }
 
@@ -1619,30 +1661,35 @@ function resourceUse(kind: ResourceKind): string {
   return 'Light intake';
 }
 
-function describeHoverTarget(target: MapPick): string {
+function describeHoverTarget(target: MapPick, dish: DishInstance | null = activeDish ?? hoveredDish): string {
+  if (!dish) {
+    return 'No dish under pointer.';
+  }
+  const sourceSimulation = dish.simulation;
+  const state = sourceSimulation.state;
   if (target.kind === 'cell') {
-    const cell = simulation.state.cells.find((item) => item.id === target.id);
+    const cell = state.cells.find((item) => item.id === target.id);
     if (!cell) return 'Cell signal disappeared from the medium.';
-    const awareness = simulation.awarenessRadius(cell);
-    const detections = scanDetections(cell, awareness);
-    return `${currentDirective(cell, detections)} · ATP ${Math.round(cell.atp)} · amino acids ${Math.round(cell.aminoAcids)} · oxygen ${Math.round(cell.oxygen)} · ROS ${Math.round(cell.ros)} · health ${Math.round(cell.health * 100)}% · size ${cell.radius.toFixed(1)} · sensor ${awareness.toFixed(1)}.`;
+    const awareness = sourceSimulation.awarenessRadius(cell);
+    const detections = scanDetections(cell, awareness, state);
+    return `${currentDirective(cell, detections, awareness)} · ATP ${Math.round(cell.atp)} · amino acids ${Math.round(cell.aminoAcids)} · oxygen ${Math.round(cell.oxygen)} · ROS ${Math.round(cell.ros)} · health ${Math.round(cell.health * 100)}% · size ${cell.radius.toFixed(1)} · sensor ${awareness.toFixed(1)}.`;
   }
   if (target.kind === 'resource') {
-    const resource = simulation.state.resources.find((item) => item.id === target.id);
+    const resource = state.resources.find((item) => item.id === target.id);
     if (!resource) return 'Resource was consumed or moved out of range.';
     return `${describeResource(resource.kind, resource.amount)} Size ${resource.radius.toFixed(1)} · position ${formatPosition(resource.position)}.`;
   }
   if (target.kind === 'hazard') {
-    const hazard = simulation.state.hazards.find((item) => item.id === target.id);
+    const hazard = state.hazards.find((item) => item.id === target.id);
     if (!hazard) return 'Poison signal faded.';
     return `Poison cloud · potency ${hazard.potency.toFixed(2)} · radius ${hazard.radius.toFixed(1)} · damages membrane integrity and raises avoidance pressure. Position ${formatPosition(hazard.position)}.`;
   }
   if (target.kind === 'block') {
-    const block = simulation.state.blocks.find((item) => item.id === target.id);
+    const block = state.blocks.find((item) => item.id === target.id);
     if (!block) return 'Mineral block is no longer present.';
     return `Mineral block · non-living obstacle · approximate body ${Math.round(block.size.x)} x ${Math.round(block.size.y)} · cells route around it. Position ${formatPosition(block.position)}.`;
   }
-  return `Open agar medium · ${simulation.state.cells.length} cells, ${simulation.state.resources.length} resources, ${simulation.state.hazards.length} poison clouds · tick ${simulation.state.tick}.`;
+  return `Open agar medium · ${state.cells.length} cells, ${state.resources.length} resources, ${state.hazards.length} poison clouds · tick ${state.tick}.`;
 }
 
 function selectedEntityLabel(): string {
@@ -1652,16 +1699,17 @@ function selectedEntityLabel(): string {
   if (inspectedTarget.kind === 'dish') {
     return 'No entity selected';
   }
-  return targetLabel(inspectedTarget);
+  return targetLabel(inspectedTarget, activeDish);
 }
 
-function targetLabel(target: MapPick): string {
+function targetLabel(target: MapPick, dish: DishInstance | null = activeDish): string {
+  const state = dish?.simulation.state ?? simulation.state;
   if (target.kind === 'cell') {
-    const cell = target.kind === 'cell' ? simulation.state.cells.find((item) => item.id === target.id) : null;
+    const cell = target.kind === 'cell' ? state.cells.find((item) => item.id === target.id) : null;
     return cell ? `Cell ${cell.id}` : 'Cell';
   }
   if (target.kind === 'resource') {
-    const resource = simulation.state.resources.find((item) => item.id === target.id);
+    const resource = state.resources.find((item) => item.id === target.id);
     if (!resource) return 'Resource';
     const labels = {
       glucose: 'Glucose',
@@ -1921,6 +1969,7 @@ function applySaveData(payload: SaveData, message: string): void {
   dishes = [];
   activeDish = null;
   inspectedTarget = { kind: 'dish', id: null };
+  hoveredDish = null;
   hoveredTarget = null;
   nextDishId = 1;
   nextDishZ = 1;
