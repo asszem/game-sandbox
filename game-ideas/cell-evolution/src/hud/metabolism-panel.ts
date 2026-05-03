@@ -35,7 +35,7 @@ export function syncMetabolicDashboard(elements: MetabolicDashboardElements, cel
   setResourceReadout(elements.glycogenRate, elements.glycogenNodeDelta, cell?.glycogen ?? 0, rates?.glycogen ?? 0);
   setResourceReadout(elements.aminoRate, elements.aminoNodeDelta, cell?.aminoAcids ?? 0, rates?.amino ?? 0);
   setResourceReadout(elements.oxygenRate, elements.oxygenNodeDelta, cell?.oxygen ?? 0, rates?.oxygen ?? 0);
-  setLightFactor(elements.lightFactor, cell?.lightFactor ?? 0);
+  setPhotosynthesis(elements.lightFactor, cell);
   setDelta(elements.rosDelta, rates?.ros ?? 0, true);
   setDelta(elements.autophagyDelta, rates?.autophagy ?? 0, true);
 
@@ -49,9 +49,6 @@ export function syncMetabolicDashboard(elements: MetabolicDashboardElements, cel
     elements.root.classList.toggle('is-toxic', cell.ros > 45);
     elements.root.classList.toggle('is-autophagy', cell.autophagyRate > 0);
     elements.root.classList.toggle('is-paused', !running);
-    setConversionValue(elements.root, 'glucoseTransport', cell.glucoseTransport);
-    setConversionValue(elements.root, 'aminoTransport', cell.aminoTransport);
-    setConversionValue(elements.root, 'oxygenMetabolism', cell.oxygenMetabolism);
   } else if (elements.root) {
     elements.root.style.setProperty('--glucose-flow', '3px');
     elements.root.style.setProperty('--amino-flow', '3px');
@@ -62,16 +59,6 @@ export function syncMetabolicDashboard(elements: MetabolicDashboardElements, cel
     elements.root.classList.remove('is-toxic');
     elements.root.classList.remove('is-autophagy');
     elements.root.classList.add('is-paused');
-    setConversionValue(elements.root, 'glucoseTransport', 0.5);
-    setConversionValue(elements.root, 'aminoTransport', 0.5);
-    setConversionValue(elements.root, 'oxygenMetabolism', 0.5);
-  }
-}
-
-function setConversionValue(root: HTMLElement, key: 'glucoseTransport' | 'aminoTransport' | 'oxygenMetabolism', value: number): void {
-  const element = root.querySelector<HTMLElement>(`[data-conversion-value="${key}"]`);
-  if (element) {
-    element.textContent = `${Math.round(value * 100)}%`;
   }
 }
 
@@ -96,15 +83,18 @@ function configuredMetabolicRates(cell: Cell): MetabolicRates {
   glucose += Math.max(0, light) * (0.35 + cell.genome.harvest * 0.25);
   oxygen = clamp(oxygen + light * 0.018, 0, 100);
 
-  if (glucose > 80 && glycogen < 200 && atp > 1) {
-    const glucoseToPack = Math.min(glucose - 80, (200 - glycogen) * 2);
+  const storagePriority = cell.glucoseTransport ?? 0.5;
+  const storageThreshold = 92 - storagePriority * 32;
+  if (glucose > storageThreshold && glycogen < 200 && atp > 1) {
+    const glucoseToPack = Math.min((glucose - storageThreshold) * (0.35 + storagePriority), (200 - glycogen) * 2);
     glucose -= glucoseToPack;
     glycogen += glucoseToPack / 2;
     atp -= glucoseToPack / 2;
   }
 
-  if (glucose < 1 && glycogen > 0) {
-    const glucoseNeeded = 1 - glucose;
+  const releaseThreshold = 4 + (1 - storagePriority) * 12;
+  if (glucose < releaseThreshold && glycogen > 0) {
+    const glucoseNeeded = releaseThreshold - glucose;
     const glycogenToUnpack = Math.min(glycogen, glucoseNeeded / 2);
     glycogen -= glycogenToUnpack;
     glucose += glycogenToUnpack * 2;
@@ -136,8 +126,10 @@ function configuredMetabolicRates(cell: Cell): MetabolicRates {
   const movementCost = velocity
     * (0.28 + cell.genome.motility * 0.12)
     * Math.pow(cell.radius / 3.2, 1.45)
-    * (0.85 + cell.oxygenMetabolism * 0.35);
+    * (0.85 + cell.oxygenMetabolism * 0.35)
+    * (0.72 + (cell.movementBudget ?? 0.5) * 0.7);
   atp -= movementCost;
+  atp -= (cell.sensorBudget ?? 0.5) * 0.045;
 
   const repairBudget = Math.min(atp, amino, 0.06 + cell.ribosomeActivity * 0.16);
   if (ros > 18 && repairBudget > 0) {
@@ -180,16 +172,34 @@ function setResourceReadout(container: HTMLElement | null, deltaElement: HTMLEle
   setDelta(deltaElement, delta);
 }
 
-function setLightFactor(element: HTMLElement | null, value: number): void {
+function setPhotosynthesis(element: HTMLElement | null, cell: Cell | null): void {
   if (!element) {
     return;
   }
-  element.textContent = value.toFixed(2);
-  element.dataset.trend = value > 0.01 ? 'good' : 'flat';
+  const intake = Math.max(0, cell?.lightFactor ?? 0);
+  const glucose = cell ? intake * (0.35 + cell.genome.harvest * 0.25) : 0;
+  const oxygen = intake * 0.018;
+  element.innerHTML = `<span class="photosynthesis-intake">${intake.toFixed(2)} intake</span><span><span data-trend="${trendFor(glucose)}">${formatSigned(glucose)} Glucose</span> | <span data-trend="${trendFor(oxygen)}">${formatSigned(oxygen)} Oxygen</span></span>`;
+  element.dataset.trend = intake > 0.01 ? 'good' : 'flat';
   const parent = element.closest<HTMLElement>('.tri-gauge');
   if (parent) {
-    parent.dataset.flow = value > 0.01 ? 'good' : 'flat';
+    parent.dataset.flow = intake > 0.01 ? 'good' : 'flat';
+    parent.style.setProperty('--net-size', `${Math.min(46, intake * 42)}%`);
   }
+}
+
+function formatSigned(value: number): string {
+  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}`;
+}
+
+function trendFor(value: number): 'good' | 'bad' | 'flat' {
+  if (value > 0.005) {
+    return 'good';
+  }
+  if (value < -0.005) {
+    return 'bad';
+  }
+  return 'flat';
 }
 
 function setDelta(element: HTMLElement | null, value: number, inverted = false): void {

@@ -1,5 +1,5 @@
 import './styles/index.css';
-import { bindDishActionButtons, bindDishLayerClear, bindDishList, bindDishStateControls, bindDnaButtons, bindGlobalShortcuts, bindNewDishModal, bindSaveModal, bindTooltipToggle, bindTransportControls, bindTutorialControls } from './app/app-events';
+import { bindDirectiveSelects, bindDishActionButtons, bindDishLayerClear, bindDishList, bindDishStateControls, bindDnaButtons, bindGlobalShortcuts, bindNewDishModal, bindSaveModal, bindTooltipToggle, bindTransportControls, bindTutorialControls } from './app/app-events';
 import { drawMicroscopeBackdrop } from './app/backdrop';
 import { DishManager, MAX_DISH_COUNT } from './app/dish-manager';
 import { addedDishPlacement, defaultDishSize } from './app/dish-layout';
@@ -36,6 +36,7 @@ const {
   dishList,
   dnaButtons,
   transportControls,
+  directiveSelects,
   dishActionButtons,
   dropItemButtons,
   toastRegion,
@@ -170,6 +171,10 @@ bindDnaButtons(dnaButtons, {
   updateHud,
 });
 bindTransportControls(transportControls, {
+  selectedCell: () => simulation.selectedCell,
+  updateHud,
+});
+bindDirectiveSelects(directiveSelects, {
   selectedCell: () => simulation.selectedCell,
   updateHud,
 });

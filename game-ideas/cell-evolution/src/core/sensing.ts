@@ -8,7 +8,8 @@ export type SensingProfile = {
 };
 
 export function sensingProfile(cell: Cell): SensingProfile {
-  const baseRadius = 16 + cell.radius * 3.4 + cell.genome.caution * 16;
+  const sensorBudget = cell.sensorBudget ?? 0.5;
+  const baseRadius = (16 + cell.radius * 3.4 + cell.genome.caution * 16) * (0.72 + sensorBudget * 0.62);
   const atpResolution = clamp(cell.atp / 80, 0.18, 1.25);
   const aminoIntegrity = clamp(cell.aminoAcids / 45, 0.25, 1.15);
   const oxygenProcessing = clamp(cell.oxygen / 35, 0.35, 1.15);
@@ -30,7 +31,7 @@ export function sensingProfile(cell: Cell): SensingProfile {
   return {
     radius,
     clarity,
-    processing: clamp(oxygenProcessing * rosIntegrity, 0.2, 1),
+    processing: clamp(oxygenProcessing * rosIntegrity * (0.72 + sensorBudget * 0.48), 0.2, 1),
   };
 }
 

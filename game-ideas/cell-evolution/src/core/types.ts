@@ -4,6 +4,7 @@ export type Vec2 = {
 };
 
 export type ResourceKind = 'glucose' | 'amino-acid' | 'oxygen' | 'light';
+export type SearchPreference = ResourceKind | 'balanced';
 export type HazardKind = 'poison';
 export type DNAKey = 'motility' | 'split' | 'harvest' | 'predator' | 'caution';
 
@@ -29,6 +30,9 @@ export type Cell = {
   aminoTransport: number;
   oxygenMetabolism: number;
   ribosomeActivity: number;
+  sensorBudget: number;
+  movementBudget: number;
+  searchPreference: SearchPreference;
   atpRate: number;
   glucoseRate: number;
   glycogenRate: number;

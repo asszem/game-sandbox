@@ -56,6 +56,9 @@ export function createCellEntity(id: number, rng: EntityRng, position: Vec2, fam
     aminoTransport: rng.range(0.35, 0.65),
     oxygenMetabolism: rng.range(0.3, 0.6),
     ribosomeActivity: rng.range(0.35, 0.65),
+    sensorBudget: rng.range(0.35, 0.65),
+    movementBudget: rng.range(0.35, 0.65),
+    searchPreference: 'balanced',
     atpRate: 0,
     glucoseRate: 0,
     glycogenRate: 0,
@@ -96,6 +99,9 @@ export function normalizeCellEntity(cell: Cell): void {
   cell.aminoTransport ??= 0.5;
   cell.oxygenMetabolism ??= 0.45;
   cell.ribosomeActivity ??= 0.5;
+  cell.sensorBudget ??= 0.5;
+  cell.movementBudget ??= 0.5;
+  cell.searchPreference ??= 'balanced';
   cell.atpRate ??= 0;
   cell.glucoseRate ??= 0;
   cell.glycogenRate ??= 0;

@@ -1,5 +1,6 @@
 import type { Cell, DNAKey } from '../core/types';
 import { isRangeControlTarget, isTypingTarget, pulseButton } from '../hud/dom';
+import { isSearchPreference, type CellControlKey } from '../hud/directives-panel';
 import { syncRangeOutput } from './new-dish';
 
 type GlobalShortcutHandlers = {
@@ -280,11 +281,24 @@ export function bindTransportControls(controls: NodeListOf<HTMLInputElement>, ha
   controls.forEach((control) => {
     control.addEventListener('input', () => {
       const cell = handlers.selectedCell();
-      const key = control.dataset.control as 'glucoseTransport' | 'aminoTransport' | 'oxygenMetabolism' | 'ribosomeActivity';
+      const key = control.dataset.control as CellControlKey;
       if (!cell || !key) {
         return;
       }
       cell[key] = Number(control.value) / 100;
+      handlers.updateHud();
+    });
+  });
+}
+
+export function bindDirectiveSelects(selects: NodeListOf<HTMLSelectElement>, handlers: TransportHandlers): void {
+  selects.forEach((select) => {
+    select.addEventListener('change', () => {
+      const cell = handlers.selectedCell();
+      if (!cell || select.dataset.cellSelect !== 'searchPreference' || !isSearchPreference(select.value)) {
+        return;
+      }
+      cell.searchPreference = select.value;
       handlers.updateHud();
     });
   });

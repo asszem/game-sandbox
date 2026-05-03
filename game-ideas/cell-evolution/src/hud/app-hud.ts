@@ -2,7 +2,7 @@ import type { DishInstance } from '../app/dish-types';
 import type { Cell } from '../core/types';
 import type { MapPick } from '../render/types';
 import type { AppElements } from '../app/dom-elements';
-import { currentDirective, describeCellDirective, formatCellState, scanDetections } from './entity-panel';
+import { currentDirective, formatCellState, formatNavigationState, scanDetections } from './entity-panel';
 import { formatHoverTarget, targetLabel } from './hover-info';
 import { currentDishPickerSignature, formatDishPickerList, formatDishState } from './state-panel';
 
@@ -124,12 +124,7 @@ export function syncSelectedEntityPanel(
       elements.entityName.hidden = true;
     }
     if (elements.entityDetail) {
-      elements.entityDetail.innerHTML = formatCellState(
-        selectedCell,
-        detections,
-        awareness,
-        activeDish.simulation.sensingProfile(selectedCell).clarity,
-      );
+      elements.entityDetail.innerHTML = formatCellState(selectedCell);
     }
     return;
   }
@@ -162,8 +157,8 @@ export function syncDirectivePanel(elements: DirectiveElements, activeDish: Dish
     }
     if (elements.directiveDetail) {
       elements.directiveDetail.textContent = activeDish
-        ? `Select a cell in dish ${activeDish.id} to influence membrane transport and DNA directives.`
-        : 'Select a dish, then select a cell to influence membrane transport and DNA directives.';
+        ? `Select a cell in dish ${activeDish.id} to tune sensing, movement, search preference, and DNA traits.`
+        : 'Select a dish, then select a cell to tune sensing, movement, search preference, and DNA traits.';
     }
     return;
   }
@@ -174,7 +169,12 @@ export function syncDirectivePanel(elements: DirectiveElements, activeDish: Dish
     elements.directiveHeading.textContent = currentDirective(selectedCell, detections, awareness);
   }
   if (elements.directiveDetail) {
-    elements.directiveDetail.textContent = describeCellDirective(selectedCell, detections, awareness);
+    elements.directiveDetail.innerHTML = formatNavigationState(
+      selectedCell,
+      detections,
+      awareness,
+      activeDish.simulation.sensingProfile(selectedCell).clarity,
+    );
   }
 }
 
@@ -216,14 +216,14 @@ export function syncWindowTitles(elements: TitleElements, activeDish: DishInstan
   }
   if (elements.entityWindowTitle) {
     elements.entityWindowTitle.textContent = activeDish && inspectedTarget.kind === 'cell'
-      ? `${dishLabel} | ${entityLabel} | Metabolism`
+      ? `${dishLabel} | ${entityLabel} | Homeostasis`
       : activeDish
         ? `${dishLabel} | ${entityLabel}`
         : 'No dish | Entity';
   }
   if (elements.directivesWindowTitle) {
     elements.directivesWindowTitle.textContent = activeDish && inspectedTarget.kind === 'cell'
-      ? `${dishLabel} | ${entityLabel} | Directives`
-      : `${dishLabel} | Directives`;
+      ? `${dishLabel} | ${entityLabel} | Navigation`
+      : `${dishLabel} | Navigation`;
   }
 }

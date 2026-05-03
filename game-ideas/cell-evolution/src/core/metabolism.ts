@@ -16,15 +16,18 @@ export function applyCellMetabolism(cell: Cell, lightFactor: number, before: Met
   cell.glucose += photosynthesisGlucose;
   cell.oxygen = clamp(cell.oxygen + lightFactor * 0.018, 0, 100);
 
-  if (cell.glucose > 80 && cell.glycogen < 200 && cell.atp > 1) {
-    const glucoseToPack = Math.min(cell.glucose - 80, (200 - cell.glycogen) * 2);
+  const storagePriority = cell.glucoseTransport ?? 0.5;
+  const storageThreshold = 92 - storagePriority * 32;
+  if (cell.glucose > storageThreshold && cell.glycogen < 200 && cell.atp > 1) {
+    const glucoseToPack = Math.min((cell.glucose - storageThreshold) * (0.35 + storagePriority), (200 - cell.glycogen) * 2);
     cell.glucose -= glucoseToPack;
     cell.glycogen += glucoseToPack / 2;
     cell.atp -= glucoseToPack / 2;
   }
 
-  if (cell.glucose < 1 && cell.glycogen > 0) {
-    const glucoseNeeded = 1 - cell.glucose;
+  const releaseThreshold = 4 + (1 - storagePriority) * 12;
+  if (cell.glucose < releaseThreshold && cell.glycogen > 0) {
+    const glucoseNeeded = releaseThreshold - cell.glucose;
     const glycogenToUnpack = Math.min(cell.glycogen, glucoseNeeded / 2);
     cell.glycogen -= glycogenToUnpack;
     cell.glucose += glycogenToUnpack * 2;
@@ -58,8 +61,9 @@ export function applyCellMetabolism(cell: Cell, lightFactor: number, before: Met
     cell.autophagyRate = autophagyAmino;
   }
 
-  const movementCost = length(cell.velocity) * (0.28 + cell.genome.motility * 0.12) * Math.pow(cell.radius / 3.2, 1.45) * (0.85 + cell.oxygenMetabolism * 0.35);
+  const movementCost = length(cell.velocity) * (0.28 + cell.genome.motility * 0.12) * Math.pow(cell.radius / 3.2, 1.45) * (0.85 + cell.oxygenMetabolism * 0.35) * (0.72 + (cell.movementBudget ?? 0.5) * 0.7);
   cell.atp -= movementCost;
+  cell.atp -= (cell.sensorBudget ?? 0.5) * 0.045;
   const repairBudget = Math.min(cell.atp, cell.aminoAcids, 0.06 + cell.ribosomeActivity * 0.16);
   if (cell.ros > 18 && repairBudget > 0) {
     cell.ros -= repairBudget * (0.55 + cell.ribosomeActivity * 0.65);

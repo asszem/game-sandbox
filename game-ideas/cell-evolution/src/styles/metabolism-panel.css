@@ -165,7 +165,7 @@
 }
 .tri-gauges {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(220px, 1.65fr) minmax(92px, 0.75fr) minmax(92px, 0.75fr);
   gap: 8px;
 }
 
@@ -265,15 +265,32 @@
   color: #ff5d7a;
 }
 
-.tri-gauge-light {
-  grid-template-rows: auto 1fr;
-  justify-items: start;
+.tri-gauge-light strong {
+  display: grid;
+  gap: 2px;
+  color: rgba(247, 255, 243, 0.48);
+  font-size: 11px;
+  line-height: 1.25;
 }
 
-.tri-gauge-light strong {
-  align-self: end;
+.tri-gauge-light strong span:last-child {
+  white-space: nowrap;
+}
+
+.photosynthesis-intake {
+  color: #f9ff4d;
+}
+
+.tri-gauge-light strong [data-trend='good'] {
+  color: #18ffc8;
+}
+
+.tri-gauge-light strong [data-trend='flat'] {
   color: rgba(247, 255, 243, 0.48);
-  font-size: 18px;
+}
+
+.tri-gauge-light strong [data-trend='bad'] {
+  color: #ff5d7a;
 }
 
 .tri-gauge-light strong[data-trend='good'] {

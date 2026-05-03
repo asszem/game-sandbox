@@ -9,7 +9,7 @@ import {
   syncTopReadouts,
   syncWindowTitles,
 } from '../hud/app-hud';
-import { setDnaEnabled, syncTransportControls } from '../hud/directives-panel';
+import { setDnaEnabled, syncDirectiveSelects, syncTransportControls } from '../hud/directives-panel';
 import { syncGamePanelVisibility, syncGameStats } from '../hud/game-panel';
 import { syncMetabolicDashboard } from '../hud/metabolism-panel';
 import { syncTooltipToggle } from '../hud/tooltips';
@@ -75,6 +75,7 @@ export function syncMainHud(context: {
 
   if (!activeDish) {
     syncCellOnlyPanels(elements, false, false);
+    syncDirectiveSelects(elements.directiveSelects, null);
     syncSelectedEntityPanel({ entityName: elements.entityName, entityDetail: elements.entityDetail }, null, inspectedTarget, null);
     syncDirectivePanel({ directiveHeading: elements.directiveHeading, directiveDetail: elements.directiveDetail }, null, null);
     return {
@@ -96,6 +97,7 @@ export function syncMainHud(context: {
     }, selected);
     syncMetabolism(elements, selected, activeDish.simulation.state.running);
     syncTransportControls(elements.transportControls, elements.transportOutputs, selected);
+    syncDirectiveSelects(elements.directiveSelects, selected);
     setDnaEnabled(elements.dnaButtons, elements.transportControls, true);
     return {
       dishPickerSignature,
@@ -106,6 +108,7 @@ export function syncMainHud(context: {
   setDnaEnabled(elements.dnaButtons, elements.transportControls, false);
   syncMetabolism(elements, null, activeDish.simulation.state.running);
   syncTransportControls(elements.transportControls, elements.transportOutputs, null);
+  syncDirectiveSelects(elements.directiveSelects, null);
   syncSelectedEntityPanel({ entityName: elements.entityName, entityDetail: elements.entityDetail }, activeDish, inspectedTarget, null);
   syncDirectivePanel({ directiveHeading: elements.directiveHeading, directiveDetail: elements.directiveDetail }, activeDish, null);
   return {

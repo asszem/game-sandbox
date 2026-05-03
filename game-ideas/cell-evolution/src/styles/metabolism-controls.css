@@ -56,7 +56,7 @@
 
 .channel-controls {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -125,11 +125,31 @@
   --channel-color: #18ffc8;
 }
 
+.transport-controls label:has([data-control='sensorBudget']) {
+  color: #b9f9ff;
+  --channel-color: #b9f9ff;
+}
+
+.transport-controls label:has([data-control='movementBudget']) {
+  color: #f5d994;
+  --channel-color: #f5d994;
+}
+
 .channel-controls input[type='range'],
 .transport-controls input[type='range'] {
   height: 16px;
   appearance: none;
   background: transparent;
+}
+
+.transport-controls select {
+  height: 30px;
+  border: 1px solid rgba(68, 255, 203, 0.22);
+  border-radius: 6px;
+  padding: 0 8px;
+  background: rgba(4, 9, 16, 0.78);
+  color: #f7fff3;
+  font: inherit;
 }
 
 .channel-controls input[type='range']::-webkit-slider-runnable-track,
@@ -190,4 +210,3 @@
     0 0 0 1px rgba(4, 9, 16, 0.86),
     0 0 14px color-mix(in srgb, var(--channel-color, #18ffc8) 45%, transparent);
 }
-

@@ -48,6 +48,13 @@ h3 {
   opacity: 0.35;
 }
 
+.directive-summary {
+  margin: 0 0 8px;
+  color: rgba(235, 246, 226, 0.68);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
 .dna-buttons button {
   position: relative;
   min-height: 30px;

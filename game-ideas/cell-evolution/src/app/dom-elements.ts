@@ -38,6 +38,7 @@ export function queryAppElements(): AppElements {
     dnaButtons: document.querySelectorAll<HTMLButtonElement>('[data-dna]'),
     transportControls: document.querySelectorAll<HTMLInputElement>('[data-control]'),
     transportOutputs: document.querySelectorAll<HTMLOutputElement>('[data-control-value]'),
+    directiveSelects: document.querySelectorAll<HTMLSelectElement>('[data-cell-select]'),
     dishActionButtons: document.querySelectorAll<HTMLButtonElement>('[data-dish-action]'),
     addDishButton: document.querySelector<HTMLButtonElement>('[data-dish-action="add"]'),
     deleteDishButton: document.querySelector<HTMLButtonElement>('[data-dish-action="delete"]'),
@@ -117,6 +118,7 @@ export type AppElements = {
   dnaButtons: NodeListOf<HTMLButtonElement>;
   transportControls: NodeListOf<HTMLInputElement>;
   transportOutputs: NodeListOf<HTMLOutputElement>;
+  directiveSelects: NodeListOf<HTMLSelectElement>;
   dishActionButtons: NodeListOf<HTMLButtonElement>;
   addDishButton: HTMLButtonElement | null;
   deleteDishButton: HTMLButtonElement | null;

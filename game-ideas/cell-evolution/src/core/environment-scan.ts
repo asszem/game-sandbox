@@ -9,7 +9,16 @@ export function scanEnvironment(state: SimulationState, cell: Cell, awareness: n
     if (d > awareness) {
       continue;
     }
-    const value = resource.kind === 'light' ? 0.75 : 1.25;
+    const preferred = cell.searchPreference === resource.kind ? 1.8 : cell.searchPreference === 'balanced' ? 1 : 0.72;
+    const need =
+      resource.kind === 'glucose'
+        ? 1.4 - Math.min(1, (cell.glucose + cell.glycogen * 0.45) / 80)
+        : resource.kind === 'oxygen'
+          ? 1.35 - Math.min(1, cell.oxygen / 55)
+          : resource.kind === 'amino-acid'
+            ? 1.3 - Math.min(1, cell.aminoAcids / 55)
+            : 1.1 - Math.min(1, cell.lightFactor * 2);
+    const value = (resource.kind === 'light' ? 0.75 : 1.25) * preferred * Math.max(0.35, need);
     pull = add(pull, scale(normalize(sub(resource.position, cell.position)), value * (1 - d / awareness) * cell.genome.harvest));
   }
 

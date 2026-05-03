@@ -337,10 +337,11 @@ export class CellSimulation {
     const awareness = this.awarenessRadius(cell);
     const pull = scanEnvironment(this.state, cell, awareness);
     const jitter = vec(this.rng.signed(0.15), this.rng.signed(0.15));
-    const desired = add(scale(normalize(pull), 0.08 + cell.genome.motility * 0.16), jitter);
+    const movementBudget = cell.movementBudget ?? 0.5;
+    const desired = add(scale(normalize(pull), (0.08 + cell.genome.motility * 0.16) * (0.55 + movementBudget * 0.9)), jitter);
     const metabolicBoost = 0.75 + cell.oxygenMetabolism * 0.55;
     const sizeDrag = 1 + Math.max(0, cell.radius - 3) * 0.16;
-    cell.velocity = clampLength(add(scale(cell.velocity, 0.82), desired), ((0.38 + cell.genome.motility * 0.42) * metabolicBoost) / sizeDrag);
+    cell.velocity = clampLength(add(scale(cell.velocity, 0.82), desired), (((0.38 + cell.genome.motility * 0.42) * metabolicBoost) / sizeDrag) * (0.55 + movementBudget * 0.9));
     cell.position = add(cell.position, cell.velocity);
     cell.lastSignal = pull;
 

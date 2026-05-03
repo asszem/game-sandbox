@@ -3,7 +3,7 @@ import type { Cell, Resource } from './types';
 export function transportResource(cell: Cell, resource: Resource): number {
   const channel =
     resource.kind === 'glucose'
-      ? cell.glucoseTransport
+      ? 0.42 + cell.genome.harvest * 0.28
       : resource.kind === 'amino-acid'
         ? cell.aminoTransport
         : resource.kind === 'oxygen'

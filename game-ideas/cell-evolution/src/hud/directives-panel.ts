@@ -1,6 +1,6 @@
-import type { Cell } from '../core/types';
+import type { Cell, SearchPreference } from '../core/types';
 
-type TransportControlKey = 'glucoseTransport' | 'aminoTransport' | 'oxygenMetabolism' | 'ribosomeActivity';
+export type CellControlKey = 'glucoseTransport' | 'aminoTransport' | 'oxygenMetabolism' | 'ribosomeActivity' | 'sensorBudget' | 'movementBudget';
 
 export function setDnaEnabled(
   dnaButtons: NodeListOf<HTMLButtonElement>,
@@ -21,13 +21,26 @@ export function syncTransportControls(
   cell: Cell | null,
 ): void {
   transportControls.forEach((control) => {
-    const key = control.dataset.control as TransportControlKey;
+    const key = control.dataset.control as CellControlKey;
     const value = cell ? Math.round((cell[key] ?? 0.5) * 100) : 0;
     control.value = String(value);
   });
   transportOutputs.forEach((output) => {
-    const key = output.dataset.controlValue as TransportControlKey;
+    const key = output.dataset.controlValue as CellControlKey;
     const value = cell ? Math.round((cell[key] ?? 0.5) * 100) : 0;
     output.textContent = `${value}%`;
   });
+}
+
+export function syncDirectiveSelects(selects: NodeListOf<HTMLSelectElement>, cell: Cell | null): void {
+  selects.forEach((select) => {
+    if (select.dataset.cellSelect === 'searchPreference') {
+      select.value = cell?.searchPreference ?? 'balanced';
+      select.disabled = !cell;
+    }
+  });
+}
+
+export function isSearchPreference(value: string): value is SearchPreference {
+  return value === 'balanced' || value === 'glucose' || value === 'amino-acid' || value === 'oxygen' || value === 'light';
 }

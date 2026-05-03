@@ -14,8 +14,7 @@ export type DetectionSummary = {
 type CellStatState = 'danger' | 'warning' | 'stable';
 type CellStat = [label: string, value: string, tooltip: string, state?: CellStatState];
 
-export function formatCellState(cell: Cell, detections: DetectionSummary, awareness: number, sensingClarity: number): string {
-  const strongest = Object.entries(cell.genome).sort((a, b) => b[1] - a[1])[0];
+export function formatCellState(cell: Cell): string {
   const healthPercent = Math.round(cell.health * 100);
   const healthState = cell.health <= 0.25 || cell.atp <= 5 || cell.mass <= 0.28
     ? 'danger'
@@ -32,6 +31,13 @@ export function formatCellState(cell: Cell, detections: DetectionSummary, awaren
     ['Autophagy', `${cell.autophagyRate.toFixed(2)}/tick`, 'Autophagy is emergency self-eating: when glucose and glycogen are empty, the cell breaks down amino acids and mass for fuel, hurting health.', cell.autophagyRate > 0 ? 'danger' : undefined],
     ['Gen', cell.generation.toString(), 'Generation counts how many divisions separate this cell from the starting population.'],
     ['Size', cell.radius.toFixed(1), 'Cell size affects collision area, food intake, vulnerability, and whether the cell is ready to divide.'],
+  ];
+  return `<span class="cell-stat-grid">${stats.map(([label, value, tooltip, state]) => `<span class="cell-stat${state ? ` cell-stat-${state}` : ''}" data-tooltip="${escapeHtml(tooltip)}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></span>`).join('')}</span>`;
+}
+
+export function formatNavigationState(cell: Cell, detections: DetectionSummary, awareness: number, sensingClarity: number): string {
+  const strongest = Object.entries(cell.genome).sort((a, b) => b[1] - a[1])[0];
+  const stats: CellStat[] = [
     [
       'Sensing',
       `${awareness.toFixed(1)} · ${Math.round(sensingClarity * 100)}%`,
@@ -39,12 +45,12 @@ export function formatCellState(cell: Cell, detections: DetectionSummary, awaren
     ],
     ['DNA', `${strongest[0]} ${strongest[1].toFixed(2)}`, 'Dominant DNA is the strongest current trait shaping behavior, metabolism, sensing, and division priorities.'],
     ['Nearby', `${detections.resources} molecules · ${detections.hazards} poison · ${detections.prey} prey · ${detections.rivals} rivals`, 'Nearby signals are what the cell can currently sense and use for movement, feeding, avoidance, or hunting decisions.'],
+    ['Search', searchPreferenceLabel(cell.searchPreference), 'Search preference biases movement toward one ingredient. Balanced mode still weighs the most depleted internal reserves.'],
   ];
-  return `<span class="cell-stat-grid">${stats.map(([label, value, tooltip, state]) => `<span class="cell-stat${state ? ` cell-stat-${state}` : ''}" data-tooltip="${escapeHtml(tooltip)}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></span>`).join('')}</span>`;
-}
-
-export function describeCellDirective(cell: Cell, detections: DetectionSummary, awareness: number): string {
-  return `Current directive is inferred from ATP, amino acids, oxygen, ROS, nearby echoes, and DNA traits. Transport settings: glucose ${Math.round(cell.glucoseTransport * 100)}%, amino acids ${Math.round(cell.aminoTransport * 100)}%, mitochondria ${Math.round(cell.oxygenMetabolism * 100)}%, ribosome repair ${Math.round(cell.ribosomeActivity * 100)}%. Sensor range ${awareness.toFixed(1)} sees ${detections.resources} molecules, ${detections.hazards} hazards, ${detections.prey} prey, and ${detections.rivals} rivals.`;
+  return `
+    <p class="directive-summary">Current directive is inferred from ATP, amino acids, oxygen, ROS, nearby echoes, and DNA traits.</p>
+    <span class="cell-stat-grid">${stats.map(([label, value, tooltip, state]) => `<span class="cell-stat${state ? ` cell-stat-${state}` : ''}" data-tooltip="${escapeHtml(tooltip)}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></span>`).join('')}</span>
+  `;
 }
 
 export function currentDirective(cell: Cell, detections: DetectionSummary, awareness: number): string {
@@ -73,6 +79,13 @@ export function currentDirective(cell: Cell, detections: DetectionSummary, aware
     return 'Keep distance from rival cells';
   }
   return 'Explore and map surroundings';
+}
+
+function searchPreferenceLabel(value: Cell['searchPreference']): string {
+  if (value === 'amino-acid') {
+    return 'Amino acids';
+  }
+  return value[0].toUpperCase() + value.slice(1);
 }
 
 export function scanDetections(cell: Cell, awareness: number, state: SimulationState): DetectionSummary {
