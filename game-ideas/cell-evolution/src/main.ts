@@ -1,16 +1,20 @@
 import './styles/index.css';
+import { bindDishActionButtons, bindDishLayerClear, bindDishList, bindDnaButtons, bindGlobalShortcuts, bindNewDishModal, bindSaveModal, bindTooltipToggle, bindTransportControls, bindTutorialControls } from './app/app-events';
 import { drawMicroscopeBackdrop } from './app/backdrop';
-import { addedDishPlacement, defaultDishPlacements, defaultDishSize, resizeDishCanvas, tutorialDishPlacement, updateFloatingDishLabel } from './app/dish-layout';
+import { DishManager } from './app/dish-manager';
+import { addedDishPlacement, defaultDishSize, tutorialDishPlacement } from './app/dish-layout';
+import type { DishInstance } from './app/dish-types';
+import { queryAppElements } from './app/dom-elements';
+import { handleDishItemDrop } from './app/drop-handler';
 import { createDropController, type DropItemKind } from './app/drop-tools';
-import { defaultNewDishCellCount, defaultNewDishSetup, readNewDishSetup as readNewDishSetupFromControls, resetNewDishRangeControls as resetNewDishRanges, setNewDishCellCount as setNewDishCellCountControls, syncRangeOutput, type NewDishSetup } from './app/new-dish';
-import { SAVE_KEY, createSavePayload as createSavePayloadData, readSlot, renderSaveSlots as renderSaveSlotRows, saveToSlot as writeSaveSlot, type SaveData } from './app/save-load';
+import { createGameLoop } from './app/game-loop';
+import { defaultNewDishCellCount, defaultNewDishSetup, readNewDishSetup as readNewDishSetupFromControls, resetNewDishRangeControls as resetNewDishRanges, setNewDishCellCount as setNewDishCellCountControls, type NewDishSetup } from './app/new-dish';
+import { SAVE_KEY, createSavePayload as createSavePayloadData, readSlot, renderSaveSlots as renderSaveSlotRows, restoreTutorialState, savedDishesFromPayload, saveToSlot as writeSaveSlot, type SaveData } from './app/save-load';
 import { offsetTutorialPoint, prepareTutorialScenario } from './app/tutorial-scenarios';
 import { isTutorialStepComplete as isTutorialStepCompleteForState, readCompletedTutorialMilestones, tutorialSteps, updateTutorialPanel as updateTutorialPanelContent, writeCompletedTutorialMilestones, type TutorialStep, type TutorialStepId } from './app/tutorial';
-import { CellSimulation } from './core/simulation';
-import type { Cell, DNAKey, ResourceKind, SimulationState, Vec2 } from './core/types';
-import { clamp, distance } from './core/vector';
+import type { Cell, ResourceKind, Vec2 } from './core/types';
+import { clamp } from './core/vector';
 import { setDnaEnabled as setDnaEnabledControls, syncTransportControls as syncTransportControlValues } from './hud/directives-panel';
-import { isRangeControlTarget, isTypingTarget, pulseButton } from './hud/dom';
 import { currentDirective, describeCellDirective, formatCellState, scanDetections } from './hud/entity-panel';
 import { syncGamePanelVisibility, syncGameStats } from './hud/game-panel';
 import { describeHoverTarget, describeResource, formatHoverTarget, targetLabel } from './hud/hover-info';
@@ -20,122 +24,101 @@ import { createToastRegion } from './hud/toasts';
 import { hideTooltip, setupTooltips, syncTooltipToggle } from './hud/tooltips';
 import { createWindowSystem } from './hud/windows';
 import { PetriDishRenderer } from './render/PetriDishRenderer';
-import type { MapPick, RendererView } from './render/types';
+import type { MapPick } from './render/types';
 
-type DishInstance = {
-  id: number;
-  name: string;
-  canvas: HTMLCanvasElement;
-  label: HTMLElement;
-  simulation: CellSimulation;
-  renderer: PetriDishRenderer;
-  inspectedTarget: MapPick;
-  hoveredTarget: MapPick | null;
-  accumulator: number;
-  worldTime: number;
-  zIndex: number;
-  dragStart: {
-    pointerId: number;
-    x: number;
-    y: number;
-    mode: 'move' | 'pan';
-    left: number;
-    top: number;
-    view: RendererView;
-  } | null;
-  dragMoved: boolean;
-};
-
-const dishLayer = document.querySelector<HTMLElement>('#dish-layer');
-if (!dishLayer) {
-  throw new Error('Missing #dish-layer');
-}
-const dishLayerElement = dishLayer;
-const microscopeBackdrop = document.querySelector<HTMLCanvasElement>('#microscope-backdrop');
-
-let dishes: DishInstance[] = [];
 let activeDish: DishInstance | null = null;
-let nextDishId = 1;
-let nextDishZ = 1;
-let simulation: CellSimulation;
+let simulation: DishInstance['simulation'];
 let renderer: PetriDishRenderer;
 
-const tickReadout = document.querySelector<HTMLElement>('#tick-readout');
-const populationReadout = document.querySelector<HTMLElement>('#population-readout');
-const stateReadout = document.querySelector<HTMLElement>('#state-readout');
-const zoomReadout = document.querySelector<HTMLElement>('#zoom-readout');
-const gameDishCount = document.querySelector<HTMLElement>('#game-dish-count');
-const gameCellCount = document.querySelector<HTMLElement>('#game-cell-count');
-const gameRunningCount = document.querySelector<HTMLElement>('#game-running-count');
-const tooltipToggle = document.querySelector<HTMLInputElement>('#tooltip-toggle');
-const tooltipStatus = document.querySelector<HTMLElement>('#tooltip-status');
-const dishWindowTitle = document.querySelector<HTMLElement>('#dish-window-title');
-const dishName = document.querySelector<HTMLElement>('#dish-name');
-const dishDetail = document.querySelector<HTMLElement>('#dish-detail');
-const dishList = document.querySelector<HTMLElement>('#dish-list');
-const entityWindowTitle = document.querySelector<HTMLElement>('#entity-window-title');
-const entityName = document.querySelector<HTMLElement>('#entity-name');
-const entityDetail = document.querySelector<HTMLElement>('#entity-detail');
-const directivesWindowTitle = document.querySelector<HTMLElement>('#directives-window-title');
-const hoverWindowTitle = document.querySelector<HTMLElement>('#hover-window-title');
-const hoverDetail = document.querySelector<HTMLElement>('#hover-detail');
-const directiveHeading = document.querySelector<HTMLElement>('#directive-heading');
-const directiveDetail = document.querySelector<HTMLElement>('#directive-detail');
-const metabolicDashboard = document.querySelector<HTMLElement>('.metabolic-dashboard');
-const directiveIntro = document.querySelector<HTMLElement>('.directives-panel .panel-head');
-const transportControlsPanel = document.querySelector<HTMLElement>('.transport-controls');
-const dnaButtonsPanel = document.querySelector<HTMLElement>('.dna-buttons');
-const energyMeter = document.querySelector<HTMLMeterElement>('#energy-meter');
-const massMeter = document.querySelector<HTMLMeterElement>('#mass-meter');
-const oxygenMeter = document.querySelector<HTMLMeterElement>('#oxygen-meter');
-const healthMeter = document.querySelector<HTMLMeterElement>('#health-meter');
-const dnaButtons = document.querySelectorAll<HTMLButtonElement>('[data-dna]');
-const transportControls = document.querySelectorAll<HTMLInputElement>('[data-control]');
-const transportOutputs = document.querySelectorAll<HTMLOutputElement>('[data-control-value]');
-const dishActionButtons = document.querySelectorAll<HTMLButtonElement>('[data-dish-action]');
-const addDishButton = document.querySelector<HTMLButtonElement>('[data-dish-action="add"]');
-const deleteDishButton = document.querySelector<HTMLButtonElement>('[data-dish-action="delete"]');
-const selectedDishActions = document.querySelector<HTMLElement>('.selected-dish-actions');
-const dropItemButtons = document.querySelectorAll<HTMLButtonElement>('[data-drop-item]');
-const atpCore = document.querySelector<HTMLElement>('#atp-core');
-const glucoseRate = document.querySelector<HTMLElement>('#glucose-rate');
-const glycogenRate = document.querySelector<HTMLElement>('#glycogen-rate');
-const aminoRate = document.querySelector<HTMLElement>('#amino-rate');
-const oxygenRate = document.querySelector<HTMLElement>('#oxygen-rate');
-const atpNodeDelta = document.querySelector<HTMLElement>('#atp-node-delta');
-const glucoseNodeDelta = document.querySelector<HTMLElement>('#glucose-node-delta');
-const glycogenNodeDelta = document.querySelector<HTMLElement>('#glycogen-node-delta');
-const aminoNodeDelta = document.querySelector<HTMLElement>('#amino-node-delta');
-const oxygenNodeDelta = document.querySelector<HTMLElement>('#oxygen-node-delta');
-const lightFactor = document.querySelector<HTMLElement>('#light-factor');
-const rosDelta = document.querySelector<HTMLElement>('#ros-delta');
-const autophagyDelta = document.querySelector<HTMLElement>('#autophagy-delta');
-const toastRegion = document.querySelector<HTMLElement>('#toast-region');
-const tooltipLayer = document.querySelector<HTMLElement>('#tooltip-layer');
+const {
+  dishLayer: dishLayerElement,
+  microscopeBackdrop,
+  tickReadout,
+  populationReadout,
+  stateReadout,
+  zoomReadout,
+  gameDishCount,
+  gameCellCount,
+  gameRunningCount,
+  tooltipToggle,
+  tooltipStatus,
+  dishWindowTitle,
+  dishName,
+  dishDetail,
+  dishList,
+  entityWindowTitle,
+  entityName,
+  entityDetail,
+  directivesWindowTitle,
+  hoverWindowTitle,
+  hoverDetail,
+  directiveHeading,
+  directiveDetail,
+  metabolicDashboard,
+  directiveIntro,
+  transportControlsPanel,
+  dnaButtonsPanel,
+  energyMeter,
+  massMeter,
+  oxygenMeter,
+  healthMeter,
+  dnaButtons,
+  transportControls,
+  transportOutputs,
+  dishActionButtons,
+  addDishButton,
+  deleteDishButton,
+  selectedDishActions,
+  dropItemButtons,
+  atpCore,
+  glucoseRate,
+  glycogenRate,
+  aminoRate,
+  oxygenRate,
+  atpNodeDelta,
+  glucoseNodeDelta,
+  glycogenNodeDelta,
+  aminoNodeDelta,
+  oxygenNodeDelta,
+  lightFactor,
+  rosDelta,
+  autophagyDelta,
+  toastRegion,
+  tooltipLayer,
+  newDishModal,
+  newDishModalClose,
+  newDishCellCountRange,
+  newDishCellCountInput,
+  newDishResourceSliders,
+  newDishEnvironmentSliders,
+  newDishCancel,
+  newDishCreate,
+  tutorialWindow,
+  tutorialTitle,
+  tutorialProgress,
+  tutorialStepTitle,
+  tutorialStepDetail,
+  tutorialGoal,
+  tutorialNext,
+  tutorialExit,
+  saveModal,
+  saveModalTitle,
+  saveModalClose,
+  saveSlotList,
+} = queryAppElements();
 const showToast = createToastRegion(toastRegion);
-const newDishModal = document.querySelector<HTMLElement>('#new-dish-modal');
-const newDishModalClose = document.querySelector<HTMLButtonElement>('#new-dish-modal-close');
-const newDishCellCountRange = document.querySelector<HTMLInputElement>('#new-dish-cell-count-range');
-const newDishCellCountInput = document.querySelector<HTMLInputElement>('#new-dish-cell-count-input');
-const newDishResourceSliders = document.querySelectorAll<HTMLInputElement>('[data-new-dish-resource]');
-const newDishEnvironmentSliders = document.querySelectorAll<HTMLInputElement>('[data-new-dish-environment]');
-const newDishCancel = document.querySelector<HTMLButtonElement>('#new-dish-cancel');
-const newDishCreate = document.querySelector<HTMLButtonElement>('#new-dish-create');
-const tutorialWindow = document.querySelector<HTMLElement>('.tutorial-window');
-const tutorialTitle = document.querySelector<HTMLElement>('#tutorial-title');
-const tutorialProgress = document.querySelector<HTMLElement>('#tutorial-progress');
-const tutorialStepTitle = document.querySelector<HTMLElement>('#tutorial-step-title');
-const tutorialStepDetail = document.querySelector<HTMLElement>('#tutorial-step-detail');
-const tutorialGoal = document.querySelector<HTMLElement>('#tutorial-goal');
-const tutorialNext = document.querySelector<HTMLButtonElement>('#tutorial-next');
-const tutorialExit = document.querySelector<HTMLButtonElement>('#tutorial-exit');
-const saveModal = document.querySelector<HTMLElement>('#save-modal');
-const saveModalTitle = document.querySelector<HTMLElement>('#save-modal-title');
-const saveModalClose = document.querySelector<HTMLButtonElement>('#save-modal-close');
-const saveSlotList = document.querySelector<HTMLElement>('#save-slot-list');
 const windowSystem = createWindowSystem();
+const dishManager = new DishManager(dishLayerElement, {
+  selectDish: setActiveDish,
+  updateHud,
+  isHoveredDish: (dish) => hoveredDish === dish,
+  setHoveredDishTarget: (dish, target) => {
+    hoveredDish = dish;
+    hoveredTarget = target;
+  },
+});
+const dishes = dishManager.dishes;
 
-let lastTime = performance.now();
 const tickMs = 150;
 let inspectedTarget: MapPick = { kind: 'dish', id: null };
 let hoveredTarget: MapPick | null = { kind: 'dish', id: null };
@@ -157,66 +140,28 @@ const dropController = createDropController({
   onDrop: handleDropItem,
 });
 
-dishLayerElement.addEventListener('pointerdown', (event) => {
-  if (event.target === dishLayerElement) {
-    clearActiveDish();
-  }
-});
-
-window.addEventListener('keydown', (event) => {
-  if (event.code === 'Space') {
-    if (isTypingTarget(event.target) && !isRangeControlTarget(event.target)) {
-      return;
-    }
-    event.preventDefault();
-    if (event.shiftKey) {
-      toggleAllDishesRunning();
-      return;
-    }
-    if (!activeDish) {
-      showToast('Select a petri dish first');
-      return;
-    }
+bindDishLayerClear(dishLayerElement, clearActiveDish);
+bindGlobalShortcuts({
+  saveModal,
+  newDishModal,
+}, {
+  hasActiveDish: () => Boolean(activeDish),
+  toggleActiveDishRunning: () => {
     simulation.toggleRunning();
     updateHud();
-    return;
-  }
-  if (isTypingTarget(event.target)) {
-    return;
-  }
-  if (event.code === 'KeyR') {
-    event.preventDefault();
-    restartScenario();
-  }
-  if (event.code === 'F5') {
-    event.preventDefault();
-    saveGame();
-  }
-  if (event.code === 'F9') {
-    event.preventDefault();
-    loadGame();
-  }
-  if (event.code === 'Numpad0') {
-    event.preventDefault();
-    if (!activeDish) {
-      showToast('Select a petri dish first');
-      return;
-    }
+  },
+  toggleAllDishesRunning,
+  restartScenario,
+  saveGame,
+  loadGame,
+  resetActiveDishZoom: () => {
     renderer.resetZoom();
     updateHud();
-  }
-  if (event.code === 'KeyH') {
-    event.preventDefault();
-    setTooltipsEnabled(!tooltipsEnabled, true);
-  }
-  if (event.code === 'Escape' && saveModal && !saveModal.hidden) {
-    event.preventDefault();
-    closeSaveModal();
-  }
-  if (event.code === 'Escape' && newDishModal && !newDishModal.hidden) {
-    event.preventDefault();
-    closeNewDishModal();
-  }
+  },
+  toggleTooltips: () => setTooltipsEnabled(!tooltipsEnabled, true),
+  closeSaveModal,
+  closeNewDishModal,
+  showToast,
 });
 
 function toggleAllDishesRunning(): void {
@@ -232,357 +177,81 @@ function toggleAllDishesRunning(): void {
   updateHud();
 }
 
-tooltipToggle?.addEventListener('change', () => {
-  setTooltipsEnabled(tooltipToggle.checked, true);
+bindTooltipToggle(tooltipToggle, (enabled) => setTooltipsEnabled(enabled, true));
+bindDnaButtons(dnaButtons, {
+  selectedCell: () => simulation.selectedCell,
+  infuseDNA: (key) => simulation.infuseDNA(key),
+  isTutorialMode: () => tutorialMode,
+  updateHud,
 });
-
-dnaButtons.forEach((button) => {
-  button.addEventListener('click', () => {
-    if (!simulation.selectedCell) {
-      return;
-    }
-    simulation.infuseDNA(button.dataset.dna as DNAKey);
-    if (tutorialMode) {
-      button.dataset.tutorialUsed = 'true';
-    }
-    pulseButton(button);
-    updateHud();
-  });
+bindTransportControls(transportControls, {
+  selectedCell: () => simulation.selectedCell,
+  updateHud,
 });
-
-transportControls.forEach((control) => {
-  control.addEventListener('input', () => {
-    const cell = simulation.selectedCell;
-    const key = control.dataset.control as 'glucoseTransport' | 'aminoTransport' | 'oxygenMetabolism' | 'ribosomeActivity';
-    if (!cell || !key) {
-      return;
-    }
-    cell[key] = Number(control.value) / 100;
-    updateHud();
-  });
+bindDishActionButtons(dishActionButtons, {
+  add: openNewDishModal,
+  delete: deleteActiveDish,
+  tutorial: () => startTutorial(0),
+  restart: restartScenario,
+  random: randomScenario,
+  save: () => openSaveModal('save'),
+  load: () => openSaveModal('load'),
 });
-
-dishActionButtons.forEach((button) => {
-  button.addEventListener('click', () => {
-    const action = button.dataset.dishAction;
-    if (action === 'add') {
-      openNewDishModal();
-    }
-    if (action === 'delete') {
-      deleteActiveDish();
-    }
-    if (action === 'tutorial') {
-      startTutorial(0);
-    }
-    if (action === 'restart') {
-      restartScenario();
-    }
-    if (action === 'random') {
-      randomScenario();
-    }
-    if (action === 'save') {
-      openSaveModal('save');
-    }
-    if (action === 'load') {
-      openSaveModal('load');
-    }
-  });
+bindNewDishModal({
+  modal: newDishModal,
+  close: newDishModalClose,
+  cancel: newDishCancel,
+  create: newDishCreate,
+  cellCountRange: newDishCellCountRange,
+  cellCountInput: newDishCellCountInput,
+  resourceSliders: newDishResourceSliders,
+  environmentSliders: newDishEnvironmentSliders,
+}, {
+  close: closeNewDishModal,
+  create: () => addDish(readNewDishSetup()),
+  setCellCount: setNewDishCellCount,
 });
-
-newDishModalClose?.addEventListener('click', closeNewDishModal);
-newDishCancel?.addEventListener('click', closeNewDishModal);
-newDishCreate?.addEventListener('click', () => {
-  addDish(readNewDishSetup());
-  closeNewDishModal();
+bindDishList<DishInstance>(dishList, {
+  findDish: (id) => dishes.find((item) => item.id === id) ?? null,
+  selectDish: (dish) => setActiveDish(dish, dish.inspectedTarget),
+  renameDishDraft: (dish, name) => {
+    dish.name = name.slice(0, 32);
+    updateDishLabel(dish);
+    dishPickerSignature = currentDishPickerSignature(dishes);
+  },
+  renameDishCommit: (dish, input) => {
+    dish.name = sanitizeDishName(input.value, dish.id);
+    input.value = dish.name;
+    updateDishLabel(dish);
+    dishPickerSignature = currentDishPickerSignature(dishes);
+  },
 });
-newDishModal?.addEventListener('click', (event) => {
-  if (event.target === newDishModal) {
-    closeNewDishModal();
-  }
+bindTutorialControls({
+  next: tutorialNext,
+  exit: tutorialExit,
+}, {
+  canAdvance: () => tutorialGoalMet,
+  advance: () => goToTutorialStep(Math.min(tutorialStepIndex + 1, tutorialSteps.length - 1), false),
+  exit: exitTutorial,
 });
-newDishCellCountRange?.addEventListener('input', () => {
-  setNewDishCellCount(Number(newDishCellCountRange.value));
-});
-newDishCellCountInput?.addEventListener('input', () => {
-  setNewDishCellCount(Number(newDishCellCountInput.value));
-});
-newDishResourceSliders.forEach((slider) => {
-  slider.addEventListener('input', () => {
-    syncRangeOutput(slider);
-  });
-});
-newDishEnvironmentSliders.forEach((slider) => {
-  slider.addEventListener('input', () => {
-    syncRangeOutput(slider);
-  });
-});
-dishList?.addEventListener('pointerdown', (event) => {
-  const target = event.target;
-  if (!(target instanceof HTMLElement)) {
-    return;
-  }
-  const selectButton = target.closest<HTMLButtonElement>('[data-select-dish]');
-  if (selectButton) {
-    event.preventDefault();
-    const dish = dishes.find((item) => item.id === Number(selectButton.dataset.selectDish));
-    if (dish) {
-      setActiveDish(dish, dish.inspectedTarget);
-    }
-  }
-});
-dishList?.addEventListener('input', (event) => {
-  const target = event.target;
-  if (!(target instanceof HTMLInputElement) || !target.dataset.renameDish) {
-    return;
-  }
-  const dish = dishes.find((item) => item.id === Number(target.dataset.renameDish));
-  if (!dish) {
-    return;
-  }
-  dish.name = target.value.slice(0, 32);
-  updateDishLabel(dish);
-  dishPickerSignature = currentDishPickerSignature(dishes);
-});
-dishList?.addEventListener('change', (event) => {
-  const target = event.target;
-  if (!(target instanceof HTMLInputElement) || !target.dataset.renameDish) {
-    return;
-  }
-  const dish = dishes.find((item) => item.id === Number(target.dataset.renameDish));
-  if (!dish) {
-    return;
-  }
-  dish.name = sanitizeDishName(target.value, dish.id);
-  target.value = dish.name;
-  updateDishLabel(dish);
-  dishPickerSignature = currentDishPickerSignature(dishes);
-});
-dishList?.addEventListener('keydown', (event) => {
-  const target = event.target;
-  if (event.code === 'Enter' && target instanceof HTMLInputElement && target.dataset.renameDish) {
-    event.preventDefault();
-    target.blur();
-  }
-});
-tutorialNext?.addEventListener('click', () => {
-  if (tutorialGoalMet) {
-    goToTutorialStep(Math.min(tutorialStepIndex + 1, tutorialSteps.length - 1), false);
-  }
-});
-tutorialExit?.addEventListener('click', exitTutorial);
-
-saveModalClose?.addEventListener('click', closeSaveModal);
-saveModal?.addEventListener('click', (event) => {
-  if (event.target === saveModal) {
-    closeSaveModal();
-  }
-});
+bindSaveModal({
+  modal: saveModal,
+  close: saveModalClose,
+}, closeSaveModal);
 
 drawMicroscopeBackdrop(microscopeBackdrop);
 window.addEventListener('resize', () => drawMicroscopeBackdrop(microscopeBackdrop));
-createDefaultDishes();
+dishManager.createDefaultDishes();
+clearActiveDish();
 setupTooltips(tooltipLayer, () => tooltipsEnabled);
 updateHud();
+const animate = createGameLoop({
+  dishes: () => dishes,
+  tickMs,
+  updateTutorialProgress,
+  updateHud,
+});
 requestAnimationFrame(animate);
-
-function createDefaultDishes(): void {
-  const size = defaultDishSize(window.innerWidth);
-  const positions = defaultDishPlacements(size, window.innerWidth, window.innerHeight);
-  positions.forEach((position) => createDish({ ...position, size, select: false }));
-  clearActiveDish();
-}
-
-function createDish(options: {
-  state?: SimulationState;
-  inspectedTarget?: MapPick;
-  view?: RendererView;
-  left?: number;
-  top?: number;
-  size?: number;
-  zIndex?: number;
-  id?: number;
-  name?: string;
-  select?: boolean;
-  setup?: NewDishSetup;
-} = {}): DishInstance {
-  const canvas = document.createElement('canvas');
-  canvas.className = 'dish-canvas';
-  canvas.dataset.dishId = String(options.id ?? nextDishId);
-  const label = document.createElement('button');
-  label.className = 'dish-label';
-  label.type = 'button';
-  label.dataset.dishId = String(options.id ?? nextDishId);
-  const size = options.size ?? defaultDishSize(window.innerWidth);
-  canvas.style.width = `${size}px`;
-  canvas.style.height = `${size}px`;
-  canvas.style.left = `${options.left ?? window.innerWidth - size - 48}px`;
-  canvas.style.top = `${options.top ?? window.innerHeight - size - 32}px`;
-  dishLayerElement.appendChild(canvas);
-  dishLayerElement.appendChild(label);
-
-  const dishSimulation = new CellSimulation();
-  if (options.state) {
-    dishSimulation.importState(options.state);
-  } else {
-    dishSimulation.randomScenario(options.setup);
-  }
-  const dishRenderer = new PetriDishRenderer(canvas, {
-    renderBackground: false,
-    cameraControls: false,
-    defaultCameraX: 0,
-    defaultCameraY: 0,
-  });
-  dishRenderer.applyView(options.view);
-  const dish: DishInstance = {
-    id: options.id ?? nextDishId,
-    name: options.name ?? `Dish ${options.id ?? nextDishId}`,
-    canvas,
-    label,
-    simulation: dishSimulation,
-    renderer: dishRenderer,
-    inspectedTarget: options.inspectedTarget ?? { kind: 'dish', id: null },
-    hoveredTarget: { kind: 'dish', id: null },
-    accumulator: 0,
-    worldTime: 0,
-    zIndex: options.zIndex ?? nextDishZ,
-    dragStart: null,
-    dragMoved: false,
-  };
-  nextDishId = Math.max(nextDishId, dish.id + 1);
-  nextDishZ = Math.max(nextDishZ, dish.zIndex + 1);
-  canvas.style.zIndex = String(dish.zIndex);
-  updateDishLabel(dish);
-  bindDishEvents(dish);
-  dishes.push(dish);
-  dishRenderer.applyView(options.view);
-  if (options.select) {
-    setActiveDish(dish, dish.inspectedTarget);
-  }
-  return dish;
-}
-
-function bindDishEvents(dish: DishInstance): void {
-  dish.label.addEventListener('click', () => {
-    setActiveDish(dish, dish.inspectedTarget);
-  });
-
-  dish.label.addEventListener('dblclick', (event) => {
-    event.preventDefault();
-    setActiveDish(dish, dish.inspectedTarget);
-    dish.renderer.resetZoom();
-    updateHud();
-  });
-
-  dish.canvas.addEventListener('contextmenu', (event) => {
-    event.preventDefault();
-  });
-
-  dish.canvas.addEventListener('wheel', (event) => {
-    if (!event.shiftKey) {
-      return;
-    }
-    event.preventDefault();
-    setActiveDish(dish, dish.inspectedTarget);
-    resizeDish(dish, event.deltaY > 0 ? 0.94 : 1.06);
-  }, { passive: false });
-
-  dish.canvas.addEventListener('pointerdown', (event) => {
-    setActiveDish(dish, dish.inspectedTarget);
-    const rect = dish.canvas.getBoundingClientRect();
-    const view = dish.renderer.exportView();
-    dish.dragStart = {
-      pointerId: event.pointerId,
-      x: event.clientX,
-      y: event.clientY,
-      mode: view.zoom > 1.001 ? 'pan' : 'move',
-      left: rect.left,
-      top: rect.top,
-      view,
-    };
-    dish.dragMoved = false;
-    dish.canvas.setPointerCapture(event.pointerId);
-  });
-
-  dish.canvas.addEventListener('pointermove', (event) => {
-    if (dish.dragStart?.pointerId === event.pointerId) {
-      const dx = event.clientX - dish.dragStart.x;
-      const dy = event.clientY - dish.dragStart.y;
-      if (Math.hypot(dx, dy) > 4) {
-        dish.dragMoved = true;
-      }
-      if (dish.dragStart.mode === 'pan') {
-        dish.renderer.panFromView(dish.dragStart.view, dx, dy);
-        updateHud();
-        return;
-      }
-      dish.canvas.style.left = `${dish.dragStart.left + dx}px`;
-      dish.canvas.style.top = `${dish.dragStart.top + dy}px`;
-      updateDishLabel(dish);
-    }
-  });
-
-  dish.canvas.addEventListener('pointerup', (event) => {
-    if (dish.dragStart?.pointerId === event.pointerId) {
-      dish.dragStart = null;
-    }
-  });
-
-  dish.canvas.addEventListener('click', (event) => {
-    if (dish.dragMoved) {
-      dish.dragMoved = false;
-      return;
-    }
-    const pick = dish.renderer.onPointerPick(event, dish.simulation.state);
-    if (!pick.dragged) {
-      setActiveDish(dish, pick.target);
-    }
-  });
-
-  dish.canvas.addEventListener('dblclick', (event) => {
-    const target = dish.renderer.pickAtScreenPosition(event.clientX, event.clientY, dish.simulation.state);
-    if (target.kind !== 'cell') {
-      setActiveDish(dish, target);
-      return;
-    }
-    const cell = dish.simulation.state.cells.find((item) => item.id === target.id);
-    if (!cell) {
-      return;
-    }
-    setActiveDish(dish, target);
-    dish.renderer.centerOnCell(cell);
-  });
-
-  dish.canvas.addEventListener('pointermove', (event) => {
-    if (dish.dragStart) {
-      return;
-    }
-    const target = dish.renderer.pickAtScreenPosition(event.clientX, event.clientY, dish.simulation.state);
-    if (!sameTarget(dish.hoveredTarget, target) || hoveredDish !== dish) {
-      dish.hoveredTarget = target;
-      hoveredDish = dish;
-      hoveredTarget = target;
-      updateHud();
-    }
-  });
-
-  dish.canvas.addEventListener('pointerleave', () => {
-    dish.hoveredTarget = null;
-    if (hoveredDish === dish) {
-      hoveredDish = null;
-      hoveredTarget = null;
-      updateHud();
-    }
-  });
-}
-
-function resizeDish(dish: DishInstance, factor: number): void {
-  if (!resizeDishCanvas(dish.canvas, factor)) {
-    return;
-  }
-  updateDishLabel(dish);
-  dish.renderer.applyView(dish.renderer.exportView());
-  updateHud();
-}
 
 function setActiveDish(dish: DishInstance, target: MapPick = { kind: 'dish', id: null }): void {
   activeDish = dish;
@@ -595,11 +264,8 @@ function setActiveDish(dish: DishInstance, target: MapPick = { kind: 'dish', id:
   }
   dish.inspectedTarget = target;
   dish.simulation.selectCell(target.kind === 'cell' ? target.id : null);
-  dish.zIndex = nextDishZ;
-  dish.canvas.style.zIndex = String(nextDishZ);
-  updateDishLabel(dish);
-  nextDishZ += 1;
-  syncDishSelectionClasses();
+  dishManager.bringToFront(dish);
+  dishManager.syncSelectionClasses(activeDish);
   updateHud();
 }
 
@@ -612,19 +278,12 @@ function clearActiveDish(): void {
     dish.simulation.selectCell(null);
     dish.inspectedTarget = { kind: 'dish', id: null };
   }
-  syncDishSelectionClasses();
+  dishManager.syncSelectionClasses(activeDish);
   updateHud();
 }
 
-function syncDishSelectionClasses(): void {
-  for (const dish of dishes) {
-    dish.canvas.classList.toggle('is-selected', dish === activeDish);
-    dish.label.classList.toggle('is-selected', dish === activeDish);
-  }
-}
-
 function updateDishLabel(dish: DishInstance): void {
-  updateFloatingDishLabel(dish.label, dish.canvas, dish.name, dish.zIndex);
+  dishManager.updateDishLabel(dish);
 }
 
 function requireActiveDish(): DishInstance | null {
@@ -638,7 +297,7 @@ function requireActiveDish(): DishInstance | null {
 function addDish(setup: NewDishSetup = {}): void {
   const size = defaultDishSize(window.innerWidth);
   const placement = addedDishPlacement(dishes.length, size, window.innerWidth, window.innerHeight);
-  const dish = createDish({
+  const dish = dishManager.createDish({
     ...placement,
     size,
     select: true,
@@ -683,10 +342,7 @@ function deleteActiveDish(): void {
     showToast('No dish selected');
     return;
   }
-  dish.renderer.dispose();
-  dish.canvas.remove();
-  dish.label.remove();
-  dishes = dishes.filter((item) => item !== dish);
+  dishManager.deleteDish(dish);
   clearActiveDish();
   showToast('Petri dish deleted');
 }
@@ -731,7 +387,7 @@ function createTutorialWorld(): void {
   tutorialPreparedSteps = new Set<TutorialStepId>();
   const size = defaultDishSize(window.innerWidth, 430);
   const placement = tutorialDishPlacement(dishes.length, size, window.innerWidth, window.innerHeight);
-  const dish = createDish({
+  const dish = dishManager.createDish({
     name: 'Tutorial Dish',
     ...placement,
     size,
@@ -853,27 +509,6 @@ function updateTutorialPanel(): void {
     completed: tutorialCompleted,
     onJump: (index) => goToTutorialStep(index, false),
   });
-}
-
-function animate(time: number): void {
-  const delta = Math.min(80, time - lastTime);
-  lastTime = time;
-
-  for (const dish of dishes) {
-    if (dish.simulation.state.running) {
-      dish.worldTime += delta;
-      dish.accumulator += delta;
-      while (dish.accumulator >= tickMs) {
-        dish.simulation.step();
-        dish.accumulator -= tickMs;
-      }
-    }
-    dish.renderer.render(dish.simulation.state, dish.worldTime, dish.simulation.drainEvents(), dish.inspectedTarget);
-  }
-
-  updateTutorialProgress();
-  updateHud();
-  requestAnimationFrame(animate);
 }
 
 function updateHud(): void {
@@ -1201,42 +836,21 @@ function applySaveData(payload: SaveData<TutorialStepId>, message: string): void
     showToast('Save version not supported');
     return;
   }
-  for (const dish of dishes) {
-    dish.renderer.dispose();
-    dish.canvas.remove();
-    dish.label.remove();
-  }
-  dishes = [];
+  dishManager.clearDishes();
   activeDish = null;
   inspectedTarget = { kind: 'dish', id: null };
   hoveredDish = null;
   hoveredTarget = null;
-  tutorialMode = payload.tutorial?.mode ?? false;
-  tutorialStepIndex = clamp(payload.tutorial?.stepIndex ?? 0, 0, tutorialSteps.length - 1);
-  tutorialGoalMet = payload.tutorial?.goalMet ?? false;
-  tutorialCompleted = new Set(payload.tutorial?.completed ?? [...tutorialCompleted]);
-  tutorialPreparedSteps = new Set(payload.tutorial?.prepared ?? []);
+  const tutorial = restoreTutorialState(payload, tutorialSteps.length, tutorialCompleted);
+  tutorialMode = tutorial.mode;
+  tutorialStepIndex = tutorial.stepIndex;
+  tutorialGoalMet = tutorial.goalMet;
+  tutorialCompleted = tutorial.completed;
+  tutorialPreparedSteps = tutorial.prepared;
   tutorialEnteredStep = null;
-  nextDishId = 1;
-  nextDishZ = 1;
 
-  const savedDishes = payload.version === 2 && payload.dishes?.length
-    ? payload.dishes
-    : payload.simulation
-      ? [{
-        id: 1,
-        state: payload.simulation,
-        inspectedTarget: payload.inspectedTarget ?? { kind: 'dish', id: null },
-        view: { zoom: 1, cameraX: -48, cameraY: 0 },
-        left: window.innerWidth - 560 - 48,
-        top: window.innerHeight - 560 - 32,
-        size: 560,
-        zIndex: 1,
-      }]
-      : [];
-
-  for (const savedDish of savedDishes) {
-    createDish({
+  for (const savedDish of savedDishesFromPayload(payload, window.innerWidth, window.innerHeight)) {
+    dishManager.createDish({
       id: savedDish.id,
       name: savedDish.name,
       state: savedDish.state,
@@ -1281,40 +895,12 @@ function setTooltipsEnabled(enabled: boolean, announce: boolean): void {
 }
 
 function handleDropItem(kind: DropItemKind, clientX: number, clientY: number): boolean {
-  const targetDish = dishAtPoint(clientX, clientY);
-  if (!targetDish) {
-    showToast('Drop inside a petri dish');
+  const handled = handleDishItemDrop(dishes, kind, clientX, clientY, showToast);
+  if (!handled) {
     return false;
-  }
-  const position = targetDish.renderer.screenToWorld(clientX, clientY);
-  const insideDish = distance(position, { x: 0, y: 0 }) <= targetDish.simulation.state.boardRadius - 2;
-  if (!insideDish) {
-    showToast('Drop inside the petri dish');
-    return false;
-  }
-
-  if (kind === 'cotton-candy') {
-    targetDish.simulation.dropCottonCandy(position);
-    showToast('Cotton candy dissolved into glucose');
-  } else {
-    targetDish.simulation.dropCatPawn(position);
-    showToast('Cat-pawn dissolved into poison');
   }
   updateHud();
   return true;
-}
-
-function dishAtPoint(clientX: number, clientY: number): DishInstance | null {
-  return [...dishes]
-    .sort((left, right) => right.zIndex - left.zIndex)
-    .find((dish) => {
-      const rect = dish.canvas.getBoundingClientRect();
-      return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
-    }) ?? null;
-}
-
-function sameTarget(left: MapPick | null, right: MapPick | null): boolean {
-  return left?.kind === right?.kind && left?.id === right?.id;
 }
 
 function setDnaEnabled(enabled: boolean): void {

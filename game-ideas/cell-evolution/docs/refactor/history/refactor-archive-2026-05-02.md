@@ -635,3 +635,148 @@ No behavior changes intended.
 ### Verification
 - `npm run build` - pass
 - `npm test` - pass
+
+## Main app event extraction - DOM listener wiring
+
+### Motivation
+`src/main.ts` contained a large block of DOM event listener setup for global shortcuts, dish actions, new dish modal, dish list edits, tutorial controls, save modal, DNA buttons, and transport controls. Moving the listener wiring into an app helper keeps callbacks in the orchestrator while removing repetitive DOM binding code.
+
+### Old files changed
+- `src/main.ts` - replaced inline listener setup with app event binding calls.
+
+### New files created
+- `src/app/app-events.ts` - global shortcut, modal, dish list, DNA, transport, tutorial, save modal, and Game action event binding helpers.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Main app dish type extraction - dish instance contracts
+
+### Motivation
+`DishInstance` and create-dish options are app-domain contracts used across app orchestration and save/load-shaped data. Moving them into a small type module reduces `src/main.ts` boilerplate and gives future dish lifecycle extraction a stable type boundary.
+
+### Old files changed
+- `src/main.ts` - imported app dish types instead of declaring them inline.
+
+### New files created
+- `src/app/dish-types.ts` - `DishInstance` and `CreateDishOptions`.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Main app dish event extraction - dish canvas and label interactions
+
+### Motivation
+Per-dish label/canvas listeners for selecting, resizing, dragging, panning, picking, hover tracking, double-click zoom reset, and center-on-cell were embedded in `src/main.ts`. Moving listener setup into an app helper keeps dish input behavior separate from dish state orchestration.
+
+### Old files changed
+- `src/main.ts` - delegated per-dish event binding.
+
+### New files created
+- `src/app/dish-events.ts` - dish canvas and label interaction wiring.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Main app DOM selector extraction - app element registry
+
+### Motivation
+`src/main.ts` still contained a long block of DOM queries before any game orchestration. Moving selector lookup into an app element registry keeps startup code shorter while preserving the same DOM contracts.
+
+### Old files changed
+- `src/main.ts` - replaced inline DOM queries with `queryAppElements()`.
+
+### New files created
+- `src/app/dom-elements.ts` - app DOM selector lookup and element type contract.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Main app drop handling extraction - drop target resolution
+
+### Motivation
+Drop item handling mixed app state refresh with dish hit testing and resource/poison spawning. Moving the hit test and spawn logic to an app helper keeps `src/main.ts` responsible only for invoking the drop and refreshing HUD state.
+
+### Old files changed
+- `src/main.ts` - delegated drop target lookup and item spawning.
+
+### New files created
+- `src/app/drop-handler.ts` - dish hit testing for drop coordinates and item spawn behavior.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Main app save apply extraction - saved dish and tutorial restore helpers
+
+### Motivation
+Save application in `src/main.ts` included mechanical cleanup, old-save compatibility, and tutorial-state restoration details. Moving those helpers into save/load code keeps the orchestrator focused on applying the restored state.
+
+### Old files changed
+- `src/main.ts` - delegated dish disposal, saved-dish normalization, and tutorial restore-state shaping.
+- `src/app/save-load.ts` - added save-application helpers.
+
+### New files created
+- None.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Main app loop extraction - animation tick orchestration
+
+### Motivation
+The animation loop updates each dish simulation, renders dishes, and then refreshes tutorial/HUD state. Moving that loop into an app helper keeps `src/main.ts` startup code shorter while preserving callback ownership.
+
+### Old files changed
+- `src/main.ts` - replaced inline animation loop with a created game loop callback.
+
+### New files created
+- `src/app/game-loop.ts` - animation loop factory.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Main app dish manager extraction - dish lifecycle ownership
+
+### Motivation
+`src/main.ts` still owned dish array mutation, dish creation, deletion, labels, resizing, z-ordering, default dish creation, and per-dish event binding. Moving that lifecycle into a manager gives the app a clearer boundary between active-selection state and dish collection mechanics.
+
+### Old files changed
+- `src/main.ts` - delegated dish lifecycle, label, resize, delete, z-order, selection class, and default creation mechanics.
+
+### New files created
+- `src/app/dish-manager.ts` - dish lifecycle manager.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass

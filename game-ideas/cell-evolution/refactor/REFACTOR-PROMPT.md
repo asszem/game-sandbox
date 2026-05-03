@@ -16,9 +16,16 @@ game-ideas/cell-evolution/
   src/
     main.ts
     app/
+      app-events.ts
       backdrop.ts
+      dish-events.ts
       dish-layout.ts
+      dish-manager.ts
+      dish-types.ts
+      dom-elements.ts
+      drop-handler.ts
       drop-tools.ts
+      game-loop.ts
       new-dish.ts
       save-load.ts
       tutorial.ts
@@ -95,7 +102,7 @@ Current oversized files:
 Already split:
 - HUD utilities, windows, panel formatting, hover info, directives, metabolism display
 - Game panel HUD totals and visibility helpers
-- App helpers for backdrop, dish layout, drop tools, new dish modal, save/load, tutorial UI, and tutorial scenario setup
+- App helpers for event wiring, backdrop, dish event wiring, dish lifecycle/layout/types, DOM selectors, drop handling/tools, game loop, new dish modal, save/load, tutorial UI, and tutorial scenario setup
 - CSS into `src/styles/*` imported by `src/styles/index.css`
 - Renderer texture, shader, cell geometry/material/organelle/visual, dish material, resource marker, hazard material, mineral block, transient effect, picking, and shared type helpers
 - Core sensing, metabolism, resource transport, environment scan, and light-cycle helpers
@@ -120,8 +127,15 @@ src/
   app/
     bootstrap.ts              # app startup, animation loop, global keyboard/pointer orchestration
     dishes.ts                 # DishInstance lifecycle, create/select/delete/position labels
+    app-events.ts             # DOM listener binding helpers for app-level controls
     backdrop.ts               # microscope backdrop DOM/rendering helper
+    dish-events.ts            # per-dish canvas and label interaction binding
     dish-layout.ts            # dish sizing, viewport placement, floating labels
+    dish-manager.ts           # dish collection lifecycle, z-order, labels, resize
+    dish-types.ts             # DishInstance and create-dish option contracts
+    dom-elements.ts           # app DOM selector lookup and element contract
+    drop-handler.ts           # drop target lookup and item spawn behavior
+    game-loop.ts              # dish simulation/render animation loop factory
     new-dish.ts               # new dish modal option parsing/rendering
     save-load.ts              # SaveData, slots, import/export, localStorage
     tutorial.ts               # tutorial state, milestones, scenario setup
@@ -199,7 +213,7 @@ CSS is already split. Keep importing from `src/styles/index.css` and preserve ca
 2. Extract formatting-only HUD modules:
    - Done: `hud/hover-info.ts`, `hud/state-panel.ts`, `hud/entity-panel.ts`, `hud/game-panel.ts`, `hud/directives-panel.ts`, `hud/metabolism-panel.ts`
 3. Extract app domains from `src/main.ts`:
-   - Done: `app/backdrop.ts`, `app/dish-layout.ts`, `app/save-load.ts`, `app/tutorial.ts`, `app/tutorial-scenarios.ts`, `app/drop-tools.ts`, `app/new-dish.ts`
+   - Done: `app/app-events.ts`, `app/backdrop.ts`, `app/dish-events.ts`, `app/dish-layout.ts`, `app/dish-manager.ts`, `app/dish-types.ts`, `app/dom-elements.ts`, `app/drop-handler.ts`, `app/game-loop.ts`, `app/save-load.ts`, `app/tutorial.ts`, `app/tutorial-scenarios.ts`, `app/drop-tools.ts`, `app/new-dish.ts`
    - Remaining: `app/dishes.ts` / dish lifecycle extraction from `src/main.ts`
 4. Done: split CSS by panel/domain while preserving visual output.
 5. Continue splitting `src/render/PetriDishRenderer.ts` through narrow render helpers.

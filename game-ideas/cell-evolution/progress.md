@@ -34,6 +34,10 @@ Notes:
 - Continued renderer prep: extracted procedural textures, shared shader helpers, cell geometry/cilia helpers, cell materials, cell organelles, cell visual factory, dish base/agar/rim material factories, resource marker visuals, poison material helpers, mineral block helpers, transient effects, shared render types, and picking helpers.
 - Continued core split: extracted sensing profiles, metabolism resource flow, resource transport, environment scan pull-vector logic, and light resource cycle updates from `src/core/simulation.ts`.
 - Continued app split: extracted tutorial scenario setup and dish layout/placement helpers from `src/main.ts`.
+- Continued main app split: extracted app event wiring, dish instance/create option types, and per-dish canvas/label event binding from `src/main.ts`.
+- Continued main app split: extracted DOM selector lookup and drop target/spawn handling from `src/main.ts`.
+- Continued main app split: extracted save-application helpers and the animation loop factory from `src/main.ts`.
+- Continued main app split: extracted dish lifecycle ownership into `src/app/dish-manager.ts`.
 - Continued HUD split: extracted Game panel totals and visibility helpers from `src/main.ts`.
 - Updated `refactor/REFACTOR-PROMPT.md` to match the current module and CSS structure.
 - Current largest files after this pass: `src/main.ts`, `src/render/PetriDishRenderer.ts`, and `src/core/simulation.ts`.

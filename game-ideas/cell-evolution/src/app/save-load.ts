@@ -1,6 +1,7 @@
 import type { SimulationState } from '../core/types';
 import type { MapPick, RendererView } from '../render/types';
 import type { WindowLayout } from '../hud/windows';
+import { clamp } from '../core/vector';
 
 const SAVE_SLOT_COUNT = 5;
 const SAVE_SLOTS_KEY = 'cell-evolution-save-slots-v1';
@@ -57,6 +58,14 @@ type SavePayloadDish = {
   zIndex: number;
 };
 
+export type RestoredTutorialState<TStep extends string> = {
+  mode: boolean;
+  stepIndex: number;
+  goalMet: boolean;
+  completed: Set<TStep>;
+  prepared: Set<TStep>;
+};
+
 export function createSavePayload<TStep extends string>(context: {
   dishes: SavePayloadDish[];
   activeDishId: number | null;
@@ -73,6 +82,43 @@ export function createSavePayload<TStep extends string>(context: {
     windowLayout: context.windowLayout,
     tooltipsEnabled: context.tooltipsEnabled,
   };
+}
+
+export function restoreTutorialState<TStep extends string>(
+  payload: SaveData<TStep>,
+  stepCount: number,
+  fallbackCompleted: Set<TStep>,
+): RestoredTutorialState<TStep> {
+  return {
+    mode: payload.tutorial?.mode ?? false,
+    stepIndex: clamp(payload.tutorial?.stepIndex ?? 0, 0, stepCount - 1),
+    goalMet: payload.tutorial?.goalMet ?? false,
+    completed: new Set(payload.tutorial?.completed ?? [...fallbackCompleted]),
+    prepared: new Set(payload.tutorial?.prepared ?? []),
+  };
+}
+
+export function savedDishesFromPayload<TStep extends string>(
+  payload: SaveData<TStep>,
+  viewportWidth: number,
+  viewportHeight: number,
+): DishSaveData[] {
+  if (payload.version === 2 && payload.dishes?.length) {
+    return payload.dishes;
+  }
+  if (!payload.simulation) {
+    return [];
+  }
+  return [{
+    id: 1,
+    state: payload.simulation,
+    inspectedTarget: payload.inspectedTarget ?? { kind: 'dish', id: null },
+    view: { zoom: 1, cameraX: -48, cameraY: 0 },
+    left: viewportWidth - 560 - 48,
+    top: viewportHeight - 560 - 32,
+    size: 560,
+    zIndex: 1,
+  }];
 }
 
 export function renderSaveSlots(
