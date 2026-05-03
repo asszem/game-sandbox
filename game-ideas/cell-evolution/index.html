@@ -85,9 +85,10 @@
                 <div class="metabolic-store metabolic-core" data-tooltip="What it is: ATP is the cell's immediate energy currency.&#10;&#10;More detail: Movement, transport, repair, antioxidant response, growth, and division all spend ATP. Oxygen metabolism converts glucose into ATP more efficiently.&#10;&#10;How to get it: Keep glucose and oxygen available, tune ATP production rate upward, and avoid excessive movement or repair costs."><i class="store-icon icon-atp" aria-hidden="true"></i><span>ATP</span><strong id="atp-core" class="resource-readout"><span class="resource-value">0</span><small id="atp-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
               </div>
               <div class="conversion-map" aria-label="metabolic conversion map">
-                <div class="conversion-row conversion-energy"><span>Glucose + Oxygen</span><b class="conversion-flow flow-path flow-path-glucose"></b><strong>ATP</strong><em>ROS</em></div>
-                <div class="conversion-row conversion-storage"><span>Glucose overflow</span><b class="conversion-flow flow-path flow-path-glycogen"></b><strong>Glycogen</strong></div>
-                <div class="conversion-row conversion-repair"><span>Amino Acids</span><b class="conversion-flow flow-path flow-path-amino"></b><strong>Repair · Sensors · Growth</strong></div>
+                <div class="conversion-header"><span>Input</span><span>Driver -></span><span>Result</span><span>Effect</span></div>
+                <div class="conversion-row conversion-energy"><span>Glucose + Oxygen</span><b class="conversion-flow flow-path flow-path-glucose"><span data-conversion-value="oxygenMetabolism">50%</span></b><span class="conversion-output">ATP</span><span class="conversion-note">Generates ROS waste</span></div>
+                <div class="conversion-row conversion-storage"><span>Glucose surplus</span><b class="conversion-flow flow-path flow-path-glycogen"><span data-conversion-value="glucoseTransport">50%</span></b><span class="conversion-output">Glycogen</span><span class="conversion-note">Stores reserve fuel</span></div>
+                <div class="conversion-row conversion-repair"><span>Amino Acids</span><b class="conversion-flow flow-path flow-path-amino"><span data-conversion-value="aminoTransport">50%</span></b><span class="conversion-output">Repair, sensors, growth</span><span class="conversion-note">Contributes upkeep</span></div>
               </div>
             </div>
             <div class="channel-controls" aria-label="cell metabolism controls">

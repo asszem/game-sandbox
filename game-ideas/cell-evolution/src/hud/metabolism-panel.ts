@@ -49,6 +49,9 @@ export function syncMetabolicDashboard(elements: MetabolicDashboardElements, cel
     elements.root.classList.toggle('is-toxic', cell.ros > 45);
     elements.root.classList.toggle('is-autophagy', cell.autophagyRate > 0);
     elements.root.classList.toggle('is-paused', !running);
+    setConversionValue(elements.root, 'glucoseTransport', cell.glucoseTransport);
+    setConversionValue(elements.root, 'aminoTransport', cell.aminoTransport);
+    setConversionValue(elements.root, 'oxygenMetabolism', cell.oxygenMetabolism);
   } else if (elements.root) {
     elements.root.style.setProperty('--glucose-flow', '3px');
     elements.root.style.setProperty('--amino-flow', '3px');
@@ -59,6 +62,16 @@ export function syncMetabolicDashboard(elements: MetabolicDashboardElements, cel
     elements.root.classList.remove('is-toxic');
     elements.root.classList.remove('is-autophagy');
     elements.root.classList.add('is-paused');
+    setConversionValue(elements.root, 'glucoseTransport', 0.5);
+    setConversionValue(elements.root, 'aminoTransport', 0.5);
+    setConversionValue(elements.root, 'oxygenMetabolism', 0.5);
+  }
+}
+
+function setConversionValue(root: HTMLElement, key: 'glucoseTransport' | 'aminoTransport' | 'oxygenMetabolism', value: number): void {
+  const element = root.querySelector<HTMLElement>(`[data-conversion-value="${key}"]`);
+  if (element) {
+    element.textContent = `${Math.round(value * 100)}%`;
   }
 }
 

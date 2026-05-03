@@ -4,10 +4,10 @@
 
 @keyframes conversion-flow {
   from {
-    background-position-x: 18px;
+    background-position-x: 0;
   }
   to {
-    background-position-x: 0;
+    background-position-x: 18px;
   }
 }
 
@@ -196,14 +196,17 @@
 }
 
 .conversion-flow.flow-path {
+  position: relative;
   fill: initial;
   stroke: initial;
   stroke-width: 0;
   stroke-dasharray: none;
   stroke-dashoffset: 0;
   display: block;
-  min-width: 72px;
+  width: 100%;
+  min-width: 0;
   height: 6px;
+  align-self: center;
   border-radius: 999px;
   background:
     repeating-linear-gradient(
@@ -217,44 +220,77 @@
   animation: conversion-flow 900ms linear infinite;
 }
 
+.conversion-flow::after {
+  content: "";
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid currentColor;
+  filter: drop-shadow(0 0 5px currentColor);
+  transform: translateY(-50%);
+}
+
+.conversion-flow span {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  padding: 1px 4px;
+  border-radius: 999px;
+  background: rgba(4, 9, 16, 0.86);
+  color: rgba(247, 255, 243, 0.88);
+  font-size: 9px;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
 .conversion-map {
   display: grid;
-  gap: 7px;
+  gap: 6px;
   min-width: 0;
 }
 
+.conversion-header,
 .conversion-row {
   display: grid;
-  grid-template-columns: minmax(118px, 1fr) minmax(72px, 0.9fr) minmax(76px, auto) minmax(34px, auto);
+  grid-template-columns: minmax(118px, 0.8fr) minmax(112px, 1fr) minmax(124px, 1fr) minmax(78px, 0.7fr);
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
   color: rgba(247, 255, 243, 0.82);
-  font-size: 12px;
-  line-height: 1.15;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.conversion-header {
+  color: rgba(247, 255, 243, 0.46);
+  font-size: 9px;
+  text-transform: uppercase;
 }
 
 .conversion-row span,
-.conversion-row strong,
-.conversion-row em {
+.conversion-output,
+.conversion-note {
   min-width: 0;
 }
 
-.conversion-row strong {
-  color: #f7fff3;
-  font-style: normal;
-  font-weight: 800;
+.conversion-row > span:first-child {
+  color: rgba(247, 255, 243, 0.78);
 }
 
-.conversion-row em {
-  color: rgba(247, 255, 243, 0.68);
-  font-style: normal;
-  font-weight: 800;
+.conversion-output {
+  color: rgba(247, 255, 243, 0.94);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
-.conversion-storage,
-.conversion-repair {
-  grid-template-columns: minmax(118px, 1fr) minmax(72px, 0.9fr) minmax(118px, 1.1fr);
+.conversion-note {
+  color: rgba(247, 255, 243, 0.54);
+  font-size: 10px;
+  text-align: right;
 }
 
 .conversion-energy .conversion-flow {
