@@ -54,3 +54,99 @@
   color: #ff5d7a;
 }
 
+.health-status {
+  --health-value: 1;
+  display: grid;
+  gap: 7px;
+  margin-top: 2px;
+  padding: 8px;
+  border: 1px solid rgba(24, 255, 200, 0.24);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(24, 255, 200, 0.08), rgba(4, 9, 16, 0.58)),
+    rgba(4, 9, 16, 0.58);
+}
+
+.health-status-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+}
+
+.health-status-head span {
+  color: rgba(247, 255, 243, 0.68);
+}
+
+.health-status-head strong {
+  color: #18ffc8;
+  font-size: 15px;
+}
+
+.health-track {
+  position: relative;
+  height: 14px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(255, 93, 122, 0.32), rgba(245, 217, 148, 0.24) 45%, rgba(24, 255, 200, 0.22)),
+    rgba(247, 255, 243, 0.1);
+  overflow: hidden;
+}
+
+.health-track::before {
+  content: "";
+  position: absolute;
+  inset: 3px auto 3px 3px;
+  width: calc((100% - 6px) * var(--health-value));
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff5d7a, #f5d994 50%, #18ffc8);
+  box-shadow: 0 0 10px rgba(24, 255, 200, 0.28);
+}
+
+.health-track span {
+  position: absolute;
+  top: 50%;
+  left: clamp(8px, calc(var(--health-value) * 100%), calc(100% - 8px));
+  width: 3px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(247, 255, 243, 0.95);
+  box-shadow: 0 0 8px rgba(247, 255, 243, 0.5);
+  transform: translate(-50%, -50%);
+}
+
+.health-impact-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.health-impact-list span {
+  padding: 2px 5px;
+  border: 1px solid rgba(247, 255, 243, 0.12);
+  border-radius: 999px;
+  color: rgba(247, 255, 243, 0.62);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.health-impact-list [data-impact='good'] {
+  border-color: rgba(24, 255, 200, 0.32);
+  color: #18ffc8;
+}
+
+.health-impact-list [data-impact='warn'] {
+  border-color: rgba(245, 217, 148, 0.34);
+  color: #f5d994;
+}
+
+.health-impact-list [data-impact='bad'],
+.health-status-danger .health-status-head strong {
+  border-color: rgba(255, 93, 122, 0.42);
+  color: #ff5d7a;
+}
+
+.health-status-warning .health-status-head strong {
+  color: #f5d994;
+}

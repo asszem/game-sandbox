@@ -47,3 +47,8 @@ Notes:
 - Continued main app split: extracted save-world application, tutorial progression state, and main HUD synchronization into `src/app/save-apply.ts`, `src/app/tutorial-controller.ts`, and `src/app/hud-sync.ts`; `src/main.ts` is now under 500 lines.
 - Updated `refactor/REFACTOR-PROMPT.md` to match the current module and CSS structure.
 - Current largest files after this pass: `src/render/PetriDishRenderer.ts`, `src/core/simulation.ts`, and `src/main.ts`.
+- Updated Homeostasis conversion controls so each semantic state label is the visible slider handle and follows live range values; the native range thumb is transparent underneath for dragging.
+- Verification: `npm run build`, `npm test`, and Playwright screenshot/drag checks passed for the Homeostasis label-handle controls.
+- Redesigned the Homeostasis panel hierarchy: top summary now focuses on Health with a meter-style impact strip; Autophagy detail was removed from the top row; Gen and Size moved to a bottom vitals strip.
+- Rearranged Homeostasis store blocks into a connected flow-chart layout and renamed conversion headers to Source, Priority, Produces, and Tradeoff.
+- Verification: `npm run build`, `npm test`, and Playwright screenshot check passed for the redesigned Homeostasis panel.

@@ -26,6 +26,8 @@ export type MetabolicDashboardElements = {
   lightFactor: HTMLElement | null;
   rosDelta: HTMLElement | null;
   autophagyDelta: HTMLElement | null;
+  cellGenerationValue: HTMLElement | null;
+  cellSizeValue: HTMLElement | null;
 };
 
 export function syncMetabolicDashboard(elements: MetabolicDashboardElements, cell: Cell | null, running: boolean): void {
@@ -38,6 +40,7 @@ export function syncMetabolicDashboard(elements: MetabolicDashboardElements, cel
   setPhotosynthesis(elements.lightFactor, cell);
   setDelta(elements.rosDelta, rates?.ros ?? 0, true);
   setDelta(elements.autophagyDelta, rates?.autophagy ?? 0, true);
+  setCellVitals(elements.cellGenerationValue, elements.cellSizeValue, cell);
 
   if (elements.root && cell) {
     elements.root.style.setProperty('--glucose-flow', `${3 + cell.glucoseTransport * 5}px`);
@@ -59,6 +62,15 @@ export function syncMetabolicDashboard(elements: MetabolicDashboardElements, cel
     elements.root.classList.remove('is-toxic');
     elements.root.classList.remove('is-autophagy');
     elements.root.classList.add('is-paused');
+  }
+}
+
+function setCellVitals(generationElement: HTMLElement | null, sizeElement: HTMLElement | null, cell: Cell | null): void {
+  if (generationElement) {
+    generationElement.textContent = cell ? String(cell.generation) : '0';
+  }
+  if (sizeElement) {
+    sizeElement.textContent = cell ? cell.radius.toFixed(1) : '0.0';
   }
 }
 

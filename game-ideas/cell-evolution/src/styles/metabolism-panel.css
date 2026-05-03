@@ -38,8 +38,27 @@
 
 .metabolic-stores {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 7px;
+  position: relative;
+  grid-template-columns: minmax(78px, 0.9fr) minmax(78px, 0.9fr) minmax(92px, 1.05fr) minmax(78px, 0.9fr);
+  grid-template-areas:
+    "glucose oxygen atp amino"
+    "glycogen oxygen atp amino";
+  gap: 8px 10px;
+  align-items: stretch;
+}
+
+.metabolic-stores::before {
+  content: "";
+  position: absolute;
+  inset: 16px 12px;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, transparent 0 18%, rgba(255, 230, 46, 0.28) 18% 20%, transparent 20%),
+    linear-gradient(90deg, transparent 0 42%, rgba(54, 215, 255, 0.26) 42% 44%, transparent 44%),
+    linear-gradient(90deg, transparent 0 66%, rgba(97, 255, 189, 0.24) 66% 68%, transparent 68%),
+    linear-gradient(0deg, transparent 0 46%, rgba(245, 217, 148, 0.18) 46% 49%, transparent 49%);
+  filter: drop-shadow(0 0 8px rgba(24, 255, 200, 0.12));
+  pointer-events: none;
 }
 
 .metabolic-store,
@@ -49,7 +68,7 @@
   top: auto;
   display: grid;
   min-width: 0;
-  min-height: 94px;
+  min-height: 78px;
   grid-template-rows: 32px auto auto;
   align-items: center;
   justify-items: center;
@@ -67,6 +86,7 @@
   line-height: 1.05;
   text-align: center;
   cursor: help;
+  z-index: 1;
 }
 
 .metabolic-store span {
@@ -85,6 +105,7 @@
 }
 
 .metabolic-store.node-glucose {
+  grid-area: glucose;
   left: auto;
   top: auto;
   transform: none;
@@ -95,6 +116,7 @@
 }
 
 .metabolic-store.node-glycogen {
+  grid-area: glycogen;
   left: auto;
   top: auto;
   transform: none;
@@ -105,6 +127,7 @@
 }
 
 .metabolic-store.node-oxygen {
+  grid-area: oxygen;
   left: auto;
   top: auto;
   transform: none;
@@ -115,6 +138,7 @@
 }
 
 .metabolic-store.node-amino {
+  grid-area: amino;
   left: auto;
   top: auto;
   transform: none;
@@ -125,6 +149,8 @@
 }
 
 .metabolic-store.metabolic-core {
+  grid-area: atp;
+  min-height: 100%;
   border-color: rgba(249, 255, 77, 0.55);
   background:
     radial-gradient(circle at 50% 20%, rgba(249, 255, 77, 0.12), transparent 42%),
@@ -132,6 +158,36 @@
   box-shadow:
     0 0 20px rgba(249, 255, 77, 0.18),
     inset 0 0 16px rgba(249, 255, 77, 0.05);
+}
+
+.metabolic-store.node-glucose::after,
+.metabolic-store.node-glycogen::after,
+.metabolic-store.node-oxygen::after,
+.metabolic-store.metabolic-core::after {
+  position: absolute;
+  right: -9px;
+  top: 50%;
+  color: currentColor;
+  font-size: 14px;
+  line-height: 1;
+  text-shadow: 0 0 8px currentColor;
+  transform: translateY(-50%);
+}
+
+.metabolic-store.node-glucose::after,
+.metabolic-store.node-oxygen::after {
+  content: ">";
+}
+
+.metabolic-store.node-glycogen::after {
+  content: "\21C4";
+  color: rgba(245, 217, 148, 0.82);
+}
+
+.metabolic-store.metabolic-core::after {
+  content: "+";
+  right: -10px;
+  color: rgba(97, 255, 189, 0.85);
 }
 
 .resource-readout {
@@ -167,6 +223,31 @@
   display: grid;
   grid-template-columns: minmax(220px, 1.65fr) minmax(92px, 0.75fr) minmax(92px, 0.75fr);
   gap: 8px;
+}
+
+.cell-vitals-strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: -4px;
+}
+
+.cell-vitals-strip span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 3px 6px;
+  border: 1px solid rgba(247, 255, 243, 0.12);
+  border-radius: 999px;
+  background: rgba(4, 9, 16, 0.5);
+  color: rgba(247, 255, 243, 0.52);
+  font-size: 10px;
+}
+
+.cell-vitals-strip strong {
+  color: rgba(247, 255, 243, 0.86);
+  font-size: 11px;
 }
 
 .tri-gauge {

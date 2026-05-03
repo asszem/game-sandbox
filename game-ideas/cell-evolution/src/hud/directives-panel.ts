@@ -24,12 +24,32 @@ export function syncTransportControls(
     const key = control.dataset.control as CellControlKey;
     const value = cell ? Math.round((cell[key] ?? 0.5) * 100) : 0;
     control.value = String(value);
+    control.parentElement?.style.setProperty('--control-value', String(value / 100));
   });
   transportOutputs.forEach((output) => {
     const key = output.dataset.controlValue as CellControlKey;
     const value = cell ? Math.round((cell[key] ?? 0.5) * 100) : 0;
-    output.textContent = `${value}%`;
+    output.textContent = controlLabel(key, value);
   });
+}
+
+function controlLabel(key: CellControlKey, value: number): string {
+  if (key === 'glucoseTransport') {
+    return value < 34 ? 'Use now' : value > 66 ? 'Store early' : 'Balanced';
+  }
+  if (key === 'aminoTransport') {
+    return value < 34 ? 'Import low' : value > 66 ? 'Import high' : 'Balanced';
+  }
+  if (key === 'oxygenMetabolism') {
+    return value < 34 ? 'Low ATP' : value > 66 ? 'High ATP' : 'Balanced';
+  }
+  if (key === 'ribosomeActivity') {
+    return value < 34 ? 'Growth' : value > 66 ? 'Repair' : 'Balanced';
+  }
+  if (key === 'sensorBudget') {
+    return value < 34 ? 'Short range' : value > 66 ? 'Wide range' : 'Balanced';
+  }
+  return value < 34 ? 'Conserve' : value > 66 ? 'Sprint' : 'Balanced';
 }
 
 export function syncDirectiveSelects(selects: NodeListOf<HTMLSelectElement>, cell: Cell | null): void {

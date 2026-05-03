@@ -201,6 +201,7 @@
   align-items: center;
   width: 100%;
   min-width: 0;
+  --control-value: 0.5;
 }
 
 .conversion-control.flow-path {
@@ -230,17 +231,25 @@
 
 .conversion-driver output {
   position: absolute;
-  right: 8px;
+  left: clamp(34px, calc(var(--control-value) * 100%), calc(100% - 34px));
   top: 50%;
-  padding: 1px 4px;
+  min-width: 58px;
+  padding: 3px 6px;
   border-radius: 999px;
-  background: rgba(4, 9, 16, 0.86);
-  color: rgba(247, 255, 243, 0.88);
-  font-size: 9px;
+  border: 1px solid rgba(247, 255, 243, 0.76);
+  background: color-mix(in srgb, currentColor 42%, rgba(4, 9, 16, 0.94));
+  color: rgba(247, 255, 243, 0.96);
+  font-size: 9.5px;
+  font-weight: 600;
   line-height: 1;
-  transform: translateY(-50%);
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+  transform: translate(-50%, -50%);
   pointer-events: none;
   z-index: 2;
+  box-shadow:
+    0 0 0 1px rgba(4, 9, 16, 0.72),
+    0 0 12px currentColor;
 }
 
 .conversion-control::-webkit-slider-runnable-track {
@@ -257,16 +266,14 @@
 }
 
 .conversion-control::-webkit-slider-thumb {
-  width: 14px;
-  height: 14px;
+  width: 60px;
+  height: 18px;
   margin-top: -4px;
   appearance: none;
-  border: 2px solid rgba(247, 255, 243, 0.88);
-  border-radius: 50%;
-  background: currentColor;
-  box-shadow:
-    0 0 0 1px rgba(4, 9, 16, 0.88),
-    0 0 12px currentColor;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
 }
 
 .conversion-control::-moz-range-track {
@@ -283,12 +290,12 @@
 }
 
 .conversion-control::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  border: 2px solid rgba(247, 255, 243, 0.88);
-  border-radius: 50%;
-  background: currentColor;
-  box-shadow: 0 0 12px currentColor;
+  width: 60px;
+  height: 18px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
 }
 
 .conversion-map {
@@ -328,7 +335,7 @@
 .conversion-output {
   color: rgba(247, 255, 243, 0.94);
   font-weight: 500;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .conversion-note {

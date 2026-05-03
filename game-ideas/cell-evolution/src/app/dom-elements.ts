@@ -57,6 +57,8 @@ export function queryAppElements(): AppElements {
     lightFactor: document.querySelector<HTMLElement>('#light-factor'),
     rosDelta: document.querySelector<HTMLElement>('#ros-delta'),
     autophagyDelta: document.querySelector<HTMLElement>('#autophagy-delta'),
+    cellGenerationValue: document.querySelector<HTMLElement>('#cell-generation-value'),
+    cellSizeValue: document.querySelector<HTMLElement>('#cell-size-value'),
     toastRegion: document.querySelector<HTMLElement>('#toast-region'),
     tooltipLayer: document.querySelector<HTMLElement>('#tooltip-layer'),
     newDishModal: document.querySelector<HTMLElement>('#new-dish-modal'),
@@ -137,6 +139,8 @@ export type AppElements = {
   lightFactor: HTMLElement | null;
   rosDelta: HTMLElement | null;
   autophagyDelta: HTMLElement | null;
+  cellGenerationValue: HTMLElement | null;
+  cellSizeValue: HTMLElement | null;
   toastRegion: HTMLElement | null;
   tooltipLayer: HTMLElement | null;
   newDishModal: HTMLElement | null;

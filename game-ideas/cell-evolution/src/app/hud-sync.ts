@@ -146,6 +146,8 @@ function syncMetabolism(elements: AppElements, cell: Parameters<typeof syncMetab
     lightFactor: elements.lightFactor,
     rosDelta: elements.rosDelta,
     autophagyDelta: elements.autophagyDelta,
+    cellGenerationValue: elements.cellGenerationValue,
+    cellSizeValue: elements.cellSizeValue,
   }, cell, running);
 }
 

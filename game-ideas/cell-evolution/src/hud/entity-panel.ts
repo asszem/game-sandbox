@@ -21,18 +21,21 @@ export function formatCellState(cell: Cell): string {
     : cell.health <= 0.45 || cell.atp <= 15 || cell.ros >= 45
       ? 'warning'
       : 'stable';
-  const stats: CellStat[] = [
-    [
-      'Health',
-      `${healthPercent}%`,
-      'Health is normalized from 0% to 100%. A cell dies when health reaches 0%, ATP falls below -10, or mass falls below 0.16. To save it: avoid poison, lower ROS by reducing mitochondria if needed, import amino acids for repair, and refill glucose or glycogen for ATP.',
-      healthState,
-    ],
-    ['Autophagy', `${cell.autophagyRate.toFixed(2)}/tick`, 'Autophagy is emergency self-eating: when glucose and glycogen are empty, the cell breaks down amino acids and mass for fuel, hurting health.', cell.autophagyRate > 0 ? 'danger' : undefined],
-    ['Gen', cell.generation.toString(), 'Generation counts how many divisions separate this cell from the starting population.'],
-    ['Size', cell.radius.toFixed(1), 'Cell size affects collision area, food intake, vulnerability, and whether the cell is ready to divide.'],
+  const repairReady = cell.atp > 15 && cell.aminoAcids > 12 && cell.ros < 35;
+  const pressure = [
+    { label: `ATP ${Math.round(cell.atp)}`, state: cell.atp > 15 ? 'good' : 'bad' },
+    { label: `Amino Acids ${Math.round(cell.aminoAcids)}`, state: cell.aminoAcids > 12 ? 'good' : 'bad' },
+    { label: `ROS ${Math.round(cell.ros)}`, state: cell.ros < 35 ? 'good' : cell.ros > 45 ? 'bad' : 'warn' },
+    { label: cell.autophagyRate > 0 ? `Autophagy -${cell.autophagyRate.toFixed(1)}` : 'Autophagy 0', state: cell.autophagyRate > 0 ? 'bad' : 'good' },
+    { label: repairReady ? 'Repair active' : 'Repair limited', state: repairReady ? 'good' : 'warn' },
   ];
-  return `<span class="cell-stat-grid">${stats.map(([label, value, tooltip, state]) => `<span class="cell-stat${state ? ` cell-stat-${state}` : ''}" data-tooltip="${escapeHtml(tooltip)}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></span>`).join('')}</span>`;
+  return `
+    <div class="health-status health-status-${healthState}" data-tooltip="${escapeHtml('Health is normalized from 0% to 100%. Health improves when ATP and amino acids can maintain repair while ROS is low. It drops from poison, high ROS, low ATP, amino-acid shortage, autophagy, and very low mass.')}">
+      <div class="health-status-head"><span>Health</span><strong>${healthPercent}%</strong></div>
+      <div class="health-track" role="meter" aria-label="Cell health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${healthPercent}" style="--health-value: ${healthPercent / 100}"><span></span></div>
+      <div class="health-impact-list">${pressure.map(({ label, state }) => `<span data-impact="${state}">${escapeHtml(label)}</span>`).join('')}</div>
+    </div>
+  `;
 }
 
 export function formatNavigationState(cell: Cell, detections: DetectionSummary, awareness: number, sensingClarity: number): string {
