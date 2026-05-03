@@ -76,41 +76,72 @@
             <p id="entity-detail">Select a dish, then click a cell, resource, poison cloud, or mineral block.</p>
           </div>
           <div class="metabolic-dashboard" aria-label="metabolic engine dashboard" hidden>
-            <div class="homeostasis-flow" aria-label="cell homeostasis flow">
-              <section class="flow-band flow-environment" aria-label="environmental resources">
-                <h4>Environmental Resources</h4>
-                <div class="flow-node input-glucose" data-tooltip="External glucose enters the cell as fuel. Inside the cell it moves through glucose-6-phosphate, glycolysis, and pyruvate before becoming ATP."><i class="store-icon icon-glucose" aria-hidden="true"></i><span>Glucose</span><strong id="glucose-rate" class="resource-readout"><span class="resource-value">0</span><small id="glucose-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
-                <div class="flow-node input-oxygen" data-tooltip="Oxygen does not create ATP by itself. It lets pyruvate run through respiration, which produces more ATP than fermentation and creates ROS waste."><i class="store-icon icon-oxygen" aria-hidden="true"></i><span>Oxygen</span><strong id="oxygen-rate" class="resource-readout"><span class="resource-value">0</span><small id="oxygen-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
-                <div class="flow-node input-amino" data-tooltip="External amino acids are building blocks. The cell spends ATP to use them for protein repair, enzymes, sensors, and growth."><i class="store-icon icon-amino" aria-hidden="true"></i><span>Amino Acids</span><strong id="amino-rate" class="resource-readout"><span class="resource-value">0</span><small id="amino-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
-                <div class="flow-node input-stress" data-tooltip="Stressors and toxins raise damage and stress pressure. Damage pulls overall health downward unless repair can keep up."><span class="flow-symbol">!</span><span>Stressors</span><strong id="stress-signal-rate" class="resource-readout"><span class="resource-value">0</span><small id="damage-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
-              </section>
-              <section class="flow-band flow-interior" aria-label="cell interior homeostasis">
-                <h4>Cell Interior</h4>
-                <div class="flow-row energy-row">
-                  <div class="flow-node process-node" data-tooltip="Glucose-6-phosphate is the glucose hub. It receives glucose and glycogen reserve output, then feeds glycolysis or storage."><span class="flow-symbol">G6P</span><span>Glucose Hub</span><strong id="g6p-rate" class="resource-readout"><span class="resource-value">0</span><small id="g6p-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
-                  <span class="flow-link">Glycolysis</span>
-                  <div class="flow-node process-node" data-tooltip="Pyruvate is the branch point. With oxygen it feeds respiration; without oxygen it falls back to fermentation."><span class="flow-symbol">Pyr</span><span>Pyruvate</span><strong id="pyruvate-rate" class="resource-readout"><span class="resource-value">0</span><small id="pyruvate-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
-                  <span class="flow-link oxygen-link">Respiration uses O2</span>
-                  <div class="flow-node atp-node" data-tooltip="ATP is the cell's immediate energy currency. Glycolysis makes some ATP without oxygen; respiration makes more ATP when oxygen is available."><i class="store-icon icon-atp" aria-hidden="true"></i><span>ATP Pool</span><strong id="atp-core" class="resource-readout"><span class="resource-value">0</span><small id="atp-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
-                </div>
-                <div class="flow-row support-row">
-                  <div class="flow-node storage-node" data-tooltip="Glycogen is stored glucose. It can be mobilized back into the glucose hub when energy is low."><i class="store-icon icon-glycogen" aria-hidden="true"></i><span>Glycogen</span><strong id="glycogen-rate" class="resource-readout"><span class="resource-value">0</span><small id="glycogen-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
-                  <div class="flow-node process-node" data-tooltip="Fermentation is the low-oxygen fallback from pyruvate. It makes less ATP and raises lactate, but it works without oxygen."><span class="flow-symbol">Fer</span><span>Fermentation</span><strong id="lactate-rate" class="resource-readout"><span class="resource-value">0</span><small id="lactate-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
-                  <div class="flow-node repair-node" data-tooltip="Protein integrity is rebuilt from amino acids using ATP. Protein supports repair, enzymes, sensors, and cell structure."><span class="flow-symbol">Pr</span><span>Protein / Repair</span><strong id="protein-rate" class="resource-readout"><span class="resource-value">0</span><small id="protein-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
-                  <div class="flow-node stress-node" data-tooltip="ROS and damage are negative pressure on health. Respiration creates ROS; antioxidants and repair can reduce the harm."><span class="flow-symbol">ROS</span><span>ROS / Damage</span><strong id="ros-delta" class="resource-readout"><span class="resource-value">0</span><small id="damage-rate" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
-                </div>
-                <div class="flow-row emergency-row">
-                  <div class="flow-note" id="light-factor" data-tooltip="Photosynthesis converts light into glucose and a small amount of oxygen.">0.00 intake | +0.00 Glucose | +0.00 Oxygen</div>
-                  <div class="flow-note" id="autophagy-delta" data-tooltip="Autophagy breaks down protein into amino acids under starvation, stress, or damage.">Autophagy +0.0</div>
-                  <div class="flow-note" id="balance-impact" data-tooltip="Balance summarizes whether energy, building blocks, protein, ROS, and damage are currently pushing health up or down.">Balance stable</div>
-                </div>
-              </section>
-              <section class="flow-band flow-outcome" aria-label="overall cell health result">
-                <h4>Overall Cell Health</h4>
-                <div class="outcome-card positive-balance" data-tooltip="Positive balance means the cell has enough ATP, amino acids, protein integrity, and low damage to grow or divide."><span>Positive Balance</span><strong id="positive-balance-value">0</strong><small>Growth / division pressure</small></div>
-                <div class="outcome-health" data-tooltip="Overall health is the result of energy, building blocks, protein integrity, ROS, damage, and starvation."><span>Homeostasis</span><strong id="overall-health-value">0%</strong><small id="overall-health-delta" data-trend="flat">+0.0/tick</small></div>
-                <div class="outcome-card negative-balance" data-tooltip="Negative balance means high damage, low energy, resource depletion, ROS, or structural loss is pushing the cell toward stalling or apoptosis."><span>Negative Balance</span><strong id="negative-balance-value">0</strong><small>Stalling / apoptosis pressure</small></div>
-              </section>
+            <div class="homeostasis-flow cell-interior-wireframe" aria-label="cell interior homeostasis flow">
+              <svg class="layer-map-arrows" viewBox="0 0 830 610" preserveAspectRatio="none" aria-hidden="true">
+                <defs>
+                  <marker id="layer-arrow-glucose" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#f9ff4d"></path></marker>
+                  <marker id="layer-arrow-oxygen" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#36a3ff"></path></marker>
+                </defs>
+                <path class="layer-arrow glucose-layer-arrow" d="M117 102 C117 128 102 146 102 178"></path>
+                <path class="layer-arrow oxygen-layer-arrow" d="M415 102 C415 122 452 122 452 138"></path>
+              </svg>
+              <div class="cell-map-layer input-layer" aria-label="input layer">
+                <h4>Input Layer</h4>
+                <div class="map-node intake-node glucose-intake" data-tooltip="Glucose enters the cell and feeds the glucose hub."><i class="map-pictogram store-icon icon-glucose" aria-hidden="true"></i><span>Glucose<br />Intake</span><strong id="glucose-rate" class="resource-readout"><span class="resource-value">0</span><small id="glucose-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>external input</small></div>
+                <div class="map-node intake-node oxygen-intake" data-tooltip="Oxygen enables respiration. More oxygen improves ATP yield from pyruvate."><i class="map-pictogram store-icon icon-oxygen" aria-hidden="true"></i><span>Oxygen<br />Intake</span><strong id="oxygen-rate" class="resource-readout"><span class="resource-value">0</span><small id="oxygen-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>external input</small></div>
+                <div id="light-factor" class="map-chip light-chip" data-tooltip="Photosynthesis converts light into glucose and a small amount of oxygen.">0.00 intake | +0.00 Glucose | +0.00 Oxygen</div>
+              </div>
+              <div class="cell-map-layer metabolic-core-layer" aria-label="metabolic core">
+                <h4>Metabolic Core</h4>
+                <svg class="cell-map-arrows" viewBox="0 0 529 356" preserveAspectRatio="none" aria-hidden="true">
+                  <defs>
+                    <marker id="arrow-productive" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#f9ff4d"></path></marker>
+                    <marker id="arrow-oxygen" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#36a3ff"></path></marker>
+                    <marker id="arrow-fallback" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#b58cff"></path></marker>
+                    <marker id="arrow-damage" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ff5d7a"></path></marker>
+                    <marker id="arrow-storage" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ffb12e"></path></marker>
+                  </defs>
+                  <path class="map-arrow productive-arrow" d="M78 0 V39"></path>
+                  <path class="map-arrow oxygen-arrow" d="M428 0 C428 28 503 34 503 138 C503 176 431 176 431 205"></path>
+                  <path class="map-arrow productive-arrow" d="M134 86 H188"></path>
+                  <path class="map-arrow productive-arrow" d="M290 86 H348"></path>
+                  <path class="map-arrow productive-arrow" d="M400 130 C400 160 431 181 431 205"></path>
+                  <path class="map-arrow fallback-arrow" d="M372 130 C342 164 296 197 266 229"></path>
+                  <path class="map-arrow productive-arrow" d="M318 268 C344 292 366 322 379 322"></path>
+                  <path class="map-arrow productive-arrow" d="M431 280 V292"></path>
+                  <path class="map-arrow productive-arrow" d="M78 130 V233"></path>
+                  <path class="map-arrow storage-arrow" d="M110 235 V133"></path>
+                  <path class="map-arrow damage-arrow" d="M480 242 H529"></path>
+                </svg>
+                <div class="map-node metabolite-node g6p-node" data-tooltip="G6P is the intracellular glucose hub that feeds glycolysis or glycogen storage."><i class="map-pictogram store-icon icon-glucose" aria-hidden="true"></i><span>G6P<br />Glucose Hub</span><strong id="g6p-rate" class="resource-readout"><span class="resource-value">0</span><small id="g6p-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>usable glucose</small></div>
+                <div class="map-node process-node glycolysis-node" data-tooltip="Glycolysis converts glucose into pyruvate and produces a small amount of ATP."><i class="map-pictogram icon-glycolysis" aria-hidden="true"></i><span>Glycolysis</span><strong id="glycolysis-rate" class="resource-readout"><span class="resource-value">0</span><small data-trend="flat" class="resource-delta">flow</small></strong><small>converts glucose</small></div>
+                <div class="map-node metabolite-node pyruvate-node" data-tooltip="Pyruvate is the branch point between oxygen-dependent respiration and low-oxygen fermentation."><i class="map-pictogram icon-branch" aria-hidden="true"></i><span>Pyr<br />Pyruvate</span><strong id="pyruvate-rate" class="resource-readout"><span class="resource-value">0</span><small id="pyruvate-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>branch point</small></div>
+                <div class="map-node storage-node glycogen-node" data-tooltip="Glycogen stores glucose and mobilizes it back to the glucose hub when energy is low."><i class="map-pictogram store-icon icon-glycogen" aria-hidden="true"></i><span>Glycogen</span><strong id="glycogen-rate" class="resource-readout"><span class="resource-value">0</span><small id="glycogen-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>stored glucose</small></div>
+                <div class="map-node fallback-node fermentation-node" data-tooltip="Fermentation is the low-oxygen fallback pathway. It produces weaker ATP output without oxygen."><i class="map-pictogram icon-fermentation" aria-hidden="true"></i><span>Fermentation</span><strong id="lactate-rate" class="resource-readout"><span class="resource-value">0</span><small id="lactate-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>low oxygen route</small></div>
+                <div class="map-node respiration-node" data-tooltip="Respiration uses oxygen to produce efficient ATP from pyruvate, while also producing ROS waste."><i class="map-pictogram store-icon icon-oxygen" aria-hidden="true"></i><span>Respiration<br />uses O₂</span><strong id="respiration-rate" class="resource-readout"><span class="resource-value">0</span><small data-trend="flat" class="resource-delta">flow</small></strong><small>efficient ATP route</small></div>
+                <div class="map-node atp-node" data-tooltip="ATP is the energy currency generated by glycolysis, fermentation, and respiration."><i class="map-pictogram store-icon icon-atp" aria-hidden="true"></i><span>ATP Pool</span><strong id="atp-core" class="resource-readout"><span class="resource-value">0</span><small id="atp-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>energy currency</small></div>
+                <div class="map-chip storage-store-chip">store excess</div>
+                <div class="map-chip storage-mobilize-chip">mobilize when low</div>
+                <div class="map-chip fallback-chip">Low O₂ fallback</div>
+                <div class="map-chip oxygen-chip">uses O₂</div>
+                <div class="map-chip ros-chip">ROS byproduct</div>
+              </div>
+              <div class="cell-map-layer damage-layer" aria-label="damage and signaling">
+                <h4>Damage / Signaling</h4>
+                <div class="map-node damage-node" data-tooltip="ROS and accumulated damage reduce cell health unless repair can keep up."><i class="map-pictogram icon-damage" aria-hidden="true"></i><span>ROS / Damage</span><strong id="ros-delta" class="resource-readout"><span class="resource-value">0</span><small id="damage-rate" class="resource-delta" data-trend="flat">+0.0</small></strong><small>from respiration and stress</small></div>
+                <div class="map-node stress-signal-node" data-tooltip="Stress signal rises when damage, starvation, or poison pressure is high."><i class="map-pictogram icon-signal" aria-hidden="true"></i><span>Stress Signal</span><strong id="stress-signal-rate" class="resource-readout"><span class="resource-value">0</span><small id="damage-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>damage pressure</small></div>
+              </div>
+              <div class="cell-map-layer outcome-layer" aria-label="outcome layer">
+                <h4>Outcome Layer</h4>
+                <div class="map-node growth-node" data-tooltip="Positive balance means high health and enough resources for growth or division."><i class="map-pictogram icon-growth" aria-hidden="true"></i><span>Growth /<br />Division</span><strong id="positive-balance-value">0</strong><small>high health</small></div>
+                <div class="map-node health-node" data-tooltip="Cell Health integrates ATP, repair, protein, ROS, damage, and starvation."><i class="map-pictogram icon-health" aria-hidden="true"></i><span>Cell Health</span><strong id="overall-health-value">0%</strong><small id="overall-health-delta" data-trend="flat">+0.0/tick</small></div>
+                <div class="map-node repair-node" data-tooltip="ATP powers amino-acid use for protein repair, enzymes, sensors, and biosynthesis."><i class="map-pictogram store-icon icon-amino" aria-hidden="true"></i><span>Protein / Repair</span><strong id="protein-rate" class="resource-readout"><span class="resource-value">0</span><small id="protein-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>AA <span id="amino-rate"><span class="resource-value">0</span><small id="amino-node-delta" class="resource-delta" data-trend="flat">+0.0</small></span></small></div>
+                <div class="map-node apoptosis-node" data-tooltip="Negative balance means high damage, low health, or resource depletion pushes the cell toward stalling or apoptosis."><i class="map-pictogram icon-stall" aria-hidden="true"></i><span>Stall /<br />Apoptosis</span><strong id="negative-balance-value">0</strong><small>low health or high damage</small></div>
+                <div class="map-chip positive-balance-chip">positive balance</div>
+                <div class="map-chip negative-balance-chip">negative balance</div>
+                <div class="map-chip balance-chip" id="balance-impact">Balance stable</div>
+                <div class="map-chip autophagy-chip" id="autophagy-delta">Autophagy +0.0</div>
+              </div>
               <div class="cell-vitals-strip" aria-label="cell generation and size">
                 <span data-tooltip="Generation counts how many divisions separate this cell from the starting population.">Gen <strong id="cell-generation-value">0</strong></span>
                 <span data-tooltip="Cell size affects collision area, food intake, vulnerability, and whether the cell is ready to divide.">Size <strong id="cell-size-value">0.0</strong></span>

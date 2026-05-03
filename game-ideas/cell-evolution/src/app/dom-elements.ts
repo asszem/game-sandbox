@@ -56,8 +56,10 @@ export function queryAppElements(): AppElements {
     oxygenNodeDelta: document.querySelector<HTMLElement>('#oxygen-node-delta'),
     g6pRate: document.querySelector<HTMLElement>('#g6p-rate'),
     g6pNodeDelta: document.querySelector<HTMLElement>('#g6p-node-delta'),
+    glycolysisRate: document.querySelector<HTMLElement>('#glycolysis-rate'),
     pyruvateRate: document.querySelector<HTMLElement>('#pyruvate-rate'),
     pyruvateNodeDelta: document.querySelector<HTMLElement>('#pyruvate-node-delta'),
+    respirationRate: document.querySelector<HTMLElement>('#respiration-rate'),
     lactateRate: document.querySelector<HTMLElement>('#lactate-rate'),
     lactateNodeDelta: document.querySelector<HTMLElement>('#lactate-node-delta'),
     proteinRate: document.querySelector<HTMLElement>('#protein-rate'),
@@ -154,8 +156,10 @@ export type AppElements = {
   oxygenNodeDelta: HTMLElement | null;
   g6pRate: HTMLElement | null;
   g6pNodeDelta: HTMLElement | null;
+  glycolysisRate: HTMLElement | null;
   pyruvateRate: HTMLElement | null;
   pyruvateNodeDelta: HTMLElement | null;
+  respirationRate: HTMLElement | null;
   lactateRate: HTMLElement | null;
   lactateNodeDelta: HTMLElement | null;
   proteinRate: HTMLElement | null;

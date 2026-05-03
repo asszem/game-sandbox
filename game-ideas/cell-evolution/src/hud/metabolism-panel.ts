@@ -17,8 +17,10 @@ export type MetabolicDashboardElements = {
   oxygenNodeDelta: HTMLElement | null;
   g6pRate: HTMLElement | null;
   g6pNodeDelta: HTMLElement | null;
+  glycolysisRate: HTMLElement | null;
   pyruvateRate: HTMLElement | null;
   pyruvateNodeDelta: HTMLElement | null;
+  respirationRate: HTMLElement | null;
   lactateRate: HTMLElement | null;
   lactateNodeDelta: HTMLElement | null;
   proteinRate: HTMLElement | null;
@@ -46,8 +48,10 @@ export function syncMetabolicDashboard(elements: MetabolicDashboardElements, cel
   setResourceReadout(elements.aminoRate, elements.aminoNodeDelta, cell?.aminoAcids ?? 0, rates?.amino ?? 0);
   setResourceReadout(elements.oxygenRate, elements.oxygenNodeDelta, cell?.oxygen ?? 0, rates?.oxygen ?? 0);
   setResourceReadout(elements.g6pRate, elements.g6pNodeDelta, cell?.glucose6Phosphate ?? 0, rates?.glucose6Phosphate ?? 0);
+  setProcessReadout(elements.glycolysisRate, rates?.glycolysis ?? 0);
   setResourceReadout(elements.pyruvateRate, elements.pyruvateNodeDelta, cell?.pyruvate ?? 0, rates?.pyruvate ?? 0);
-  setResourceReadout(elements.lactateRate, elements.lactateNodeDelta, cell?.lactate ?? 0, rates?.fermentation ?? 0);
+  setProcessReadout(elements.respirationRate, rates?.respiration ?? 0);
+  setResourceReadout(elements.lactateRate, elements.lactateNodeDelta, rates?.fermentation ?? 0, cell?.lactate ?? 0);
   setResourceReadout(elements.proteinRate, elements.proteinNodeDelta, cell?.protein ?? 0, rates?.protein ?? 0);
   setResourceReadout(elements.stressSignalRate, elements.damageNodeDelta, cell?.stressSignal ?? 0, rates?.damage ?? 0, true);
   setPhotosynthesis(elements.lightFactor, cell);
@@ -98,6 +102,23 @@ function setResourceReadout(container: HTMLElement | null, deltaElement: HTMLEle
     }
   }
   setDelta(deltaElement, delta, inverted);
+}
+
+function setProcessReadout(container: HTMLElement | null, value: number): void {
+  if (!container) {
+    return;
+  }
+  const valueElement = container.querySelector<HTMLElement>('.resource-value');
+  if (valueElement) {
+    valueElement.textContent = formatValue(value);
+  } else {
+    container.textContent = formatValue(value);
+  }
+  const deltaElement = container.querySelector<HTMLElement>('.resource-delta');
+  if (deltaElement) {
+    deltaElement.textContent = 'flow';
+    deltaElement.dataset.trend = value > 0.05 ? 'good' : 'flat';
+  }
 }
 
 function setPhotosynthesis(element: HTMLElement | null, cell: Cell | null): void {
