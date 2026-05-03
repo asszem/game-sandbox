@@ -80,14 +80,19 @@ export function syncDishStatePanel(
     elements.dishName.textContent = activeDish ? '' : 'No dish selected';
   }
   if (elements.dishDetail) {
-    elements.dishDetail.innerHTML = formatDishState(activeDish);
+    const activeRadiusControl = activeElement instanceof HTMLInputElement
+      && activeElement.dataset.dishRadius !== undefined
+      && elements.dishDetail.contains(activeElement);
+    if (!activeRadiusControl) {
+      elements.dishDetail.innerHTML = formatDishState(activeDish);
+    }
   }
   if (elements.dishList) {
     elements.dishList.hidden = false;
     if (!elements.dishList.contains(activeElement)) {
-      const signature = currentDishPickerSignature(dishes);
+      const signature = `${currentDishPickerSignature(dishes)}|active:${activeDish?.id ?? 'none'}`;
       if (signature !== dishPickerSignature) {
-        elements.dishList.innerHTML = formatDishPickerList(dishes);
+        elements.dishList.innerHTML = formatDishPickerList(dishes, activeDish);
         return signature;
       }
     }

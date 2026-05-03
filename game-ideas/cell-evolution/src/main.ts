@@ -1,7 +1,7 @@
 import './styles/index.css';
-import { bindDishActionButtons, bindDishLayerClear, bindDishList, bindDnaButtons, bindGlobalShortcuts, bindNewDishModal, bindSaveModal, bindTooltipToggle, bindTransportControls, bindTutorialControls } from './app/app-events';
+import { bindDishActionButtons, bindDishLayerClear, bindDishList, bindDishStateControls, bindDnaButtons, bindGlobalShortcuts, bindNewDishModal, bindSaveModal, bindTooltipToggle, bindTransportControls, bindTutorialControls } from './app/app-events';
 import { drawMicroscopeBackdrop } from './app/backdrop';
-import { DishManager } from './app/dish-manager';
+import { DishManager, MAX_DISH_COUNT } from './app/dish-manager';
 import { addedDishPlacement, defaultDishSize } from './app/dish-layout';
 import type { DishInstance } from './app/dish-types';
 import { queryAppElements } from './app/dom-elements';
@@ -9,7 +9,7 @@ import { handleDishItemDrop } from './app/drop-handler';
 import { createDropController, type DropItemKind } from './app/drop-tools';
 import { createGameLoop } from './app/game-loop';
 import { syncMainHud } from './app/hud-sync';
-import { defaultNewDishCellCount, defaultNewDishSetup, readNewDishSetup as readNewDishSetupFromControls, resetNewDishRangeControls as resetNewDishRanges, setNewDishCellCount as setNewDishCellCountControls, type NewDishSetup } from './app/new-dish';
+import { defaultNewDishBoardRadius, defaultNewDishCellCount, defaultNewDishSetup, readNewDishSetup as readNewDishSetupFromControls, resetNewDishRangeControls as resetNewDishRanges, setNewDishBoardRadius as setNewDishBoardRadiusControl, setNewDishCellCount as setNewDishCellCountControls, type NewDishSetup } from './app/new-dish';
 import { applySavedWorld } from './app/save-apply';
 import { SAVE_KEY, createSavePayload as createSavePayloadData, type SaveData } from './app/save-load';
 import { createSaveModalController } from './app/save-modal';
@@ -32,6 +32,7 @@ const {
   microscopeBackdrop,
   tooltipToggle,
   tooltipStatus,
+  dishDetail,
   dishList,
   dnaButtons,
   transportControls,
@@ -41,6 +42,7 @@ const {
   tooltipLayer,
   newDishModal,
   newDishModalClose,
+  newDishRadiusRange,
   newDishCellCountRange,
   newDishCellCountInput,
   newDishResourceSliders,
@@ -133,11 +135,19 @@ bindGlobalShortcuts({
     renderer.resetZoom();
     updateHud();
   },
+  selectDishByNumber: selectDishByNumber,
   toggleTooltips: () => setTooltipsEnabled(!tooltipsEnabled, true),
   closeSaveModal: saveModalController.close,
   closeNewDishModal,
   showToast,
 });
+
+function selectDishByNumber(id: number): void {
+  const dish = dishes.find((item) => item.id === id);
+  if (dish) {
+    setActiveDish(dish, dish.inspectedTarget);
+  }
+}
 
 function toggleAllDishesRunning(): void {
   if (dishes.length === 0) {
@@ -177,6 +187,7 @@ bindNewDishModal({
   close: newDishModalClose,
   cancel: newDishCancel,
   create: newDishCreate,
+  radiusRange: newDishRadiusRange,
   cellCountRange: newDishCellCountRange,
   cellCountInput: newDishCellCountInput,
   resourceSliders: newDishResourceSliders,
@@ -184,6 +195,7 @@ bindNewDishModal({
 }, {
   close: closeNewDishModal,
   create: () => addDish(readNewDishSetup()),
+  setRadius: setNewDishBoardRadius,
   setCellCount: setNewDishCellCount,
 });
 bindDishList<DishInstance>(dishList, {
@@ -199,6 +211,16 @@ bindDishList<DishInstance>(dishList, {
     input.value = dish.name;
     updateDishLabel(dish);
     dishPickerSignature = currentDishPickerSignature(dishes);
+  },
+});
+bindDishStateControls(dishDetail, {
+  setRadius: (radius) => {
+    const dish = requireActiveDish();
+    if (!dish) {
+      return null;
+    }
+    dish.simulation.setBoardRadius(radius);
+    return dish.simulation.state.boardRadius;
   },
 });
 bindTutorialControls({
@@ -270,6 +292,10 @@ function requireActiveDish(): DishInstance | null {
 }
 
 function addDish(setup: NewDishSetup = {}): void {
+  if (dishes.length >= MAX_DISH_COUNT) {
+    showToast(`Maximum ${MAX_DISH_COUNT} dishes reached`);
+    return;
+  }
   const size = defaultDishSize(window.innerWidth);
   const placement = addedDishPlacement(dishes.length, size, window.innerWidth, window.innerHeight);
   const dish = dishManager.createDish({
@@ -283,14 +309,19 @@ function addDish(setup: NewDishSetup = {}): void {
 }
 
 function openNewDishModal(): void {
+  if (dishes.length >= MAX_DISH_COUNT) {
+    showToast(`Maximum ${MAX_DISH_COUNT} dishes reached`);
+    return;
+  }
   if (!newDishModal) {
     addDish(defaultNewDishSetup());
     return;
   }
+  setNewDishBoardRadius(defaultNewDishBoardRadius());
   setNewDishCellCount(defaultNewDishCellCount());
   resetNewDishRangeControls();
   newDishModal.hidden = false;
-  newDishCellCountRange?.focus();
+  newDishRadiusRange?.focus();
 }
 
 function closeNewDishModal(): void {
@@ -303,12 +334,16 @@ function setNewDishCellCount(value: number): number {
   return setNewDishCellCountControls(newDishCellCountRange, newDishCellCountInput, value);
 }
 
+function setNewDishBoardRadius(value: number): number {
+  return setNewDishBoardRadiusControl(newDishRadiusRange, value);
+}
+
 function resetNewDishRangeControls(): void {
   resetNewDishRanges(newDishResourceSliders, newDishEnvironmentSliders);
 }
 
 function readNewDishSetup(): NewDishSetup {
-  return readNewDishSetupFromControls(newDishCellCountRange, newDishCellCountInput, newDishResourceSliders, newDishEnvironmentSliders);
+  return readNewDishSetupFromControls(newDishRadiusRange, newDishCellCountRange, newDishCellCountInput, newDishResourceSliders, newDishEnvironmentSliders);
 }
 
 function deleteActiveDish(): void {

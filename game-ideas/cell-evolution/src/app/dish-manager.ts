@@ -5,6 +5,8 @@ import { bindDishCanvasEvents } from './dish-events';
 import { defaultDishPlacements, defaultDishSize, resizeDishCanvas, updateFloatingDishLabel } from './dish-layout';
 import type { CreateDishOptions, DishInstance } from './dish-types';
 
+export const MAX_DISH_COUNT = 9;
+
 type DishManagerHandlers = {
   selectDish: (dish: DishInstance, target: MapPick) => void;
   updateHud: () => void;
@@ -14,7 +16,6 @@ type DishManagerHandlers = {
 
 export class DishManager {
   readonly dishes: DishInstance[] = [];
-  private nextDishId = 1;
   private nextDishZ = 1;
 
   constructor(
@@ -29,13 +30,17 @@ export class DishManager {
   }
 
   createDish(options: CreateDishOptions = {}): DishInstance {
+    if (this.dishes.length >= MAX_DISH_COUNT) {
+      throw new Error(`Cannot create more than ${MAX_DISH_COUNT} dishes`);
+    }
+    const id = options.id ?? this.nextAvailableDishId();
     const canvas = document.createElement('canvas');
     canvas.className = 'dish-canvas';
-    canvas.dataset.dishId = String(options.id ?? this.nextDishId);
+    canvas.dataset.dishId = String(id);
     const label = document.createElement('button');
     label.className = 'dish-label';
     label.type = 'button';
-    label.dataset.dishId = String(options.id ?? this.nextDishId);
+    label.dataset.dishId = String(id);
     const size = options.size ?? defaultDishSize(window.innerWidth);
     canvas.style.width = `${size}px`;
     canvas.style.height = `${size}px`;
@@ -59,8 +64,8 @@ export class DishManager {
     renderer.applyView(options.view);
 
     const dish: DishInstance = {
-      id: options.id ?? this.nextDishId,
-      name: options.name ?? `Dish ${options.id ?? this.nextDishId}`,
+      id,
+      name: options.name ?? defaultDishName(id),
       canvas,
       label,
       simulation,
@@ -74,7 +79,6 @@ export class DishManager {
       dragMoved: false,
     };
 
-    this.nextDishId = Math.max(this.nextDishId, dish.id + 1);
     this.nextDishZ = Math.max(this.nextDishZ, dish.zIndex + 1);
     canvas.style.zIndex = String(dish.zIndex);
     this.updateDishLabel(dish);
@@ -88,7 +92,6 @@ export class DishManager {
   }
 
   resetIds(): void {
-    this.nextDishId = 1;
     this.nextDishZ = 1;
   }
 
@@ -109,7 +112,7 @@ export class DishManager {
   }
 
   updateDishLabel(dish: DishInstance): void {
-    updateFloatingDishLabel(dish.label, dish.canvas, dish.name, dish.zIndex);
+    updateFloatingDishLabel(dish.label, dish.canvas, dish.name, dish.zIndex, dish.id);
   }
 
   deleteDish(dish: DishInstance): void {
@@ -149,4 +152,18 @@ export class DishManager {
       setHoveredDishTarget: this.handlers.setHoveredDishTarget,
     });
   }
+
+  private nextAvailableDishId(): number {
+    for (let id = 1; id <= MAX_DISH_COUNT; id += 1) {
+      if (!this.dishes.some((dish) => dish.id === id)) {
+        return id;
+      }
+    }
+    return MAX_DISH_COUNT;
+  }
+}
+
+export function defaultDishName(id: number): string {
+  const letterCode = 'A'.charCodeAt(0) + Math.max(0, id - 1);
+  return `Dish ${String.fromCharCode(letterCode)}`;
 }

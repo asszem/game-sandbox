@@ -39,11 +39,12 @@ export function bindDishCanvasEvents(dish: DishInstance, handlers: DishEventHand
     handlers.selectDish(dish, dish.inspectedTarget);
     const rect = dish.canvas.getBoundingClientRect();
     const view = dish.renderer.exportView();
+    const forceMove = event.button === 2;
     dish.dragStart = {
       pointerId: event.pointerId,
       x: event.clientX,
       y: event.clientY,
-      mode: view.zoom > 1.001 ? 'pan' : 'move',
+      mode: !forceMove && view.zoom > 1.001 ? 'pan' : 'move',
       left: rect.left,
       top: rect.top,
       view,

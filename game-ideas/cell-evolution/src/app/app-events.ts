@@ -10,6 +10,7 @@ type GlobalShortcutHandlers = {
   saveGame: () => void;
   loadGame: () => void;
   resetActiveDishZoom: () => void;
+  selectDishByNumber: (id: number) => void;
   toggleTooltips: () => void;
   closeSaveModal: () => void;
   closeNewDishModal: () => void;
@@ -21,6 +22,10 @@ type DishListHandlers<Dish> = {
   selectDish: (dish: Dish) => void;
   renameDishDraft: (dish: Dish, name: string) => void;
   renameDishCommit: (dish: Dish, input: HTMLInputElement) => void;
+};
+
+type DishStateHandlers = {
+  setRadius: (radius: number) => number | null;
 };
 
 type DnaHandlers = {
@@ -62,6 +67,12 @@ export function bindGlobalShortcuts(
     if (isTypingTarget(event.target)) {
       return;
     }
+    const dishNumber = dishNumberFromKey(event);
+    if (dishNumber !== null) {
+      event.preventDefault();
+      handlers.selectDishByNumber(dishNumber);
+      return;
+    }
     if (event.code === 'KeyR') {
       event.preventDefault();
       handlers.restartScenario();
@@ -97,6 +108,16 @@ export function bindGlobalShortcuts(
   });
 }
 
+function dishNumberFromKey(event: KeyboardEvent): number | null {
+  if (/^Digit[1-9]$/.test(event.code)) {
+    return Number(event.code.slice('Digit'.length));
+  }
+  if (/^Numpad[1-9]$/.test(event.code)) {
+    return Number(event.code.slice('Numpad'.length));
+  }
+  return null;
+}
+
 export function bindDishActionButtons(
   buttons: NodeListOf<HTMLButtonElement>,
   handlers: {
@@ -129,6 +150,7 @@ export function bindNewDishModal(
     close: HTMLButtonElement | null;
     cancel: HTMLButtonElement | null;
     create: HTMLButtonElement | null;
+    radiusRange: HTMLInputElement | null;
     cellCountRange: HTMLInputElement | null;
     cellCountInput: HTMLInputElement | null;
     resourceSliders: NodeListOf<HTMLInputElement>;
@@ -137,6 +159,7 @@ export function bindNewDishModal(
   handlers: {
     close: () => void;
     create: () => void;
+    setRadius: (value: number) => void;
     setCellCount: (value: number) => void;
   },
 ): void {
@@ -153,6 +176,9 @@ export function bindNewDishModal(
   });
   elements.cellCountRange?.addEventListener('input', () => {
     handlers.setCellCount(Number(elements.cellCountRange?.value ?? 0));
+  });
+  elements.radiusRange?.addEventListener('input', () => {
+    handlers.setRadius(Number(elements.radiusRange?.value ?? 0));
   });
   elements.cellCountInput?.addEventListener('input', () => {
     handlers.setCellCount(Number(elements.cellCountInput?.value ?? 0));
@@ -206,6 +232,30 @@ export function bindDishList<Dish>(dishList: HTMLElement | null, handlers: DishL
     if (event.code === 'Enter' && target instanceof HTMLInputElement && target.dataset.renameDish) {
       event.preventDefault();
       target.blur();
+    }
+  });
+}
+
+export function bindDishStateControls(dishDetail: HTMLElement | null, handlers: DishStateHandlers): void {
+  dishDetail?.addEventListener('pointerdown', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLInputElement && target.dataset.dishRadius !== undefined) {
+      target.focus();
+    }
+  });
+  dishDetail?.addEventListener('input', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || !target.dataset.dishRadius) {
+      return;
+    }
+    const radius = handlers.setRadius(Number(target.value));
+    if (radius === null) {
+      return;
+    }
+    target.value = radius.toFixed(0);
+    const value = target.closest('.dish-radius-control')?.querySelector('strong');
+    if (value) {
+      value.textContent = radius.toFixed(1);
     }
   });
 }

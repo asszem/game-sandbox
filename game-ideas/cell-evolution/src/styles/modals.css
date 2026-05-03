@@ -98,6 +98,15 @@
   font-size: 12px;
 }
 
+.dish-radius-setup {
+  grid-template-columns: minmax(120px, 1fr) minmax(160px, 1.4fr);
+}
+
+.dish-radius-setup output {
+  color: #f9ff4d;
+  font-weight: 700;
+}
+
 .cell-count-control input[type='range'] {
   width: 100%;
   height: 16px;
@@ -308,4 +317,3 @@
   font-size: 12px;
   text-align: right;
 }
-

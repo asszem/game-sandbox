@@ -1,7 +1,7 @@
 import { clamp } from '../core/vector';
 
 export const MIN_DISH_SIZE = 320;
-export const MAX_DISH_SIZE = 760;
+export const MAX_DISH_SIZE = 1000;
 
 export type DishPlacement = {
   left: number;
@@ -35,9 +35,9 @@ export function tutorialDishPlacement(count: number, size: number, viewportWidth
   };
 }
 
-export function updateFloatingDishLabel(label: HTMLElement, canvas: HTMLCanvasElement, name: string, zIndex: number): void {
+export function updateFloatingDishLabel(label: HTMLElement, canvas: HTMLCanvasElement, name: string, zIndex: number, dishNumber: number): void {
   const rect = canvas.getBoundingClientRect();
-  label.textContent = name;
+  label.textContent = `#${dishNumber} ${name}`;
   label.style.left = `${rect.left + rect.width / 2}px`;
   label.style.top = `${Math.max(10, rect.top - 15)}px`;
   label.style.zIndex = String(zIndex + 1);

@@ -60,6 +60,7 @@ export function queryAppElements(): AppElements {
     tooltipLayer: document.querySelector<HTMLElement>('#tooltip-layer'),
     newDishModal: document.querySelector<HTMLElement>('#new-dish-modal'),
     newDishModalClose: document.querySelector<HTMLButtonElement>('#new-dish-modal-close'),
+    newDishRadiusRange: document.querySelector<HTMLInputElement>('#new-dish-radius-range'),
     newDishCellCountRange: document.querySelector<HTMLInputElement>('#new-dish-cell-count-range'),
     newDishCellCountInput: document.querySelector<HTMLInputElement>('#new-dish-cell-count-input'),
     newDishResourceSliders: document.querySelectorAll<HTMLInputElement>('[data-new-dish-resource]'),
@@ -138,6 +139,7 @@ export type AppElements = {
   tooltipLayer: HTMLElement | null;
   newDishModal: HTMLElement | null;
   newDishModalClose: HTMLButtonElement | null;
+  newDishRadiusRange: HTMLInputElement | null;
   newDishCellCountRange: HTMLInputElement | null;
   newDishCellCountInput: HTMLInputElement | null;
   newDishResourceSliders: NodeListOf<HTMLInputElement>;

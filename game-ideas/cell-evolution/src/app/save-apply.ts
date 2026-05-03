@@ -1,4 +1,4 @@
-import type { DishManager } from './dish-manager';
+import { MAX_DISH_COUNT, type DishManager } from './dish-manager';
 import type { DishInstance } from './dish-types';
 import { restoreTutorialState, savedDishesFromPayload, type RestoredTutorialState, type SaveData } from './save-load';
 
@@ -18,7 +18,7 @@ export function applySavedWorld<TStep extends string>(payload: SaveData<TStep>, 
   }
 
   context.dishManager.clearDishes();
-  for (const savedDish of savedDishesFromPayload(payload, context.viewportWidth, context.viewportHeight)) {
+  for (const savedDish of savedDishesFromPayload(payload, context.viewportWidth, context.viewportHeight).slice(0, MAX_DISH_COUNT)) {
     context.dishManager.createDish({
       id: savedDish.id,
       name: savedDish.name,

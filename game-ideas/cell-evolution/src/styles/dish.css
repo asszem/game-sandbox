@@ -33,8 +33,15 @@
 }
 
 .dish-canvas.is-selected {
-  outline: 1px solid rgba(249, 255, 77, 0.34);
-  outline-offset: 10px;
+  border-color: rgba(249, 255, 77, 0.92);
+  outline: 3px solid rgba(249, 255, 77, 0.5);
+  outline-offset: 7px;
+  box-shadow:
+    0 0 0 1px rgba(5, 11, 17, 0.88),
+    0 0 0 7px rgba(249, 255, 77, 0.12),
+    0 0 30px rgba(249, 255, 77, 0.34),
+    0 0 54px rgba(24, 255, 200, 0.18),
+    inset 0 0 22px rgba(249, 255, 77, 0.14);
 }
 
 .dish-canvas:active {

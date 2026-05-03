@@ -6,6 +6,15 @@
     0 0 22px rgba(68, 255, 203, 0.12);
   backdrop-filter: blur(14px);
 }
+
+.game-window.is-selected {
+  border-color: rgba(249, 255, 77, 0.42);
+  box-shadow:
+    0 20px 44px rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(249, 255, 77, 0.1),
+    0 0 26px rgba(249, 255, 77, 0.16),
+    0 0 18px rgba(68, 255, 203, 0.1);
+}
 .game-window {
   position: fixed;
   z-index: 3;
@@ -130,4 +139,3 @@
   right: 12px;
   width: 244px;
 }
-

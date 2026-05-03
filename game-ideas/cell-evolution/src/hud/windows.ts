@@ -3,6 +3,7 @@ export type WindowLayout = Record<string, { left: number; top: number; width: nu
 type GameWindow = {
   id: string;
   element: HTMLElement;
+  stackElement: HTMLElement;
   body: HTMLElement | null;
   collapseButton: HTMLButtonElement | null;
 };
@@ -17,12 +18,13 @@ export function createWindowSystem(): WindowSystem {
   const windows: GameWindow[] = Array.from(document.querySelectorAll<HTMLElement>('.game-window')).map((element) => ({
     id: element.dataset.windowId ?? '',
     element,
+    stackElement: element.classList.contains('hud') ? element : element.closest<HTMLElement>('.hud') ?? element,
     body: element.querySelector<HTMLElement>('.window-body'),
     collapseButton: element.querySelector<HTMLButtonElement>('.window-collapse'),
   }));
 
   for (const gameWindow of windows) {
-    setupWindow(gameWindow);
+    setupWindow(gameWindow, windows);
     setCollapsed(gameWindow, gameWindow.element.classList.contains('is-collapsed'), false);
   }
 
@@ -64,7 +66,7 @@ export function createWindowSystem(): WindowSystem {
   };
 }
 
-function setupWindow(gameWindow: GameWindow): void {
+function setupWindow(gameWindow: GameWindow, windows: GameWindow[]): void {
   const { element } = gameWindow;
   const titlebar = element.querySelector<HTMLElement>('.window-titlebar');
   const resizeHandle = element.querySelector<HTMLElement>('.window-resize');
@@ -74,8 +76,12 @@ function setupWindow(gameWindow: GameWindow): void {
 
   gameWindow.collapseButton?.addEventListener('click', (event) => {
     event.stopPropagation();
+    bringWindowToFront(gameWindow, windows);
     setCollapsed(gameWindow, !element.classList.contains('is-collapsed'));
   });
+
+  element.addEventListener('pointerdown', () => bringWindowToFront(gameWindow, windows), { capture: true });
+  element.addEventListener('focusin', () => bringWindowToFront(gameWindow, windows));
 
   titlebar?.addEventListener('pointerdown', (event) => {
     if (event.target instanceof HTMLButtonElement) {
@@ -124,6 +130,23 @@ function setupWindow(gameWindow: GameWindow): void {
     resize = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, width: rect.width, height: rect.height };
     element.setPointerCapture(event.pointerId);
   });
+}
+
+function bringWindowToFront(selected: GameWindow, windows: GameWindow[]): void {
+  const ordered = [...windows].sort((left, right) => windowZIndex(left) - windowZIndex(right));
+  let zIndex = 3;
+  for (const gameWindow of ordered) {
+    gameWindow.stackElement.style.zIndex = String(zIndex);
+    gameWindow.element.classList.toggle('is-selected', gameWindow === selected);
+    zIndex += 1;
+  }
+  selected.stackElement.style.zIndex = String(zIndex);
+  selected.element.classList.add('is-selected');
+}
+
+function windowZIndex(gameWindow: GameWindow): number {
+  const zIndex = Number(gameWindow.stackElement.style.zIndex || getComputedStyle(gameWindow.stackElement).zIndex);
+  return Number.isFinite(zIndex) ? zIndex : 3;
 }
 
 function setCollapsed(gameWindow: GameWindow, collapsed: boolean, fitOnExpand = true): void {

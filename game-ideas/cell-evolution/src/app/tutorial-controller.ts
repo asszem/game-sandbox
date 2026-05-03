@@ -1,4 +1,4 @@
-import type { DishManager } from './dish-manager';
+import { MAX_DISH_COUNT, type DishManager } from './dish-manager';
 import type { DishInstance } from './dish-types';
 import { offsetTutorialPoint, prepareTutorialScenario } from './tutorial-scenarios';
 import {
@@ -152,6 +152,10 @@ export function createTutorialController(context: {
     isMode: () => mode,
     canAdvance: () => goalMet,
     start: () => {
+      if (context.dishManager.dishes.length >= MAX_DISH_COUNT) {
+        context.showToast(`Maximum ${MAX_DISH_COUNT} dishes reached`);
+        return;
+      }
       mode = true;
       if (context.elements.window) {
         context.elements.window.hidden = false;

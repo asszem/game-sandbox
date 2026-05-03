@@ -13,12 +13,15 @@ import { add, clamp, clampLength, distance, length, normalize, scale, sub, vec }
 import { findOpenPoint, scatterPoint } from './world-points';
 
 const DNA_KEYS: DNAKey[] = ['motility', 'split', 'harvest', 'predator', 'caution'];
+export const MIN_BOARD_RADIUS = 72;
+export const MAX_BOARD_RADIUS = 128;
 
 type WorldSeedOptions = {
   cellCount?: number;
   resourceCounts?: Partial<Record<ResourceKind, number>>;
   hazardCount?: number;
   blockCount?: number;
+  boardRadius?: number;
 };
 
 export class CellSimulation {
@@ -177,6 +180,17 @@ export class CellSimulation {
     return cell;
   }
 
+  setBoardRadius(radius: number): void {
+    this.state.boardRadius = clamp(radius, MIN_BOARD_RADIUS, MAX_BOARD_RADIUS);
+    for (const block of this.state.blocks) {
+      keepBlockInDish(block, this.state.boardRadius);
+    }
+    for (const cell of this.state.cells) {
+      keepCellInDish(this.state, cell);
+    }
+    this.resolveCellObstacles();
+  }
+
   awarenessRadius(cell: Cell): number {
     return awarenessRadius(cell);
   }
@@ -209,7 +223,9 @@ export class CellSimulation {
     this.state.tick = 0;
     this.state.running = true;
     this.state.selectedCellId = null;
-    this.state.boardRadius = randomized ? this.rng.range(84, 104) : 92;
+    this.state.boardRadius = options.boardRadius === undefined
+      ? randomized ? this.rng.range(84, 104) : 92
+      : clamp(options.boardRadius, MIN_BOARD_RADIUS, MAX_BOARD_RADIUS);
     this.state.cells = [];
     this.state.resources = [];
     this.state.hazards = [];

@@ -229,6 +229,10 @@
           <div class="new-dish-body">
             <section class="setup-section" aria-labelledby="new-dish-cells-title">
               <h3 id="new-dish-cells-title">Cells</h3>
+              <label class="cell-count-control dish-radius-setup" data-tooltip="Dish radius changes the playable simulation boundary. Larger values spread cells and resources across more world space; smaller values make the dish more crowded. It does not change the on-screen pixel size of the dish.">
+                <span>Dish radius <output>92</output></span>
+                <input id="new-dish-radius-range" type="range" min="72" max="128" value="92" />
+              </label>
               <label class="cell-count-control">
                 <span>Number of cells</span>
                 <input id="new-dish-cell-count-range" type="range" min="1" max="40" value="10" />

@@ -1,5 +1,7 @@
 import { clamp } from '../core/vector';
+import { MAX_BOARD_RADIUS, MIN_BOARD_RADIUS } from '../core/simulation';
 
+const NEW_DISH_DEFAULT_BOARD_RADIUS = 92;
 const NEW_DISH_DEFAULT_CELL_COUNT = 10;
 const NEW_DISH_MIN_CELL_COUNT = 1;
 const NEW_DISH_MAX_CELL_COUNT = 40;
@@ -7,6 +9,7 @@ const NEW_DISH_MAX_CELL_COUNT = 40;
 type NewDishResourceKey = 'glucose' | 'amino-acid' | 'oxygen' | 'light';
 
 export type NewDishSetup = {
+  boardRadius?: number;
   cellCount?: number;
   resourceCounts?: Partial<Record<NewDishResourceKey, number>>;
   hazardCount?: number;
@@ -15,6 +18,7 @@ export type NewDishSetup = {
 
 export function defaultNewDishSetup(): NewDishSetup {
   return {
+    boardRadius: NEW_DISH_DEFAULT_BOARD_RADIUS,
     cellCount: NEW_DISH_DEFAULT_CELL_COUNT,
     resourceCounts: {
       glucose: 20,
@@ -25,6 +29,15 @@ export function defaultNewDishSetup(): NewDishSetup {
     hazardCount: 0,
     blockCount: 0,
   };
+}
+
+export function setNewDishBoardRadius(range: HTMLInputElement | null, value: number): number {
+  const next = clamp(Math.round(Number.isFinite(value) ? value : NEW_DISH_DEFAULT_BOARD_RADIUS), MIN_BOARD_RADIUS, MAX_BOARD_RADIUS);
+  if (range) {
+    range.value = String(next);
+    syncRangeOutput(range);
+  }
+  return next;
 }
 
 export function setNewDishCellCount(range: HTMLInputElement | null, input: HTMLInputElement | null, value: number): number {
@@ -39,12 +52,14 @@ export function setNewDishCellCount(range: HTMLInputElement | null, input: HTMLI
 }
 
 export function readNewDishSetup(
+  radiusRange: HTMLInputElement | null,
   range: HTMLInputElement | null,
   input: HTMLInputElement | null,
   resourceSliders: NodeListOf<HTMLInputElement>,
   environmentSliders: NodeListOf<HTMLInputElement>,
 ): NewDishSetup {
   const setup = defaultNewDishSetup();
+  setup.boardRadius = setNewDishBoardRadius(radiusRange, Number(radiusRange?.value ?? NEW_DISH_DEFAULT_BOARD_RADIUS));
   const source = input?.value || range?.value || String(NEW_DISH_DEFAULT_CELL_COUNT);
   setup.cellCount = setNewDishCellCount(range, input, Number(source));
   setup.resourceCounts = {};
@@ -86,4 +101,8 @@ export function syncRangeOutput(slider: HTMLInputElement): void {
 
 export function defaultNewDishCellCount(): number {
   return NEW_DISH_DEFAULT_CELL_COUNT;
+}
+
+export function defaultNewDishBoardRadius(): number {
+  return NEW_DISH_DEFAULT_BOARD_RADIUS;
 }
