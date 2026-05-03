@@ -39,5 +39,6 @@ Notes:
 - Continued main app split: extracted save-application helpers and the animation loop factory from `src/main.ts`.
 - Continued main app split: extracted dish lifecycle ownership into `src/app/dish-manager.ts`.
 - Continued HUD split: extracted Game panel totals and visibility helpers from `src/main.ts`.
+- Continued HUD split: extracted app-level HUD synchronization into `src/hud/app-hud.ts`, covering top readouts, window titles, dish state, selected entity, hover info, directives, and selected-cell meters.
 - Updated `refactor/REFACTOR-PROMPT.md` to match the current module and CSS structure.
 - Current largest files after this pass: `src/main.ts`, `src/render/PetriDishRenderer.ts`, and `src/core/simulation.ts`.

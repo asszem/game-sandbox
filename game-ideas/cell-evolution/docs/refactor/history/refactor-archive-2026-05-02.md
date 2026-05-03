@@ -780,3 +780,21 @@ No behavior changes intended.
 ### Verification
 - `npm run build` - pass
 - `npm test` - pass
+
+## Main app HUD synchronization extraction
+
+### Motivation
+`src/main.ts` still contained app-level HUD synchronization for readouts, window titles, dish state, selected entity details, hover details, directive text, and selected-cell meters. Moving that presentation wiring into `src/hud/` keeps the orchestrator focused on active state and event flow.
+
+### Old files changed
+- `src/main.ts` - delegated HUD DOM synchronization to a panel-facing helper module.
+
+### New files created
+- `src/hud/app-hud.ts` - top readouts, selected-cell meters, dish state panel sync, selected entity panel sync, directive panel sync, hover info sync, and window title sync.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass

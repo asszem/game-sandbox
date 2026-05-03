@@ -41,6 +41,7 @@ game-ideas/cell-evolution/
       types.ts
       vector.ts
     hud/
+      app-hud.ts
       directives-panel.ts
       dom.ts
       entity-panel.ts
@@ -95,13 +96,14 @@ game-ideas/cell-evolution/
 ```
 
 Current oversized files:
-- `src/main.ts` - app orchestration, dish lifecycle, DOM wiring, animation loop, selected entity flow, and remaining event handlers
+- `src/main.ts` - app orchestration, active dish/selection state, tutorial flow, save/load application, and remaining event callbacks
 - `src/render/PetriDishRenderer.ts` - Three.js scene setup, resource/hazard/block visuals, picking, camera/zoom/pan, effects, and remaining render facade work
 - `src/core/simulation.ts` - simulation state updates, movement, collisions, spawning, hazards, resources, blocks, and remaining world orchestration
 
 Already split:
 - HUD utilities, windows, panel formatting, hover info, directives, metabolism display
 - Game panel HUD totals and visibility helpers
+- App-level HUD orchestration for top readouts, titles, dish state, selected entity, hover info, directive text, and selected-cell meters
 - App helpers for event wiring, backdrop, dish event wiring, dish lifecycle/layout/types, DOM selectors, drop handling/tools, game loop, new dish modal, save/load, tutorial UI, and tutorial scenario setup
 - CSS into `src/styles/*` imported by `src/styles/index.css`
 - Renderer texture, shader, cell geometry/material/organelle/visual, dish material, resource marker, hazard material, mineral block, transient effect, picking, and shared type helpers
@@ -153,6 +155,7 @@ src/
     vector.ts
   hud/
     state-panel.ts            # dish state formatting and dish picker list
+    app-hud.ts                # top readouts, titles, dish/entity/hover/directive panel DOM syncing
     entity-panel.ts           # selected cell/resource/hazard/block detail formatting
     game-panel.ts             # Game window totals and action visibility
     metabolism-panel.ts       # metabolism stores, rates, sliders, chart/dashboard formatting
@@ -211,10 +214,10 @@ CSS is already split. Keep importing from `src/styles/index.css` and preserve ca
 1. Extract pure utility/UI helpers from `src/main.ts`:
    - Done: `hud/toasts.ts`, `hud/tooltips.ts`, `hud/windows.ts`, `hud/dom.ts`
 2. Extract formatting-only HUD modules:
-   - Done: `hud/hover-info.ts`, `hud/state-panel.ts`, `hud/entity-panel.ts`, `hud/game-panel.ts`, `hud/directives-panel.ts`, `hud/metabolism-panel.ts`
+   - Done: `hud/app-hud.ts`, `hud/hover-info.ts`, `hud/state-panel.ts`, `hud/entity-panel.ts`, `hud/game-panel.ts`, `hud/directives-panel.ts`, `hud/metabolism-panel.ts`
 3. Extract app domains from `src/main.ts`:
    - Done: `app/app-events.ts`, `app/backdrop.ts`, `app/dish-events.ts`, `app/dish-layout.ts`, `app/dish-manager.ts`, `app/dish-types.ts`, `app/dom-elements.ts`, `app/drop-handler.ts`, `app/game-loop.ts`, `app/save-load.ts`, `app/tutorial.ts`, `app/tutorial-scenarios.ts`, `app/drop-tools.ts`, `app/new-dish.ts`
-   - Remaining: `app/dishes.ts` / dish lifecycle extraction from `src/main.ts`
+   - Remaining: main app bootstrap/selection/save-application orchestration
 4. Done: split CSS by panel/domain while preserving visual output.
 5. Continue splitting `src/render/PetriDishRenderer.ts` through narrow render helpers.
 6. Continue splitting `src/core/simulation.ts` through narrow core helpers.

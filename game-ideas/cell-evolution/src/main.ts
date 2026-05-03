@@ -14,12 +14,11 @@ import { offsetTutorialPoint, prepareTutorialScenario } from './app/tutorial-sce
 import { isTutorialStepComplete as isTutorialStepCompleteForState, readCompletedTutorialMilestones, tutorialSteps, updateTutorialPanel as updateTutorialPanelContent, writeCompletedTutorialMilestones, type TutorialStep, type TutorialStepId } from './app/tutorial';
 import type { Cell, ResourceKind, Vec2 } from './core/types';
 import { clamp } from './core/vector';
+import { syncDirectivePanel, syncDishStatePanel, syncHoverInfoPanel, syncSelectedCellMeters, syncSelectedEntityPanel, syncTopReadouts, syncWindowTitles } from './hud/app-hud';
 import { setDnaEnabled as setDnaEnabledControls, syncTransportControls as syncTransportControlValues } from './hud/directives-panel';
-import { currentDirective, describeCellDirective, formatCellState, scanDetections } from './hud/entity-panel';
 import { syncGamePanelVisibility, syncGameStats } from './hud/game-panel';
-import { describeHoverTarget, describeResource, formatHoverTarget, targetLabel } from './hud/hover-info';
 import { syncMetabolicDashboard as syncMetabolicDashboardPanel } from './hud/metabolism-panel';
-import { currentDishPickerSignature, formatDishPickerList, formatDishState, sanitizeDishName } from './hud/state-panel';
+import { currentDishPickerSignature, sanitizeDishName } from './hud/state-panel';
 import { createToastRegion } from './hud/toasts';
 import { hideTooltip, setupTooltips, syncTooltipToggle } from './hud/tooltips';
 import { createWindowSystem } from './hud/windows';
@@ -513,70 +512,40 @@ function updateTutorialPanel(): void {
 
 function updateHud(): void {
   updateGameStatsHud();
+  syncTopReadouts({
+    tickReadout,
+    populationReadout,
+    stateReadout,
+    zoomReadout,
+  }, activeDish, activeDish ? renderer.getZoomPercent() : null);
+  syncTooltipToggle(tooltipToggle, tooltipStatus, tooltipsEnabled);
+  updateHoverInfo();
+  syncWindowTitles({
+    dishWindowTitle,
+    entityWindowTitle,
+    directivesWindowTitle,
+  }, activeDish, inspectedTarget);
+  updateDishStatsHud();
+
   if (!activeDish) {
-    if (tickReadout) {
-      tickReadout.textContent = 'No dish';
-    }
-    if (populationReadout) {
-      populationReadout.textContent = '0 cells';
-    }
-    if (stateReadout) {
-      stateReadout.textContent = 'Paused';
-      stateReadout.dataset.state = 'paused';
-    }
-    if (zoomReadout) {
-      zoomReadout.textContent = 'No dish selected';
-    }
-    syncTooltipToggle(tooltipToggle, tooltipStatus, tooltipsEnabled);
-    updateHoverInfo();
     syncCellOnlyPanels(false);
-    updateDishStatsHud();
     updateSelectedEntityHud(null);
-    if (directiveHeading) {
-      directiveHeading.textContent = 'No cell selected';
-    }
-    if (directiveDetail) {
-      directiveDetail.textContent = 'Select a dish, then select a cell to influence membrane transport and DNA directives.';
-    }
+    updateDirectiveHud(null);
     fitEntityWindowForSelection();
     return;
   }
 
-  if (tickReadout) {
-    tickReadout.textContent = `Tick ${simulation.state.tick}`;
-  }
-  if (populationReadout) {
-    populationReadout.textContent = `${simulation.state.cells.length} cells`;
-  }
-  if (stateReadout) {
-    stateReadout.textContent = simulation.state.running ? 'Running' : 'Paused';
-    stateReadout.dataset.state = simulation.state.running ? 'running' : 'paused';
-  }
-  if (zoomReadout) {
-    zoomReadout.textContent = `Zoom ${renderer.getZoomPercent()}%`;
-  }
-  syncTooltipToggle(tooltipToggle, tooltipStatus, tooltipsEnabled);
-  updateHoverInfo();
-
   const selected = inspectedTarget.kind === 'cell' ? simulation.selectedCell : null;
   syncCellOnlyPanels(Boolean(selected));
-  syncWindowTitles(selectedEntityLabel());
-  updateDishStatsHud();
   if (selected) {
-    const awareness = simulation.awarenessRadius(selected);
-    const detections = scanDetections(selected, awareness, simulation.state);
-    const directive = currentDirective(selected, detections, awareness);
     updateSelectedEntityHud(selected);
-    if (directiveHeading) {
-      directiveHeading.textContent = directive;
-    }
-    if (directiveDetail) {
-      directiveDetail.textContent = describeCellDirective(selected, detections, awareness);
-    }
-    setMeter(energyMeter, selected.atp / 100);
-    setMeter(massMeter, selected.aminoAcids / 100);
-    setMeter(oxygenMeter, selected.oxygen / 100);
-    setMeter(healthMeter, selected.health);
+    updateDirectiveHud(selected);
+    syncSelectedCellMeters({
+      energyMeter,
+      massMeter,
+      oxygenMeter,
+      healthMeter,
+    }, selected);
     syncMetabolicDashboard(selected);
     syncTransportControls(selected);
     setDnaEnabled(true);
@@ -588,14 +557,7 @@ function updateHud(): void {
   syncMetabolicDashboard(null);
   syncTransportControls(null);
   updateSelectedEntityHud(null);
-  if (directiveHeading) {
-    directiveHeading.textContent = 'No cell selected';
-  }
-  if (directiveDetail) {
-    directiveDetail.textContent = activeDish
-      ? `Select a cell in dish ${activeDish.id} to influence membrane transport and DNA directives.`
-      : 'Select a dish, then select a cell to influence membrane transport and DNA directives.';
-  }
+  updateDirectiveHud(null);
   fitEntityWindowForSelection();
 }
 
@@ -607,63 +569,36 @@ function updateGameStatsHud(): void {
   }, dishes);
 }
 
-function setMeter(meter: HTMLMeterElement | null, value: number): void {
-  if (meter) {
-    meter.value = Math.max(0, Math.min(1, value));
-  }
-}
-
 function updateDishStatsHud(): void {
-  syncWindowTitles(selectedEntityLabel());
-  if (dishName) {
-    dishName.hidden = Boolean(activeDish);
-    dishName.textContent = activeDish ? '' : 'No dish selected';
-  }
-  if (dishDetail) dishDetail.innerHTML = formatDishState(activeDish);
-  if (dishList) {
-    dishList.hidden = false;
-    if (!dishList.contains(document.activeElement)) {
-      const signature = currentDishPickerSignature(dishes);
-      if (signature !== dishPickerSignature) {
-        dishList.innerHTML = formatDishPickerList(dishes);
-        dishPickerSignature = signature;
-      }
-    }
-  }
-  setMeter(energyMeter, 0);
-  setMeter(massMeter, 0);
-  setMeter(oxygenMeter, 0);
-  setMeter(healthMeter, 0);
+  dishPickerSignature = syncDishStatePanel({
+    dishName,
+    dishDetail,
+    dishList,
+    energyMeter,
+    massMeter,
+    oxygenMeter,
+    healthMeter,
+  }, activeDish, dishes, dishPickerSignature, document.activeElement);
+  syncSelectedCellMeters({
+    energyMeter,
+    massMeter,
+    oxygenMeter,
+    healthMeter,
+  }, null);
 }
 
 function updateSelectedEntityHud(selectedCell: Cell | null): void {
-  if (!activeDish) {
-    if (entityName) {
-      entityName.hidden = false;
-      entityName.textContent = 'No entity selected';
-    }
-    if (entityDetail) entityDetail.textContent = 'Select a dish, then click a cell, resource, poison cloud, or mineral block.';
-    return;
-  }
-  if (selectedCell) {
-    const awareness = simulation.awarenessRadius(selectedCell);
-    const detections = scanDetections(selectedCell, awareness, simulation.state);
-    if (entityName) {
-      entityName.hidden = true;
-    }
-    if (entityDetail) entityDetail.innerHTML = formatCellState(selectedCell, detections, awareness, simulation.sensingProfile(selectedCell).clarity);
-    return;
-  }
-  if (entityName) {
-    entityName.hidden = false;
-  }
-  if (inspectedTarget.kind === 'dish') {
-    if (entityName) entityName.textContent = 'No entity selected';
-    if (entityDetail) entityDetail.textContent = `Dish ${activeDish.id} is selected. Click an entity inside this dish to inspect it.`;
-    return;
-  }
-  if (entityName) entityName.hidden = true;
-  if (entityDetail) entityDetail.innerHTML = formatHoverTarget(inspectedTarget, activeDish);
+  syncSelectedEntityPanel({
+    entityName,
+    entityDetail,
+  }, activeDish, inspectedTarget, selectedCell);
+}
+
+function updateDirectiveHud(selectedCell: Cell | null): void {
+  syncDirectivePanel({
+    directiveHeading,
+    directiveDetail,
+  }, activeDish, selectedCell);
 }
 
 function fitEntityWindowForSelection(): void {
@@ -676,47 +611,10 @@ function fitEntityWindowForSelection(): void {
 }
 
 function updateHoverInfo(): void {
-  if (!hoverWindowTitle || !hoverDetail) {
-    return;
-  }
-  const sourceDish = hoveredDish ?? activeDish;
-  if (!hoveredTarget || !sourceDish) {
-    hoverWindowTitle.textContent = 'Hover Info | No dish | Nothing';
-    hoverDetail.innerHTML = '<div class="hover-fact-grid"><span class="hover-fact" data-tooltip="Move over any dish item to see a compact breakdown here."><span>Hint</span><strong>Hover a dish entity</strong></span></div>';
-    return;
-  }
-  const label = targetLabel(hoveredTarget, sourceDish.simulation.state);
-  hoverWindowTitle.textContent = `Hover Info | ${sourceDish.name} | ${label}`;
-  hoverDetail.innerHTML = formatHoverTarget(hoveredTarget, sourceDish);
-}
-
-function selectedEntityLabel(): string {
-  if (!activeDish) {
-    return 'Entity';
-  }
-  if (inspectedTarget.kind === 'dish') {
-    return 'No entity selected';
-  }
-  return targetLabel(inspectedTarget, activeDish.simulation.state);
-}
-
-function syncWindowTitles(entityLabel: string): void {
-  const dishLabel = activeDish ? activeDish.name : 'No dish';
-  if (dishWindowTitle) {
-    dishWindowTitle.textContent = `${dishLabel} | State`;
-  }
-  if (entityWindowTitle) {
-    entityWindowTitle.textContent = activeDish && inspectedTarget.kind === 'cell'
-      ? `${dishLabel} | ${entityLabel} | Metabolism`
-      : activeDish
-        ? `${dishLabel} | ${entityLabel}`
-        : 'No dish | Entity';
-  }
-  if (directivesWindowTitle) {
-    directivesWindowTitle.textContent = activeDish && inspectedTarget.kind === 'cell'
-      ? `${dishLabel} | ${entityLabel} | Directives`
-      : `${dishLabel} | Directives`;
-  }
+  syncHoverInfoPanel({
+    hoverWindowTitle,
+    hoverDetail,
+  }, hoveredDish, hoveredTarget, activeDish);
 }
 
 function syncCellOnlyPanels(hasSelectedCell: boolean): void {
