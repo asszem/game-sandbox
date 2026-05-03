@@ -48,10 +48,16 @@ export function createCellEntity(id: number, rng: EntityRng, position: Vec2, fam
     health: 1,
     atp: 80,
     glucose: 60,
+    glucose6Phosphate: 0,
+    pyruvate: 0,
+    lactate: 0,
     aminoAcids: 70,
+    protein: 74,
     oxygen: 50,
     ros: 5,
+    damage: 0,
     glycogen: 30,
+    stressSignal: 0,
     glucoseTransport: rng.range(0.35, 0.65),
     aminoTransport: rng.range(0.35, 0.65),
     oxygenMetabolism: rng.range(0.3, 0.6),
@@ -62,10 +68,21 @@ export function createCellEntity(id: number, rng: EntityRng, position: Vec2, fam
     atpRate: 0,
     glucoseRate: 0,
     glycogenRate: 0,
+    glycolysisRate: 0,
+    respirationRate: 0,
+    fermentationRate: 0,
+    gluconeogenesisRate: 0,
+    glycogenesisRate: 0,
+    glycogenMobilizationRate: 0,
     autophagyRate: 0,
     aminoRate: 0,
+    proteinRate: 0,
+    biosynthesisRate: 0,
     oxygenRate: 0,
     rosRate: 0,
+    antioxidantRate: 0,
+    damageRate: 0,
+    healthRate: 0,
     lightFactor: 0,
     age: 0,
     genome: base,
@@ -91,10 +108,16 @@ export function createResourceEntity(id: number, rng: EntityRng, kind: ResourceK
 export function normalizeCellEntity(cell: Cell): void {
   cell.atp ??= cell.energy ?? 50;
   cell.glucose ??= 60;
+  cell.glucose6Phosphate ??= 0;
+  cell.pyruvate ??= 0;
+  cell.lactate ??= 0;
   cell.aminoAcids ??= Math.max(15, (cell.mass ?? 0.6) * 55);
+  cell.protein ??= Math.min(100, Math.max(20, 45 + (cell.mass ?? 0.6) * 30));
   cell.oxygen ??= 35;
   cell.ros ??= 10;
+  cell.damage ??= Math.min(100, Math.max(0, 100 - (cell.health ?? 1) * 100));
   cell.glycogen ??= 24;
+  cell.stressSignal ??= 0;
   cell.glucoseTransport ??= 0.5;
   cell.aminoTransport ??= 0.5;
   cell.oxygenMetabolism ??= 0.45;
@@ -105,10 +128,21 @@ export function normalizeCellEntity(cell: Cell): void {
   cell.atpRate ??= 0;
   cell.glucoseRate ??= 0;
   cell.glycogenRate ??= 0;
+  cell.glycolysisRate ??= 0;
+  cell.respirationRate ??= 0;
+  cell.fermentationRate ??= 0;
+  cell.gluconeogenesisRate ??= 0;
+  cell.glycogenesisRate ??= 0;
+  cell.glycogenMobilizationRate ??= 0;
   cell.autophagyRate ??= 0;
   cell.aminoRate ??= 0;
+  cell.proteinRate ??= 0;
+  cell.biosynthesisRate ??= 0;
   cell.oxygenRate ??= 0;
   cell.rosRate ??= 0;
+  cell.antioxidantRate ??= 0;
+  cell.damageRate ??= 0;
+  cell.healthRate ??= 0;
   cell.lightFactor ??= 0;
   cell.energy = cell.atp;
 }

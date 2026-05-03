@@ -7,7 +7,7 @@
     "start": "vite --host 0.0.0.0",
     "dev": "vite --host 0.0.0.0",
     "build": "tsc && vite build",
-    "test": "node tests/smoke.mjs"
+    "test": "node tests/core-mechanics.mjs && node tests/smoke.mjs"
   },
   "dependencies": {
     "three": "^0.164.1"

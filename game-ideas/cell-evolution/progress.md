@@ -54,3 +54,6 @@ Notes:
 - Verification: `npm run build`, `npm test`, and Playwright screenshot check passed for the redesigned Homeostasis panel.
 - Clarified the Homeostasis relationship diagram so it no longer implies Glucose creates Oxygen or Amino Acids. Relationship pills now show Glycogen as a Glucose reserve, Glucose + Oxygen producing ATP, and ATP powering Amino repair; ATP production note states it works without oxygen but oxygen boosts yield and ROS.
 - Verification: `npm run build`, `npm test`, and Playwright screenshot check passed for the clarified diagram.
+- Began Game Mechanics V2 implementation phase: added v2 cell pools/rates, save normalization, staged G6P/glycolysis/respiration/fermentation/protein/autophagy/gluconeogenesis/damage/health metabolism pipeline, and shared core preview for HUD compatibility.
+- Updated core integration points for resource uptake, oxygen-seeking need, poison stress/damage, structural death, division eligibility, and split inheritance.
+- Added `tests/core-mechanics.mjs` for v2 mechanics invariants and chained it into `npm test`; verification passed with `npm run build`, `npm test`, deterministic 600-tick stability check, and Playwright Homeostasis compatibility screenshot.

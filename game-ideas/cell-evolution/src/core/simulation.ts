@@ -323,14 +323,17 @@ export class CellSimulation {
     const baseline = {
       atp: cell.atp,
       glucose: cell.glucose,
+      glucose6Phosphate: cell.glucose6Phosphate,
+      pyruvate: cell.pyruvate,
+      lactate: cell.lactate,
       amino: cell.aminoAcids,
+      protein: cell.protein,
       oxygen: cell.oxygen,
       ros: cell.ros,
+      damage: cell.damage,
       glycogen: cell.glycogen,
+      health: cell.health,
     };
-    cell.glucoseRate = 0;
-    cell.glycogenRate = 0;
-    cell.autophagyRate = 0;
     cell.age += 1;
     cell.signalPhase += 0.12 + cell.genome.motility * 0.04;
 
@@ -353,7 +356,16 @@ export class CellSimulation {
     applyCellMetabolism(cell, this.localLight(cell.position), baseline);
     constrainCellToDishAndBlocks(this.state, cell);
 
-    if (cell.atp > 92 && cell.aminoAcids > 55 && cell.mass > 1.12 && cell.genome.split > 0.4 && this.state.cells.length < 55) {
+    if (
+      cell.atp > 92
+      && cell.aminoAcids > 55
+      && cell.protein > 70
+      && cell.damage < 18
+      && cell.ros < 35
+      && cell.mass > 1.12
+      && cell.genome.split > 0.4
+      && this.state.cells.length < 55
+    ) {
       this.splitCell(cell);
     }
   }
@@ -385,9 +397,12 @@ export class CellSimulation {
     for (const hazard of this.state.hazards) {
       const d = distance(cell.position, hazard.position);
       if (d < cell.radius + hazard.radius) {
-        cell.health -= 0.018 * hazard.potency * (1.4 - cell.genome.caution * 0.35);
-        cell.atp -= 0.45 * hazard.potency;
-        cell.ros += 0.6 * hazard.potency;
+        const cautionShield = 1.3 - cell.genome.caution * 0.3;
+        cell.damage += 0.8 * hazard.potency * cautionShield;
+        cell.ros += 0.5 * hazard.potency;
+        cell.stressSignal += 1.2 * hazard.potency;
+        cell.atp -= 0.25 * hazard.potency;
+        cell.health -= 0.004 * hazard.potency * cautionShield;
         cell.energy = cell.atp;
       }
     }
@@ -445,20 +460,32 @@ export class CellSimulation {
     child.atp = cell.atp * 0.42;
     child.energy = child.atp;
     child.glucose = cell.glucose * 0.42;
+    child.glucose6Phosphate = cell.glucose6Phosphate * 0.42;
+    child.pyruvate = cell.pyruvate * 0.38;
+    child.lactate = cell.lactate * 0.38;
     child.aminoAcids = cell.aminoAcids * 0.42;
+    child.protein = cell.protein * 0.48;
     child.oxygen = cell.oxygen * 0.5;
     child.ros = cell.ros * 0.35;
+    child.damage = cell.damage * 0.45;
     child.glycogen = cell.glycogen * 0.42;
+    child.stressSignal = cell.stressSignal * 0.35;
     child.mass = cell.mass * 0.48;
     child.bodyLength = clamp(cell.bodyLength + this.rng.signed(0.16), 1.35, 2.55);
     child.radius = radiusForMass(child);
     cell.atp *= 0.48;
     cell.energy = cell.atp;
     cell.glucose *= 0.52;
+    cell.glucose6Phosphate *= 0.52;
+    cell.pyruvate *= 0.62;
+    cell.lactate *= 0.62;
     cell.aminoAcids *= 0.52;
+    cell.protein *= 0.72;
     cell.oxygen *= 0.55;
     cell.ros *= 0.65;
+    cell.damage *= 0.72;
     cell.glycogen *= 0.52;
+    cell.stressSignal *= 0.65;
     cell.mass *= 0.58;
     cell.radius = radiusForMass(cell);
     this.state.cells.push(child);

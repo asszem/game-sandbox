@@ -22,7 +22,7 @@ export function transportResource(cell: Cell, resource: Resource): number {
   }
   if (resource.kind === 'oxygen') {
     cell.oxygen += uptake * 28;
-    cell.ros += uptake * 0.25;
+    cell.ros += uptake * 0.08;
   }
   resource.amount = Math.max(0, resource.amount - consumedAmount);
   resource.radius = Math.max(0.65, resource.radius * (0.62 + resource.amount * 0.38));
