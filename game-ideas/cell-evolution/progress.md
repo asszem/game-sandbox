@@ -52,3 +52,5 @@ Notes:
 - Redesigned the Homeostasis panel hierarchy: top summary now focuses on Health with a meter-style impact strip; Autophagy detail was removed from the top row; Gen and Size moved to a bottom vitals strip.
 - Rearranged Homeostasis store blocks into a connected flow-chart layout and renamed conversion headers to Source, Priority, Produces, and Tradeoff.
 - Verification: `npm run build`, `npm test`, and Playwright screenshot check passed for the redesigned Homeostasis panel.
+- Clarified the Homeostasis relationship diagram so it no longer implies Glucose creates Oxygen or Amino Acids. Relationship pills now show Glycogen as a Glucose reserve, Glucose + Oxygen producing ATP, and ATP powering Amino repair; ATP production note states it works without oxygen but oxygen boosts yield and ROS.
+- Verification: `npm run build`, `npm test`, and Playwright screenshot check passed for the clarified diagram.
