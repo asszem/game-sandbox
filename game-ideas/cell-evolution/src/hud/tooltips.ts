@@ -16,13 +16,13 @@ export function setupTooltips(tooltipLayer: HTMLElement | null, isEnabled: () =>
   document.addEventListener('pointerover', (event) => {
     const target = tooltipTarget(event.target);
     if (target) {
-      showTooltip(tooltipLayer, target, isEnabled);
+      showTooltip(tooltipLayer, target, isEnabled, event);
     }
   });
   document.addEventListener('pointermove', (event) => {
     const target = tooltipTarget(event.target);
     if (target) {
-      positionTooltip(tooltipLayer, target);
+      positionTooltip(tooltipLayer, target, event);
     }
   });
   document.addEventListener('pointerout', (event) => {
@@ -57,7 +57,7 @@ function tooltipTarget(target: EventTarget | null): HTMLElement | null {
   return target instanceof Element ? target.closest<HTMLElement>('[data-tooltip]') : null;
 }
 
-function showTooltip(tooltipLayer: HTMLElement | null, target: HTMLElement, isEnabled: () => boolean): void {
+function showTooltip(tooltipLayer: HTMLElement | null, target: HTMLElement, isEnabled: () => boolean, pointer?: PointerEvent): void {
   if (!tooltipLayer) {
     return;
   }
@@ -71,24 +71,25 @@ function showTooltip(tooltipLayer: HTMLElement | null, target: HTMLElement, isEn
   }
   tooltipLayer.textContent = text;
   tooltipLayer.hidden = false;
-  positionTooltip(tooltipLayer, target);
+  positionTooltip(tooltipLayer, target, pointer);
 }
 
-function positionTooltip(tooltipLayer: HTMLElement | null, target: HTMLElement): void {
+function positionTooltip(tooltipLayer: HTMLElement | null, target: HTMLElement, pointer?: PointerEvent): void {
   if (!tooltipLayer || tooltipLayer.hidden) {
     return;
   }
-  const gap = 8;
+  const gap = 14;
   const targetRect = target.getBoundingClientRect();
   const tooltipRect = tooltipLayer.getBoundingClientRect();
   const maxLeft = window.innerWidth - tooltipRect.width - 8;
-  const left = clamp(targetRect.left, 8, Math.max(8, maxLeft));
-  let top = targetRect.top - tooltipRect.height - gap;
-  if (top < 8) {
-    top = targetRect.bottom + gap;
-  }
+  const anchorX = pointer?.clientX ?? targetRect.left;
+  const anchorY = pointer?.clientY ?? targetRect.bottom;
+  const left = clamp(anchorX, 8, Math.max(8, maxLeft));
+  let top = anchorY + gap;
   if (top + tooltipRect.height > window.innerHeight - 8) {
-    top = Math.max(8, window.innerHeight - tooltipRect.height - 8);
+    top = pointer
+      ? clamp(pointer.clientY - tooltipRect.height - gap, 8, Math.max(8, window.innerHeight - tooltipRect.height - 8))
+      : Math.max(8, targetRect.top - tooltipRect.height - gap);
   }
   tooltipLayer.style.left = `${left}px`;
   tooltipLayer.style.top = `${top}px`;

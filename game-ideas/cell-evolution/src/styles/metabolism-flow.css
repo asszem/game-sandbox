@@ -201,9 +201,72 @@
   stroke-width: 0;
   stroke-dasharray: none;
   stroke-dashoffset: 0;
+  display: block;
+  min-width: 72px;
+  height: 6px;
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      currentColor 0 10px,
+      transparent 10px 18px
+    );
+  box-shadow: 0 0 10px currentColor;
   opacity: 1;
   filter: none;
   animation: conversion-flow 900ms linear infinite;
+}
+
+.conversion-map {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.conversion-row {
+  display: grid;
+  grid-template-columns: minmax(118px, 1fr) minmax(72px, 0.9fr) minmax(76px, auto) minmax(34px, auto);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: rgba(247, 255, 243, 0.82);
+  font-size: 12px;
+  line-height: 1.15;
+}
+
+.conversion-row span,
+.conversion-row strong,
+.conversion-row em {
+  min-width: 0;
+}
+
+.conversion-row strong {
+  color: #f7fff3;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.conversion-row em {
+  color: rgba(247, 255, 243, 0.68);
+  font-style: normal;
+  font-weight: 800;
+}
+
+.conversion-storage,
+.conversion-repair {
+  grid-template-columns: minmax(118px, 1fr) minmax(72px, 0.9fr) minmax(118px, 1.1fr);
+}
+
+.conversion-energy .conversion-flow {
+  color: rgba(255, 230, 46, 0.82);
+}
+
+.conversion-storage .conversion-flow {
+  color: rgba(245, 217, 148, 0.72);
+}
+
+.conversion-repair .conversion-flow {
+  color: rgba(97, 255, 189, 0.74);
 }
 
 .metabolic-dashboard.is-paused .flow-path {
