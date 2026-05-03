@@ -40,5 +40,10 @@ Notes:
 - Continued main app split: extracted dish lifecycle ownership into `src/app/dish-manager.ts`.
 - Continued HUD split: extracted Game panel totals and visibility helpers from `src/main.ts`.
 - Continued HUD split: extracted app-level HUD synchronization into `src/hud/app-hud.ts`, covering top readouts, window titles, dish state, selected entity, hover info, directives, and selected-cell meters.
+- Continued main app split: extracted tutorial world setup into `src/app/tutorial-world.ts` and save/load modal behavior into `src/app/save-modal.ts`.
+- Continued core split: extracted collision-safe cell spawn placement into `src/core/spawn-placement.ts` and open-point/scatter placement into `src/core/world-points.ts`.
+- Continued renderer split: extracted selected-cell sensor field and ray visuals into `src/render/sensor-overlay.ts`.
+- Continued core split: extracted cell/block entity factories, import normalization, dish/block constraints, and dead-cell remains handling from `src/core/simulation.ts`.
+- Continued main app split: extracted save-world application, tutorial progression state, and main HUD synchronization into `src/app/save-apply.ts`, `src/app/tutorial-controller.ts`, and `src/app/hud-sync.ts`; `src/main.ts` is now under 500 lines.
 - Updated `refactor/REFACTOR-PROMPT.md` to match the current module and CSS structure.
-- Current largest files after this pass: `src/main.ts`, `src/render/PetriDishRenderer.ts`, and `src/core/simulation.ts`.
+- Current largest files after this pass: `src/render/PetriDishRenderer.ts`, `src/core/simulation.ts`, and `src/main.ts`.

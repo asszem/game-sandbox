@@ -1,14 +1,18 @@
 import { scanEnvironment } from './environment-scan';
+import { RESOURCE_KINDS, createBlockEntity, createCellEntity, createResourceEntity, normalizeBlockEntity, normalizeCellEntity } from './entities';
+import { constrainCellToDishAndBlocks, keepBlockInDish, keepCellInDish, resolveBlockCollisions } from './cell-constraints';
+import { removeDeadCells } from './cell-death';
 import { updateLightResources } from './light-cycle';
 import { applyCellMetabolism, radiusForMass } from './metabolism';
 import { Rng } from './rng';
 import { transportResource } from './resource-transport';
 import { awarenessRadius, sensingProfile, type SensingProfile } from './sensing';
+import { cellCollisionRadius, clampPointToCellBounds, findCellSpawnPoint } from './spawn-placement';
 import type { Block, Cell, CellGenome, DNAKey, Hazard, Resource, ResourceKind, SimulationEvent, SimulationState, Vec2 } from './types';
 import { add, clamp, clampLength, distance, length, normalize, scale, sub, vec } from './vector';
+import { findOpenPoint, scatterPoint } from './world-points';
 
 const DNA_KEYS: DNAKey[] = ['motility', 'split', 'harvest', 'predator', 'caution'];
-const RESOURCE_KINDS: ResourceKind[] = ['glucose', 'amino-acid', 'oxygen', 'light'];
 
 type WorldSeedOptions = {
   cellCount?: number;
@@ -89,10 +93,10 @@ export class CellSimulation {
     this.state.blocks = state.blocks;
     this.events = [];
     for (const cell of this.state.cells) {
-      this.normalizeCell(cell);
+      normalizeCellEntity(cell);
     }
     for (const block of this.state.blocks) {
-      this.normalizeBlock(block);
+      normalizeBlockEntity(block, this.state.boardRadius);
     }
     for (const resource of this.state.resources) {
       if ((resource.kind as string) === 'food') {
@@ -107,7 +111,7 @@ export class CellSimulation {
 
   dropCottonCandy(position: Vec2): void {
     for (let index = 0; index < 18; index += 1) {
-      const point = this.scatterPoint(position, 8.5);
+      const point = scatterPoint(this.state, this.rng, position, 8.5);
       this.state.resources.push({
         id: this.nextId++,
         kind: 'glucose',
@@ -120,7 +124,7 @@ export class CellSimulation {
 
   dropCatPawn(position: Vec2): void {
     for (let index = 0; index < 7; index += 1) {
-      const point = this.scatterPoint(position, 9.5);
+      const point = scatterPoint(this.state, this.rng, position, 9.5);
       this.state.hazards.push({
         id: this.nextId++,
         kind: 'poison',
@@ -154,14 +158,20 @@ export class CellSimulation {
 
   spawnBlock(position: Vec2, width = 11, height = 8): Block {
     const block = this.createBlock({ ...position }, width, height);
-    this.keepBlockInDish(block);
+    keepBlockInDish(block, this.state.boardRadius);
     this.state.blocks.push(block);
     return block;
   }
 
   spawnCell(position: Vec2, generation = 0): Cell {
     const cell = this.createCell({ ...position }, this.state.cells.length % 3, generation);
-    cell.position = this.findCellSpawnPoint(cell, position, true) ?? this.clampPointToCellBounds(position, this.cellCollisionRadius(cell));
+    cell.position = findCellSpawnPoint({
+      state: this.state,
+      rng: this.rng,
+      cell,
+      preferred: position,
+      allowFallback: true,
+    }) ?? clampPointToCellBounds(position, this.state.boardRadius, cellCollisionRadius(cell));
     this.state.cells.push(cell);
     this.resolveCellObstacles();
     return cell;
@@ -186,7 +196,7 @@ export class CellSimulation {
 
     this.resolveCells();
     this.resolveCellObstacles();
-    this.removeDeadCells();
+    this.nextId = removeDeadCells({ state: this.state, events: this.events, rng: this.rng, nextId: this.nextId });
     if (this.state.selectedCellId && !this.state.cells.some((cell) => cell.id === this.state.selectedCellId)) {
       this.state.selectedCellId = null;
     }
@@ -223,7 +233,7 @@ export class CellSimulation {
         this.createBlock(vec(42, 34), 10, 9),
       );
       for (const block of this.state.blocks) {
-        this.keepBlockInDish(block);
+        keepBlockInDish(block, this.state.boardRadius);
       }
     }
 
@@ -233,7 +243,7 @@ export class CellSimulation {
       : clamp(Math.round(options.cellCount), 1, 80);
     for (let index = 0; index < cellCount; index += 1) {
       const cell = this.createCell(vec(), index % 3);
-      const spawnPoint = this.findCellSpawnPoint(cell);
+      const spawnPoint = findCellSpawnPoint({ state: this.state, rng: this.rng, cell });
       if (!spawnPoint) {
         break;
       }
@@ -264,7 +274,7 @@ export class CellSimulation {
       this.state.hazards.push({
         id: this.nextId++,
         kind: 'poison',
-        position: this.findOpenPoint(this.state.boardRadius - 14, 6),
+        position: findOpenPoint(this.state, this.rng, this.state.boardRadius - 14, 6),
         radius: this.rng.range(2.3, 5.8),
         potency: this.rng.range(0.45, 1),
       });
@@ -272,118 +282,25 @@ export class CellSimulation {
   }
 
   private createBlock(position: Vec2, width: number, height: number): Block {
-    const count = 10 + Math.floor(this.rng.range(0, 5));
-    const vertices: Vec2[] = [];
-    for (let index = 0; index < count; index += 1) {
-      const angle = (index / count) * Math.PI * 2;
-      const wobble = this.rng.range(0.68, 1.18);
-      vertices.push(vec(Math.cos(angle) * width * wobble, Math.sin(angle) * height * this.rng.range(0.72, 1.22)));
-    }
-    const radius = vertices.reduce((max, point) => Math.max(max, length(point)), 0) + 0.4;
-    return {
-      id: this.nextId++,
-      position,
-      size: vec(width * 2, height * 2),
-      vertices,
-      radius,
-    };
+    return createBlockEntity(this.nextId++, this.rng, position, width, height);
   }
 
   private createPlacedBlock(width: number, height: number): Block {
     const block = this.createBlock(vec(), width, height);
     const maxCenterDistance = Math.max(0, this.state.boardRadius - block.radius - 2);
-    block.position = this.findOpenPoint(maxCenterDistance, block.radius + 2);
-    this.keepBlockInDish(block);
+    block.position = findOpenPoint(this.state, this.rng, maxCenterDistance, block.radius + 2);
+    keepBlockInDish(block, this.state.boardRadius);
     return block;
   }
 
   private createCell(position: Vec2, family = 0, generation = 1): Cell {
-    const base: CellGenome = {
-      motility: this.rng.range(0.35, 0.8),
-      split: this.rng.range(0.25, 0.65),
-      harvest: this.rng.range(0.3, 0.85),
-      predator: family === 2 ? this.rng.range(0.45, 0.9) : this.rng.range(0.05, 0.35),
-      caution: this.rng.range(0.25, 0.75),
-    };
-
-    return {
-      id: this.nextId++,
-      generation,
-      position,
-      velocity: vec(this.rng.signed(0.08), this.rng.signed(0.08)),
-      radius: this.rng.range(2.7, 4.2),
-      bodyLength: this.rng.range(1.45, 2.25),
-      energy: 80,
-      mass: this.rng.range(0.45, 1.05),
-      health: 1,
-      atp: 80,
-      glucose: 60,
-      aminoAcids: 70,
-      oxygen: 50,
-      ros: 5,
-      glycogen: 30,
-      glucoseTransport: this.rng.range(0.35, 0.65),
-      aminoTransport: this.rng.range(0.35, 0.65),
-      oxygenMetabolism: this.rng.range(0.3, 0.6),
-      ribosomeActivity: this.rng.range(0.35, 0.65),
-      atpRate: 0,
-      glucoseRate: 0,
-      glycogenRate: 0,
-      autophagyRate: 0,
-      aminoRate: 0,
-      oxygenRate: 0,
-      rosRate: 0,
-      lightFactor: 0,
-      age: 0,
-      genome: base,
-      signalPhase: this.rng.range(0, Math.PI * 2),
-      lastSignal: vec(),
-    };
-  }
-
-  private normalizeCell(cell: Cell): void {
-    cell.atp ??= cell.energy ?? 50;
-    cell.glucose ??= 60;
-    cell.aminoAcids ??= Math.max(15, (cell.mass ?? 0.6) * 55);
-    cell.oxygen ??= 35;
-    cell.ros ??= 10;
-    cell.glycogen ??= 24;
-    cell.glucoseTransport ??= 0.5;
-    cell.aminoTransport ??= 0.5;
-    cell.oxygenMetabolism ??= 0.45;
-    cell.ribosomeActivity ??= 0.5;
-    cell.atpRate ??= 0;
-    cell.glucoseRate ??= 0;
-    cell.glycogenRate ??= 0;
-    cell.autophagyRate ??= 0;
-    cell.aminoRate ??= 0;
-    cell.oxygenRate ??= 0;
-    cell.rosRate ??= 0;
-    cell.lightFactor ??= 0;
-    cell.energy = cell.atp;
-  }
-
-  private normalizeBlock(block: Block): void {
-    if (block.vertices.length > 0) {
-      block.radius = block.vertices.reduce((max, point) => Math.max(max, length(point)), 0) + 0.4;
-    }
-    this.keepBlockInDish(block);
+    return createCellEntity(this.nextId++, this.rng, position, family, generation);
   }
 
   private createResource(resourceKind?: ResourceKind): Resource {
     const kind = resourceKind ?? this.rng.pick(RESOURCE_KINDS);
-    const position = this.findOpenPoint(84, kind === 'light' ? 8 : 4);
-    return {
-      id: this.nextId++,
-      kind,
-      position,
-      origin: kind === 'light' ? { ...position } : undefined,
-      orbitRadius: kind === 'light' ? this.rng.range(9, 26) : undefined,
-      orbitSpeed: kind === 'light' ? this.rng.range(0.004, 0.011) : undefined,
-      orbitPhase: kind === 'light' ? this.rng.range(0, Math.PI * 2) : undefined,
-      amount: this.rng.range(0.45, 1),
-      radius: kind === 'light' ? this.rng.range(4, 8) : kind === 'oxygen' ? this.rng.range(2.6, 5.6) : this.rng.range(1.3, 4.8),
-    };
+    const position = findOpenPoint(this.state, this.rng, 84, kind === 'light' ? 8 : 4);
+    return createResourceEntity(this.nextId++, this.rng, kind, position);
   }
 
   private updateCell(cell: Cell): void {
@@ -411,13 +328,13 @@ export class CellSimulation {
     cell.position = add(cell.position, cell.velocity);
     cell.lastSignal = pull;
 
-    this.keepInDish(cell);
-    this.resolveBlocks(cell);
+    keepCellInDish(this.state, cell);
+    resolveBlockCollisions(this.state, cell);
     this.consumeResources(cell);
     this.applyHazards(cell);
 
     applyCellMetabolism(cell, this.localLight(cell.position), baseline);
-    this.constrainCell(cell);
+    constrainCellToDishAndBlocks(this.state, cell);
 
     if (cell.atp > 92 && cell.aminoAcids > 55 && cell.mass > 1.12 && cell.genome.split > 0.4 && this.state.cells.length < 55) {
       this.splitCell(cell);
@@ -465,7 +382,7 @@ export class CellSimulation {
         const left = this.state.cells[a];
         const right = this.state.cells[b];
         const d = distance(left.position, right.position);
-        const minDistance = this.cellCollisionRadius(left) + this.cellCollisionRadius(right);
+        const minDistance = cellCollisionRadius(left) + cellCollisionRadius(right);
         if (d >= minDistance) {
           continue;
         }
@@ -504,7 +421,7 @@ export class CellSimulation {
 
   private splitCell(cell: Cell): void {
     const angle = this.rng.range(0, Math.PI * 2);
-    const offsetDistance = this.cellCollisionRadius(cell) * 1.15;
+    const offsetDistance = cellCollisionRadius(cell) * 1.15;
     const offset = vec(Math.cos(angle) * offsetDistance, Math.sin(angle) * offsetDistance);
     const child = this.createCell(add(cell.position, offset), 0, cell.generation + 1);
     child.genome = this.mutateGenome(cell.genome);
@@ -531,121 +448,6 @@ export class CellSimulation {
     this.resolveCellObstacles();
   }
 
-  private cellCollisionRadius(cell: Cell): number {
-    return cell.radius * Math.max(1, cell.bodyLength) * 1.18 + 0.35;
-  }
-
-  private findCellSpawnPoint(cell: Cell, preferred?: Vec2, allowFallback = false): Vec2 | null {
-    const collisionRadius = this.cellCollisionRadius(cell);
-    const maxCenterDistance = Math.max(0, this.state.boardRadius - collisionRadius);
-    if (preferred) {
-      const clampedPreferred = this.clampPointToCellBounds(preferred, collisionRadius);
-      if (this.isCellSpawnPointOpen(clampedPreferred, cell)) {
-        return clampedPreferred;
-      }
-      for (let attempt = 0; attempt < 48; attempt += 1) {
-        const angle = this.rng.range(0, Math.PI * 2);
-        const spread = Math.sqrt(this.rng.next()) * (collisionRadius + 18);
-        const point = this.clampPointToCellBounds(add(preferred, vec(Math.cos(angle) * spread, Math.sin(angle) * spread)), collisionRadius);
-        if (this.isCellSpawnPointOpen(point, cell)) {
-          return point;
-        }
-      }
-    }
-    for (let attempt = 0; attempt < 220; attempt += 1) {
-      const point = this.randomDishPoint(maxCenterDistance);
-      if (this.isCellSpawnPointOpen(point, cell)) {
-        return point;
-      }
-    }
-    return allowFallback ? this.leastCrowdedCellSpawnPoint(cell, maxCenterDistance) : null;
-  }
-
-  private isCellSpawnPointOpen(point: Vec2, cell: Cell): boolean {
-    const collisionRadius = this.cellCollisionRadius(cell);
-    if (length(point) > this.state.boardRadius - collisionRadius) {
-      return false;
-    }
-    for (const block of this.state.blocks) {
-      if (distance(point, block.position) < block.radius + collisionRadius + 0.6) {
-        return false;
-      }
-    }
-    for (const other of this.state.cells) {
-      if (distance(point, other.position) < collisionRadius + this.cellCollisionRadius(other) + 0.6) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  private leastCrowdedCellSpawnPoint(cell: Cell, maxCenterDistance: number): Vec2 {
-    let best = this.randomDishPoint(maxCenterDistance);
-    let bestScore = -Infinity;
-    for (let attempt = 0; attempt < 220; attempt += 1) {
-      const point = this.randomDishPoint(maxCenterDistance);
-      const score = this.cellSpawnClearanceScore(point, cell);
-      if (score > bestScore) {
-        best = point;
-        bestScore = score;
-      }
-    }
-    return best;
-  }
-
-  private cellSpawnClearanceScore(point: Vec2, cell: Cell): number {
-    const collisionRadius = this.cellCollisionRadius(cell);
-    let score = this.state.boardRadius - collisionRadius - length(point);
-    for (const block of this.state.blocks) {
-      score = Math.min(score, distance(point, block.position) - block.radius - collisionRadius);
-    }
-    for (const other of this.state.cells) {
-      score = Math.min(score, distance(point, other.position) - this.cellCollisionRadius(other) - collisionRadius);
-    }
-    return score;
-  }
-
-  private clampPointToCellBounds(point: Vec2, collisionRadius: number): Vec2 {
-    const max = Math.max(0, this.state.boardRadius - collisionRadius);
-    const d = length(point);
-    return d > max ? scale(normalize(point), max) : { ...point };
-  }
-
-  private removeDeadCells(): void {
-    const survivors: Cell[] = [];
-    for (const cell of this.state.cells) {
-      if (cell.health > 0 && cell.atp > -10 && cell.mass > 0.16) {
-        survivors.push(cell);
-        continue;
-      }
-      this.events.push({
-        kind: 'cell-died',
-        position: { ...cell.position },
-        cellId: cell.id,
-        mass: cell.mass,
-        radius: cell.radius,
-      });
-      this.spawnRemains(cell);
-    }
-    this.state.cells = survivors;
-  }
-
-  private spawnRemains(cell: Cell): void {
-    const pieces = clamp(Math.round(cell.mass * 3), 1, 7);
-    for (let index = 0; index < pieces; index += 1) {
-      const angle = this.rng.range(0, Math.PI * 2);
-      const spread = this.rng.range(0.3, cell.radius * 1.4);
-      const position = add(cell.position, vec(Math.cos(angle) * spread, Math.sin(angle) * spread));
-      this.state.resources.push({
-        id: this.nextId++,
-        kind: 'amino-acid',
-        position: this.isOpenPoint(position, 2) ? position : this.findOpenPoint(82, 3),
-        amount: clamp(cell.mass / pieces, 0.18, 0.9),
-        radius: this.rng.range(1.1, Math.max(1.4, cell.radius * 0.42)),
-      });
-    }
-  }
-
   private mutateGenome(genome: CellGenome): CellGenome {
     const next = { ...genome };
     for (const key of DNA_KEYS) {
@@ -664,61 +466,13 @@ export class CellSimulation {
     }, -0.12);
   }
 
-  private keepInDish(cell: Cell): void {
-    const d = length(cell.position);
-    const max = Math.max(0, this.state.boardRadius - this.cellCollisionRadius(cell));
-    if (d > max) {
-      const inward = scale(normalize(cell.position), max);
-      cell.position = inward;
-      cell.velocity = scale(cell.velocity, -0.25);
-      cell.energy -= 0.25;
-    }
-  }
-
-  private keepBlockInDish(block: Block): void {
-    const max = Math.max(0, this.state.boardRadius - block.radius - 2);
-    const d = length(block.position);
-    if (d > max) {
-      block.position = d > 0.001 ? scale(normalize(block.position), max) : vec();
-    }
-  }
-
-  private resolveBlocks(cell: Cell): void {
-    for (const block of this.state.blocks) {
-      const d = distance(cell.position, block.position);
-      const minDistance = block.radius + this.cellCollisionRadius(cell);
-      if (d < minDistance) {
-        const push = this.cellPushDirection(cell, block.position);
-        cell.position = add(cell.position, scale(push, minDistance - d + 0.08));
-        cell.velocity = scale(cell.velocity, -0.2);
-      }
-    }
-  }
-
   private resolveCellObstacles(): void {
     for (let pass = 0; pass < 8; pass += 1) {
       this.resolveCells();
       for (const cell of this.state.cells) {
-        this.constrainCell(cell);
+        constrainCellToDishAndBlocks(this.state, cell);
       }
     }
-  }
-
-  private constrainCell(cell: Cell): void {
-    this.keepInDish(cell);
-    this.resolveBlocks(cell);
-    this.keepInDish(cell);
-  }
-
-  private cellPushDirection(cell: Cell, origin: Vec2): Vec2 {
-    const away = sub(cell.position, origin);
-    if (length(away) > 0.001) {
-      return normalize(away);
-    }
-    if (length(cell.velocity) > 0.001) {
-      return normalize(cell.velocity);
-    }
-    return normalize(origin.x === 0 && origin.y === 0 ? vec(1, 0) : origin);
   }
 
   private spawnAmbientResources(): void {
@@ -729,58 +483,6 @@ export class CellSimulation {
 
   private updateLightCycle(): void {
     updateLightResources(this.state.resources, this.state.tick, this.state.boardRadius);
-  }
-
-  private findOpenPoint(radius: number, clearance: number): Vec2 {
-    for (let attempt = 0; attempt < 80; attempt += 1) {
-      const point = this.randomDishPoint(radius);
-      if (this.isOpenPoint(point, clearance)) {
-        return point;
-      }
-    }
-    return this.randomDishPoint(radius * 0.65);
-  }
-
-  private isOpenPoint(point: Vec2, clearance: number): boolean {
-    for (const block of this.state.blocks) {
-      if (this.pointNearBlock(point, block, clearance)) {
-        return false;
-      }
-    }
-    for (const cell of this.state.cells) {
-      if (distance(point, cell.position) < clearance + cell.radius * cell.bodyLength) {
-        return false;
-      }
-    }
-    for (const resource of this.state.resources) {
-      if (distance(point, resource.position) < clearance + resource.radius) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  private pointNearBlock(point: Vec2, block: Block, clearance: number): boolean {
-    return distance(point, block.position) < block.radius + clearance;
-  }
-
-  private randomDishPoint(radius: number): Vec2 {
-    const angle = this.rng.range(0, Math.PI * 2);
-    const distanceFromCenter = Math.sqrt(this.rng.next()) * radius;
-    return vec(Math.cos(angle) * distanceFromCenter, Math.sin(angle) * distanceFromCenter);
-  }
-
-  private scatterPoint(center: Vec2, radius: number): Vec2 {
-    for (let attempt = 0; attempt < 40; attempt += 1) {
-      const angle = this.rng.range(0, Math.PI * 2);
-      const spread = Math.sqrt(this.rng.next()) * radius;
-      const point = add(center, vec(Math.cos(angle) * spread, Math.sin(angle) * spread));
-      if (length(point) <= this.state.boardRadius - 4 && !this.state.blocks.some((block) => this.pointNearBlock(point, block, 1.2))) {
-        return point;
-      }
-    }
-    const max = this.state.boardRadius - 5;
-    return length(center) > max ? scale(normalize(center), max) : center;
   }
 
   private findNextId(): number {

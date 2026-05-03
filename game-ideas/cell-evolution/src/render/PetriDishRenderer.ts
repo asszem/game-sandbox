@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { sensingProfile } from '../core/sensing';
 import type { Block, Cell, Hazard, Resource, SimulationEvent, SimulationState, Vec2 } from '../core/types';
 import { createBlockGeometry, createMineralMaterial } from './blocks';
 import { updateCiliaGeometry } from './cell-geometry';
@@ -9,6 +8,7 @@ import { spawnEffectVisuals, syncEffectVisuals, type EffectVisual } from './effe
 import { createPoisonMaterial } from './hazards';
 import { pickAtWorldPoint } from './picking';
 import { createResourceVisual } from './resources';
+import { createSensorOverlay, syncSensorOverlay, type SensorOverlayVisual } from './sensor-overlay';
 import { createTimedShaderMaterial, noiseShaderChunk, updateTimedMaterials } from './shaders';
 import { createDishTexture, createMicroscopeBackdropTexture } from './textures';
 import type { MapPick, PickResult, RendererView } from './types';
@@ -45,9 +45,7 @@ export class PetriDishRenderer {
   private effectLayer = new THREE.Group();
   private effects: EffectVisual[] = [];
   private selectedRing: THREE.Mesh;
-  private sensorField: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>;
-  private sensorRim: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
-  private sensorRays: THREE.LineSegments<THREE.BufferGeometry, THREE.LineBasicMaterial>;
+  private sensorOverlay: SensorOverlayVisual;
   private timedMaterials: THREE.ShaderMaterial[] = [];
   private frustumHeight = 203;
   private aspect = 1;
@@ -80,22 +78,8 @@ export class PetriDishRenderer {
     );
     this.selectedRing.renderOrder = 900;
     this.selectedRing.visible = false;
-    this.sensorField = new THREE.Mesh(
-      new THREE.CircleGeometry(1, 96),
-      new THREE.MeshBasicMaterial({ color: 0x00ffe1, transparent: true, opacity: 0.055, depthWrite: false }),
-    );
-    this.sensorRim = new THREE.Mesh(
-      new THREE.RingGeometry(0.985, 1, 128),
-      new THREE.MeshBasicMaterial({ color: 0xf9ff4d, transparent: true, opacity: 0.48, depthWrite: false }),
-    );
-    this.sensorRays = new THREE.LineSegments(
-      new THREE.BufferGeometry(),
-      new THREE.LineBasicMaterial({ color: 0xf9ff4d, transparent: true, opacity: 0.64, depthWrite: false }),
-    );
-    this.sensorField.visible = false;
-    this.sensorRim.visible = false;
-    this.sensorRays.visible = false;
-    this.sensorLayer.add(this.sensorField, this.sensorRim, this.sensorRays);
+    this.sensorOverlay = createSensorOverlay();
+    this.sensorLayer.add(this.sensorOverlay.field, this.sensorOverlay.rim, this.sensorOverlay.rays);
 
     this.buildScene();
     this.bindEvents();
@@ -346,54 +330,7 @@ export class PetriDishRenderer {
   }
 
   private syncSensorOverlay(state: SimulationState, time: number): void {
-    const selected = state.selectedCellId ? state.cells.find((cell) => cell.id === state.selectedCellId) : null;
-    if (!selected) {
-      this.sensorField.visible = false;
-      this.sensorRim.visible = false;
-      this.sensorRays.visible = false;
-      return;
-    }
-
-    const sensing = sensingProfile(selected);
-    const awareness = sensing.radius;
-    const pulse = 1;
-    this.sensorField.visible = true;
-    this.sensorRim.visible = true;
-    this.sensorRays.visible = true;
-    this.sensorField.material.opacity = 0.025 + sensing.clarity * 0.055;
-    this.sensorRim.material.opacity = 0.18 + sensing.clarity * 0.36;
-    this.sensorField.position.set(selected.position.x, selected.position.y, 1.6);
-    this.sensorRim.position.copy(this.sensorField.position);
-    this.sensorField.scale.setScalar(awareness * pulse);
-    this.sensorRim.scale.setScalar(awareness * pulse);
-
-    const positions: number[] = [];
-    const addRay = (target: Vec2, strength: number): void => {
-      const dx = target.x - selected.position.x;
-      const dy = target.y - selected.position.y;
-      const d = Math.hypot(dx, dy);
-      if (d > awareness || d <= 0.01) {
-        return;
-      }
-      positions.push(selected.position.x, selected.position.y, 5.8, selected.position.x + dx * strength * sensing.clarity, selected.position.y + dy * strength * sensing.clarity, 5.8);
-    };
-
-    for (const resource of state.resources) {
-      addRay(resource.position, resource.kind === 'light' ? 0.72 : 0.92);
-    }
-    for (const hazard of state.hazards) {
-      addRay(hazard.position, 1);
-    }
-    for (const cell of state.cells) {
-      if (cell.id !== selected.id) {
-        addRay(cell.position, 0.82);
-      }
-    }
-
-    this.sensorRays.geometry.dispose();
-    this.sensorRays.geometry = new THREE.BufferGeometry();
-    this.sensorRays.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    this.sensorRays.material.opacity = (state.running ? 0.22 + Math.sin(time * 0.01) * 0.08 : 0.22) * sensing.clarity * sensing.processing;
+    syncSensorOverlay(this.sensorOverlay, state, time);
   }
 
   private syncResources(resources: Resource[], time: number): void {

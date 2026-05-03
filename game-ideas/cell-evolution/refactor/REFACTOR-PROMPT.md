@@ -26,20 +26,30 @@ game-ideas/cell-evolution/
       drop-handler.ts
       drop-tools.ts
       game-loop.ts
+      hud-sync.ts
       new-dish.ts
+      save-apply.ts
       save-load.ts
+      save-modal.ts
       tutorial.ts
+      tutorial-controller.ts
       tutorial-scenarios.ts
+      tutorial-world.ts
     core/
       environment-scan.ts
+      cell-constraints.ts
+      cell-death.ts
+      entities.ts
       light-cycle.ts
       metabolism.ts
       resource-transport.ts
       rng.ts
       sensing.ts
       simulation.ts
+      spawn-placement.ts
       types.ts
       vector.ts
+      world-points.ts
     hud/
       app-hud.ts
       directives-panel.ts
@@ -64,6 +74,7 @@ game-ideas/cell-evolution/
       hazards.ts
       picking.ts
       resources.ts
+      sensor-overlay.ts
       shaders.ts
       textures.ts
       types.ts
@@ -95,19 +106,19 @@ game-ideas/cell-evolution/
     REFACTOR-PROMPT.md
 ```
 
-Current oversized files:
-- `src/main.ts` - app orchestration, active dish/selection state, tutorial flow, save/load application, and remaining event callbacks
-- `src/render/PetriDishRenderer.ts` - Three.js scene setup, resource/hazard/block visuals, picking, camera/zoom/pan, effects, and remaining render facade work
-- `src/core/simulation.ts` - simulation state updates, movement, collisions, spawning, hazards, resources, blocks, and remaining world orchestration
+Current largest files:
+- `src/render/PetriDishRenderer.ts` - 500 lines, render facade for scene setup, visuals, picking, camera, zoom, pan, and effects
+- `src/core/simulation.ts` - 497 lines, simulation orchestration for ticks, movement, collisions, spawning, hazards, and resources
+- `src/main.ts` - 453 lines, app bootstrap, active dish/selection state, save/load application, and event callbacks
 
 Already split:
 - HUD utilities, windows, panel formatting, hover info, directives, metabolism display
 - Game panel HUD totals and visibility helpers
 - App-level HUD orchestration for top readouts, titles, dish state, selected entity, hover info, directive text, and selected-cell meters
-- App helpers for event wiring, backdrop, dish event wiring, dish lifecycle/layout/types, DOM selectors, drop handling/tools, game loop, new dish modal, save/load, tutorial UI, and tutorial scenario setup
+- App helpers for event wiring, backdrop, dish event wiring, dish lifecycle/layout/types, DOM selectors, drop handling/tools, game loop, HUD sync, new dish modal, save application/load modal, tutorial controller/UI/world setup, and tutorial scenario setup
 - CSS into `src/styles/*` imported by `src/styles/index.css`
-- Renderer texture, shader, cell geometry/material/organelle/visual, dish material, resource marker, hazard material, mineral block, transient effect, picking, and shared type helpers
-- Core sensing, metabolism, resource transport, environment scan, and light-cycle helpers
+- Renderer texture, shader, cell geometry/material/organelle/visual, dish material, resource marker, hazard material, mineral block, sensor overlay, transient effect, picking, and shared type helpers
+- Core entity factories/normalizers, cell constraints/death, sensing, metabolism, resource transport, environment scan, light-cycle, spawn-placement, and open-point/scatter helpers
 
 ## Refactor Principles
 
@@ -138,12 +149,20 @@ src/
     dom-elements.ts           # app DOM selector lookup and element contract
     drop-handler.ts           # drop target lookup and item spawn behavior
     game-loop.ts              # dish simulation/render animation loop factory
+    hud-sync.ts               # main app HUD sync sequence
     new-dish.ts               # new dish modal option parsing/rendering
+    save-apply.ts             # apply saved dish world and restored tutorial state
     save-load.ts              # SaveData, slots, import/export, localStorage
+    save-modal.ts             # save/load modal controller
     tutorial.ts               # tutorial state, milestones, scenario setup
+    tutorial-controller.ts     # tutorial mode state machine and progression
     tutorial-scenarios.ts     # tutorial step world/cell setup helpers
+    tutorial-world.ts         # tutorial dish creation and resource spawn helpers
     drop-tools.ts             # drag/drop item tools and ghost UI
   core/
+    cell-constraints.ts       # dish boundary and block collision constraints for cells/blocks
+    cell-death.ts             # dead-cell removal and remains spawning
+    entities.ts               # cell/block/resource factories and import normalization
     environment-scan.ts        # nearby resource/hazard/cell pull vector
     light-cycle.ts             # light resource orbit and day-pulse updates
     metabolism.ts             # cell resource flow, rates, growth, mass radius
@@ -151,8 +170,10 @@ src/
     rng.ts
     sensing.ts                # cell awareness and sensing profile
     simulation.ts             # world orchestration facade; keep splitting carefully
+    spawn-placement.ts         # collision-safe cell spawn placement and cell clearance helpers
     types.ts
     vector.ts
+    world-points.ts            # resource/open-point and scatter placement helpers
   hud/
     state-panel.ts            # dish state formatting and dish picker list
     app-hud.ts                # top readouts, titles, dish/entity/hover/directive panel DOM syncing
@@ -174,6 +195,7 @@ src/
     cell-organelles.ts        # internal organelle and strand geometry
     cell-visuals.ts           # cell visual group factory and visual type
     resources.ts              # resource visual creation/update
+    sensor-overlay.ts         # selected-cell sensing field/ray visuals
     hazards.ts                # poison material and visual helpers
     blocks.ts                 # mineral block visual creation/picking
     effects.ts                # consume/death effects
@@ -216,8 +238,8 @@ CSS is already split. Keep importing from `src/styles/index.css` and preserve ca
 2. Extract formatting-only HUD modules:
    - Done: `hud/app-hud.ts`, `hud/hover-info.ts`, `hud/state-panel.ts`, `hud/entity-panel.ts`, `hud/game-panel.ts`, `hud/directives-panel.ts`, `hud/metabolism-panel.ts`
 3. Extract app domains from `src/main.ts`:
-   - Done: `app/app-events.ts`, `app/backdrop.ts`, `app/dish-events.ts`, `app/dish-layout.ts`, `app/dish-manager.ts`, `app/dish-types.ts`, `app/dom-elements.ts`, `app/drop-handler.ts`, `app/game-loop.ts`, `app/save-load.ts`, `app/tutorial.ts`, `app/tutorial-scenarios.ts`, `app/drop-tools.ts`, `app/new-dish.ts`
-   - Remaining: main app bootstrap/selection/save-application orchestration
+   - Done: `app/app-events.ts`, `app/backdrop.ts`, `app/dish-events.ts`, `app/dish-layout.ts`, `app/dish-manager.ts`, `app/dish-types.ts`, `app/dom-elements.ts`, `app/drop-handler.ts`, `app/drop-tools.ts`, `app/game-loop.ts`, `app/hud-sync.ts`, `app/new-dish.ts`, `app/save-apply.ts`, `app/save-load.ts`, `app/save-modal.ts`, `app/tutorial.ts`, `app/tutorial-controller.ts`, `app/tutorial-scenarios.ts`, `app/tutorial-world.ts`
+   - Remaining: main app bootstrap and active selection/event callback orchestration
 4. Done: split CSS by panel/domain while preserving visual output.
 5. Continue splitting `src/render/PetriDishRenderer.ts` through narrow render helpers.
 6. Continue splitting `src/core/simulation.ts` through narrow core helpers.

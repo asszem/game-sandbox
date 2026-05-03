@@ -798,3 +798,99 @@ No behavior changes intended.
 ### Verification
 - `npm run build` - pass
 - `npm test` - pass
+
+## Main app tutorial world and save modal extraction
+
+### Motivation
+`src/main.ts` still contained mechanical tutorial dish setup, starter-cell configuration, tutorial resource spawning, and save/load slot modal mechanics. Moving those into app modules keeps the orchestrator focused on tutorial flow and save application.
+
+### Old files changed
+- `src/main.ts` - delegated tutorial world creation/resource spawning and save/load modal behavior.
+
+### New files created
+- `src/app/tutorial-world.ts` - tutorial dish creation, starter-cell configuration, tutorial cell lookup, and tutorial resource spawning.
+- `src/app/save-modal.ts` - save/load modal open, close, render, save-slot, and load-slot behavior.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Core spawn and open-point placement extraction
+
+### Motivation
+`src/core/simulation.ts` still contained collision-safe cell spawn placement, clearance scoring, open-point search, block proximity checks, and scatter placement. These are spatial helpers rather than simulation update orchestration.
+
+### Old files changed
+- `src/core/simulation.ts` - delegated cell spawn placement and open/scatter point selection.
+
+### New files created
+- `src/core/spawn-placement.ts` - cell collision radius, spawn point search, clearance scoring, and dish-bound clamping.
+- `src/core/world-points.ts` - open point search, block/resource/cell clearance checks, and scatter point generation.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Renderer sensor overlay extraction
+
+### Motivation
+`PetriDishRenderer` still owned selected-cell sensing field mesh creation and ray synchronization. Moving that visual subsystem out keeps the renderer facade closer to scene orchestration and camera/input behavior.
+
+### Old files changed
+- `src/render/PetriDishRenderer.ts` - delegated sensor overlay mesh creation and syncing.
+
+### New files created
+- `src/render/sensor-overlay.ts` - selected-cell sensing field, rim, and ray visual creation/synchronization.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Core entity lifecycle and constraint extraction
+
+### Motivation
+`src/core/simulation.ts` still contained entity construction, import normalization, dish/block boundary constraints, block collision resolution, dead-cell removal, and remains spawning. These are cohesive core helpers that can be tested and evolved separately from the simulation update loop.
+
+### Old files changed
+- `src/core/simulation.ts` - delegated entity factories, normalization, constraints, and dead-cell cleanup.
+
+### New files created
+- `src/core/entities.ts` - cell/block/resource factories, resource kind list, and save import normalizers.
+- `src/core/cell-constraints.ts` - block dish bounds, cell dish bounds, and block collision constraints.
+- `src/core/cell-death.ts` - dead-cell filtering, death events, and amino-acid remains spawning.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Main app tutorial, save apply, and HUD sync extraction
+
+### Motivation
+`src/main.ts` remained above the file-size target because it still owned tutorial progression state, save-world reconstruction details, and the full HUD synchronization sequence. Moving those app-domain flows out leaves `main.ts` as bootstrap plus active selection/event callback orchestration.
+
+### Old files changed
+- `src/main.ts` - delegated tutorial progression, saved-world application, and main HUD synchronization.
+
+### New files created
+- `src/app/tutorial-controller.ts` - tutorial mode state, milestone advancement, scenario entry, panel updates, and save/restore state.
+- `src/app/save-apply.ts` - saved dish reconstruction and restored tutorial-state derivation.
+- `src/app/hud-sync.ts` - main HUD synchronization sequence for readouts, titles, panels, controls, metabolism, hover info, and selected entity fitting.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
