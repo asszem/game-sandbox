@@ -1,15 +1,7 @@
 import type { Cell } from '../core/types';
-import { previewCellMetabolism } from '../core/metabolism';
+import { previewCellMetabolism, type MetabolicPreview } from '../core/metabolism';
 
-type MetabolicRates = {
-  atp: number;
-  glucose: number;
-  glycogen: number;
-  amino: number;
-  oxygen: number;
-  ros: number;
-  autophagy: number;
-};
+type MetabolicRates = MetabolicPreview;
 
 export type MetabolicDashboardElements = {
   root: HTMLElement | null;
@@ -23,9 +15,25 @@ export type MetabolicDashboardElements = {
   glycogenNodeDelta: HTMLElement | null;
   aminoNodeDelta: HTMLElement | null;
   oxygenNodeDelta: HTMLElement | null;
+  g6pRate: HTMLElement | null;
+  g6pNodeDelta: HTMLElement | null;
+  pyruvateRate: HTMLElement | null;
+  pyruvateNodeDelta: HTMLElement | null;
+  lactateRate: HTMLElement | null;
+  lactateNodeDelta: HTMLElement | null;
+  proteinRate: HTMLElement | null;
+  proteinNodeDelta: HTMLElement | null;
+  stressSignalRate: HTMLElement | null;
+  damageNodeDelta: HTMLElement | null;
   lightFactor: HTMLElement | null;
   rosDelta: HTMLElement | null;
+  damageRate: HTMLElement | null;
   autophagyDelta: HTMLElement | null;
+  balanceImpact: HTMLElement | null;
+  positiveBalanceValue: HTMLElement | null;
+  negativeBalanceValue: HTMLElement | null;
+  overallHealthValue: HTMLElement | null;
+  overallHealthDelta: HTMLElement | null;
   cellGenerationValue: HTMLElement | null;
   cellSizeValue: HTMLElement | null;
 };
@@ -37,28 +45,30 @@ export function syncMetabolicDashboard(elements: MetabolicDashboardElements, cel
   setResourceReadout(elements.glycogenRate, elements.glycogenNodeDelta, cell?.glycogen ?? 0, rates?.glycogen ?? 0);
   setResourceReadout(elements.aminoRate, elements.aminoNodeDelta, cell?.aminoAcids ?? 0, rates?.amino ?? 0);
   setResourceReadout(elements.oxygenRate, elements.oxygenNodeDelta, cell?.oxygen ?? 0, rates?.oxygen ?? 0);
+  setResourceReadout(elements.g6pRate, elements.g6pNodeDelta, cell?.glucose6Phosphate ?? 0, rates?.glucose6Phosphate ?? 0);
+  setResourceReadout(elements.pyruvateRate, elements.pyruvateNodeDelta, cell?.pyruvate ?? 0, rates?.pyruvate ?? 0);
+  setResourceReadout(elements.lactateRate, elements.lactateNodeDelta, cell?.lactate ?? 0, rates?.fermentation ?? 0);
+  setResourceReadout(elements.proteinRate, elements.proteinNodeDelta, cell?.protein ?? 0, rates?.protein ?? 0);
+  setResourceReadout(elements.stressSignalRate, elements.damageNodeDelta, cell?.stressSignal ?? 0, rates?.damage ?? 0, true);
   setPhotosynthesis(elements.lightFactor, cell);
-  setDelta(elements.rosDelta, rates?.ros ?? 0, true);
-  setDelta(elements.autophagyDelta, rates?.autophagy ?? 0, true);
+  setResourceReadout(elements.rosDelta, elements.damageRate, cell?.ros ?? 0, rates?.damage ?? 0, true);
+  setAutophagy(elements.autophagyDelta, rates?.autophagy ?? 0);
   setCellVitals(elements.cellGenerationValue, elements.cellSizeValue, cell);
+  setBalance(elements, cell, rates);
 
   if (elements.root && cell) {
-    elements.root.style.setProperty('--glucose-flow', `${3 + cell.glucoseTransport * 5}px`);
-    elements.root.style.setProperty('--amino-flow', `${3 + cell.aminoTransport * 5}px`);
-    elements.root.style.setProperty('--oxygen-flow', `${3 + cell.oxygenMetabolism * 5}px`);
-    elements.root.style.setProperty('--glucose-speed', `${Math.round(1200 - cell.glucoseTransport * 650)}ms`);
-    elements.root.style.setProperty('--amino-speed', `${Math.round(1250 - cell.aminoTransport * 560)}ms`);
-    elements.root.style.setProperty('--oxygen-speed', `${Math.round(1200 - cell.oxygenMetabolism * 650)}ms`);
+    elements.root.style.setProperty('--glycolysis-flow', `${Math.min(1, rates?.glycolysis ?? 0)}`);
+    elements.root.style.setProperty('--respiration-flow', `${Math.min(1, rates?.respiration ?? 0)}`);
+    elements.root.style.setProperty('--fermentation-flow', `${Math.min(1, rates?.fermentation ?? 0)}`);
+    elements.root.style.setProperty('--repair-flow', `${Math.min(1, rates?.biosynthesis ?? 0)}`);
     elements.root.classList.toggle('is-toxic', cell.ros > 45);
     elements.root.classList.toggle('is-autophagy', cell.autophagyRate > 0);
     elements.root.classList.toggle('is-paused', !running);
   } else if (elements.root) {
-    elements.root.style.setProperty('--glucose-flow', '3px');
-    elements.root.style.setProperty('--amino-flow', '3px');
-    elements.root.style.setProperty('--oxygen-flow', '3px');
-    elements.root.style.setProperty('--glucose-speed', '1100ms');
-    elements.root.style.setProperty('--amino-speed', '1100ms');
-    elements.root.style.setProperty('--oxygen-speed', '1100ms');
+    elements.root.style.setProperty('--glycolysis-flow', '0');
+    elements.root.style.setProperty('--respiration-flow', '0');
+    elements.root.style.setProperty('--fermentation-flow', '0');
+    elements.root.style.setProperty('--repair-flow', '0');
     elements.root.classList.remove('is-toxic');
     elements.root.classList.remove('is-autophagy');
     elements.root.classList.add('is-paused');
@@ -78,16 +88,16 @@ function configuredMetabolicRates(cell: Cell): MetabolicRates {
   return previewCellMetabolism(cell);
 }
 
-function setResourceReadout(container: HTMLElement | null, deltaElement: HTMLElement | null, value: number, delta: number): void {
+function setResourceReadout(container: HTMLElement | null, deltaElement: HTMLElement | null, value: number, delta: number, inverted = false): void {
   if (container) {
     const valueElement = container.querySelector<HTMLElement>('.resource-value');
     if (valueElement) {
-      valueElement.textContent = String(Math.round(value));
+      valueElement.textContent = formatValue(value);
     } else {
-      container.textContent = String(Math.round(value));
+      container.textContent = formatValue(value);
     }
   }
-  setDelta(deltaElement, delta);
+  setDelta(deltaElement, delta, inverted);
 }
 
 function setPhotosynthesis(element: HTMLElement | null, cell: Cell | null): void {
@@ -106,8 +116,55 @@ function setPhotosynthesis(element: HTMLElement | null, cell: Cell | null): void
   }
 }
 
+function setAutophagy(element: HTMLElement | null, value: number): void {
+  if (!element) {
+    return;
+  }
+  element.textContent = `Autophagy ${formatSignedOne(value)}`;
+  element.dataset.trend = value > 0.05 ? 'bad' : 'flat';
+}
+
+function setBalance(elements: MetabolicDashboardElements, cell: Cell | null, rates: MetabolicRates | null): void {
+  const positive = cell
+    ? Math.min(100, Math.round(Math.min(cell.atp / 65, cell.aminoAcids / 45, cell.protein / 70) * (cell.ros < 35 ? 100 : 55)))
+    : 0;
+  const negative = cell
+    ? Math.min(100, Math.round(
+      (Math.max(0, cell.damage) / 100) * 48
+      + (Math.max(0, cell.ros - 28) / 72) * 30
+      + (Math.max(0, 28 - cell.protein) / 28) * 22,
+    ))
+    : 0;
+  if (elements.positiveBalanceValue) {
+    elements.positiveBalanceValue.textContent = String(Math.max(0, positive));
+  }
+  if (elements.negativeBalanceValue) {
+    elements.negativeBalanceValue.textContent = String(Math.max(0, negative));
+  }
+  if (elements.overallHealthValue) {
+    elements.overallHealthValue.textContent = `${Math.round((cell?.health ?? 0) * 100)}%`;
+  }
+  if (elements.overallHealthDelta) {
+    setDelta(elements.overallHealthDelta, rates?.health ?? 0);
+  }
+  if (elements.balanceImpact) {
+    const healthRate = rates?.health ?? 0;
+    const label = healthRate > 0.001 ? 'Positive balance' : healthRate < -0.001 ? 'Negative balance' : 'Balance stable';
+    elements.balanceImpact.textContent = `${label} | +${positive} / -${negative}`;
+    elements.balanceImpact.dataset.trend = healthRate > 0.001 ? 'good' : healthRate < -0.001 ? 'bad' : 'flat';
+  }
+}
+
 function formatSigned(value: number): string {
   return `${value >= 0 ? '+' : ''}${value.toFixed(2)}`;
+}
+
+function formatSignedOne(value: number): string {
+  return `${value >= 0 ? '+' : ''}${value.toFixed(1)}`;
+}
+
+function formatValue(value: number): string {
+  return Math.abs(value) >= 10 ? String(Math.round(value)) : value.toFixed(1);
 }
 
 function trendFor(value: number): 'good' | 'bad' | 'flat' {

@@ -1,13 +1,275 @@
 .metabolic-dashboard {
-  --glucose-flow: 3px;
-  --amino-flow: 3px;
-  --oxygen-flow: 3px;
-  --glucose-speed: 1100ms;
-  --amino-speed: 1100ms;
-  --oxygen-speed: 1100ms;
+  --glycolysis-flow: 0;
+  --respiration-flow: 0;
+  --fermentation-flow: 0;
+  --repair-flow: 0;
   display: grid;
   gap: 12px;
   margin: 12px 0;
+}
+
+.homeostasis-flow {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+}
+
+.flow-band {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid rgba(68, 255, 203, 0.16);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 24% 18%, rgba(255, 230, 46, 0.08), transparent 34%),
+    radial-gradient(circle at 78% 20%, rgba(97, 255, 189, 0.07), transparent 34%),
+    rgba(4, 9, 16, 0.56);
+}
+
+.flow-band h4 {
+  margin: 0;
+  color: rgba(247, 255, 243, 0.58);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.flow-environment {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.flow-environment h4,
+.flow-interior h4,
+.flow-outcome h4 {
+  grid-column: 1 / -1;
+}
+
+.flow-node {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 74px;
+  grid-template-rows: 28px auto auto;
+  align-items: center;
+  justify-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+  border: 1px solid rgba(247, 255, 243, 0.16);
+  border-radius: 8px;
+  background: rgba(4, 9, 16, 0.66);
+  box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.03);
+  color: #f7fff3;
+  font-size: 10px;
+  line-height: 1.05;
+  text-align: center;
+}
+
+.flow-node > span {
+  max-width: 100%;
+  color: rgba(247, 255, 243, 0.72);
+  overflow-wrap: anywhere;
+}
+
+.flow-symbol {
+  display: grid;
+  min-width: 28px;
+  min-height: 28px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(247, 255, 243, 0.08);
+  color: currentColor;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 0 12px currentColor;
+}
+
+.flow-node .resource-readout {
+  color: #f9ff4d;
+  font-size: 13px;
+  line-height: 1;
+  text-shadow:
+    0 0 7px rgba(249, 255, 77, 0.4),
+    0 1px 0 rgba(0, 0, 0, 0.7);
+}
+
+.input-glucose,
+.process-node {
+  border-color: rgba(255, 230, 46, 0.38);
+}
+
+.input-oxygen {
+  border-color: rgba(54, 215, 255, 0.46);
+}
+
+.input-amino,
+.repair-node {
+  border-color: rgba(97, 255, 189, 0.42);
+}
+
+.input-stress,
+.stress-node {
+  border-color: rgba(255, 93, 122, 0.42);
+}
+
+.input-stress .flow-symbol,
+.stress-node .flow-symbol {
+  color: #ff5d7a;
+}
+
+.storage-node {
+  border-color: rgba(245, 217, 148, 0.44);
+}
+
+.atp-node {
+  border-color: rgba(249, 255, 77, 0.58);
+  background:
+    radial-gradient(circle at 50% 20%, rgba(249, 255, 77, 0.12), transparent 44%),
+    rgba(4, 9, 16, 0.7);
+  box-shadow:
+    0 0 18px rgba(249, 255, 77, 0.16),
+    inset 0 0 18px rgba(249, 255, 77, 0.05);
+}
+
+.flow-row {
+  display: grid;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.energy-row {
+  grid-template-columns: minmax(78px, 1fr) minmax(56px, 0.74fr) minmax(78px, 1fr) minmax(68px, 0.8fr) minmax(78px, 1fr);
+}
+
+.support-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.emergency-row {
+  grid-template-columns: minmax(170px, 1.5fr) minmax(100px, 0.9fr) minmax(128px, 1fr);
+}
+
+.flow-link,
+.flow-note {
+  position: relative;
+  display: grid;
+  min-height: 26px;
+  place-items: center;
+  padding: 4px 6px;
+  border: 1px solid rgba(247, 255, 243, 0.12);
+  border-radius: 999px;
+  background: rgba(4, 9, 16, 0.76);
+  color: rgba(247, 255, 243, 0.62);
+  font-size: 9px;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.flow-link::before,
+.flow-link::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+.flow-link::before {
+  left: -8px;
+}
+
+.flow-link::after {
+  right: -8px;
+}
+
+.oxygen-link {
+  color: rgba(54, 215, 255, 0.74);
+}
+
+.flow-note {
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.flow-note[data-trend='good'] {
+  border-color: rgba(24, 255, 200, 0.28);
+  color: #18ffc8;
+}
+
+.flow-note[data-trend='bad'] {
+  border-color: rgba(255, 93, 122, 0.34);
+  color: #ff5d7a;
+}
+
+.flow-outcome {
+  grid-template-columns: minmax(0, 1fr) minmax(96px, 0.82fr) minmax(0, 1fr);
+}
+
+.outcome-card,
+.outcome-health {
+  display: grid;
+  min-width: 0;
+  min-height: 66px;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  padding: 8px 7px;
+  border: 1px solid rgba(247, 255, 243, 0.14);
+  border-radius: 8px;
+  background: rgba(4, 9, 16, 0.68);
+  text-align: center;
+}
+
+.outcome-card span,
+.outcome-health span {
+  color: rgba(247, 255, 243, 0.66);
+  font-size: 10px;
+}
+
+.outcome-card strong,
+.outcome-health strong {
+  color: #f7fff3;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.outcome-card small,
+.outcome-health small {
+  color: rgba(247, 255, 243, 0.48);
+  font-size: 9px;
+  line-height: 1.05;
+}
+
+.positive-balance {
+  border-color: rgba(24, 255, 200, 0.34);
+}
+
+.positive-balance strong {
+  color: #18ffc8;
+}
+
+.negative-balance {
+  border-color: rgba(255, 93, 122, 0.38);
+}
+
+.negative-balance strong {
+  color: #ff5d7a;
+}
+
+.outcome-health {
+  border-color: rgba(54, 215, 255, 0.36);
+  box-shadow: 0 0 18px rgba(54, 215, 255, 0.1);
+}
+
+.outcome-health strong {
+  color: #36d7ff;
 }
 
 .metabolic-triangle {

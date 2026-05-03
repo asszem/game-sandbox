@@ -54,9 +54,25 @@ export function queryAppElements(): AppElements {
     glycogenNodeDelta: document.querySelector<HTMLElement>('#glycogen-node-delta'),
     aminoNodeDelta: document.querySelector<HTMLElement>('#amino-node-delta'),
     oxygenNodeDelta: document.querySelector<HTMLElement>('#oxygen-node-delta'),
+    g6pRate: document.querySelector<HTMLElement>('#g6p-rate'),
+    g6pNodeDelta: document.querySelector<HTMLElement>('#g6p-node-delta'),
+    pyruvateRate: document.querySelector<HTMLElement>('#pyruvate-rate'),
+    pyruvateNodeDelta: document.querySelector<HTMLElement>('#pyruvate-node-delta'),
+    lactateRate: document.querySelector<HTMLElement>('#lactate-rate'),
+    lactateNodeDelta: document.querySelector<HTMLElement>('#lactate-node-delta'),
+    proteinRate: document.querySelector<HTMLElement>('#protein-rate'),
+    proteinNodeDelta: document.querySelector<HTMLElement>('#protein-node-delta'),
+    stressSignalRate: document.querySelector<HTMLElement>('#stress-signal-rate'),
+    damageNodeDelta: document.querySelector<HTMLElement>('#damage-node-delta'),
     lightFactor: document.querySelector<HTMLElement>('#light-factor'),
     rosDelta: document.querySelector<HTMLElement>('#ros-delta'),
+    damageRate: document.querySelector<HTMLElement>('#damage-rate'),
     autophagyDelta: document.querySelector<HTMLElement>('#autophagy-delta'),
+    balanceImpact: document.querySelector<HTMLElement>('#balance-impact'),
+    positiveBalanceValue: document.querySelector<HTMLElement>('#positive-balance-value'),
+    negativeBalanceValue: document.querySelector<HTMLElement>('#negative-balance-value'),
+    overallHealthValue: document.querySelector<HTMLElement>('#overall-health-value'),
+    overallHealthDelta: document.querySelector<HTMLElement>('#overall-health-delta'),
     cellGenerationValue: document.querySelector<HTMLElement>('#cell-generation-value'),
     cellSizeValue: document.querySelector<HTMLElement>('#cell-size-value'),
     toastRegion: document.querySelector<HTMLElement>('#toast-region'),
@@ -136,9 +152,25 @@ export type AppElements = {
   glycogenNodeDelta: HTMLElement | null;
   aminoNodeDelta: HTMLElement | null;
   oxygenNodeDelta: HTMLElement | null;
+  g6pRate: HTMLElement | null;
+  g6pNodeDelta: HTMLElement | null;
+  pyruvateRate: HTMLElement | null;
+  pyruvateNodeDelta: HTMLElement | null;
+  lactateRate: HTMLElement | null;
+  lactateNodeDelta: HTMLElement | null;
+  proteinRate: HTMLElement | null;
+  proteinNodeDelta: HTMLElement | null;
+  stressSignalRate: HTMLElement | null;
+  damageNodeDelta: HTMLElement | null;
   lightFactor: HTMLElement | null;
   rosDelta: HTMLElement | null;
+  damageRate: HTMLElement | null;
   autophagyDelta: HTMLElement | null;
+  balanceImpact: HTMLElement | null;
+  positiveBalanceValue: HTMLElement | null;
+  negativeBalanceValue: HTMLElement | null;
+  overallHealthValue: HTMLElement | null;
+  overallHealthDelta: HTMLElement | null;
   cellGenerationValue: HTMLElement | null;
   cellSizeValue: HTMLElement | null;
   toastRegion: HTMLElement | null;

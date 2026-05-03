@@ -18,7 +18,7 @@ export const tutorialSteps: TutorialStep[] = [
     id: 'atp',
     title: 'Milestone 1: ATP, glucose, oxygen',
     detail: 'ATP is the cell energy currency. Glucose is fuel. Oxygen makes glucose produce more ATP, but aggressive ATP production also creates ROS waste.',
-    goal: 'Select the cell, raise ATP production rate to at least 75%, and reach 92 ATP.',
+    goal: 'Select the cell and watch glucose plus oxygen raise ATP to 92.',
   },
   {
     id: 'glucose',
@@ -79,7 +79,7 @@ export function isTutorialStepComplete(context: {
     return false;
   }
   if (step.id === 'atp') {
-    return cell.oxygenMetabolism >= 0.75 && cell.atp >= 92;
+    return cell.atp >= 92;
   }
   if (step.id === 'glucose') {
     return cell.glucose >= 45;

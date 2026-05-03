@@ -57,3 +57,6 @@ Notes:
 - Began Game Mechanics V2 implementation phase: added v2 cell pools/rates, save normalization, staged G6P/glycolysis/respiration/fermentation/protein/autophagy/gluconeogenesis/damage/health metabolism pipeline, and shared core preview for HUD compatibility.
 - Updated core integration points for resource uptake, oxygen-seeking need, poison stress/damage, structural death, division eligibility, and split inheritance.
 - Added `tests/core-mechanics.mjs` for v2 mechanics invariants and chained it into `npm test`; verification passed with `npm run build`, `npm test`, deterministic 600-tick stability check, and Playwright Homeostasis compatibility screenshot.
+- Implemented Homeostasis UI V2 display-only flow: environmental resources, cell interior process nodes, and overall health outcome with positive/negative balance. Removed Homeostasis sliders/toggles from the panel for this phase.
+- Wired the flow view to v2 mechanics values/rates including G6P, pyruvate, lactate/fermentation, protein, ROS/damage, stress signal, health delta, and balance scores. Updated the ATP tutorial smoke path to observe ATP instead of using removed Homeostasis controls.
+- Verification: `npm run build`, `npm test`, and Playwright screenshot check passed for `test-output/homeostasis-v2-flow-ui.png`; Homeostasis contains zero `[data-control]` inputs.

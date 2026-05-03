@@ -225,14 +225,11 @@ async function exerciseTutorial(page) {
     const rect = canvas.getBoundingClientRect();
     return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
   });
-  await page.evaluate(() => {
-    const control = document.querySelector('[data-control="oxygenMetabolism"]');
-    if (!(control instanceof HTMLInputElement)) {
-      throw new Error('Missing ATP production tutorial control');
-    }
-    control.value = '90';
-    control.dispatchEvent(new Event('input', { bubbles: true }));
-  });
+  await page.waitForFunction(() => {
+    const title = document.querySelector('#entity-window-title')?.textContent ?? '';
+    const atp = document.querySelector('#atp-core')?.textContent ?? '';
+    return title.includes('Homeostasis') && /9[2-9]|100/.test(atp);
+  }, null, { timeout: 10_000 });
   await page.waitForFunction(() => document.querySelector('#tutorial-goal')?.getAttribute('data-state') === 'complete', null, { timeout: 10_000 });
   await clickBySelector(page, '#tutorial-next');
   await page.locator('#tutorial-title', { hasText: 'Tutorial | 2/7' }).waitFor();
