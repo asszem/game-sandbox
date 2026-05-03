@@ -1,6 +1,6 @@
 import type { CellSimulation } from '../core/simulation';
 import type { ResourceKind, SimulationState, Vec2 } from '../core/types';
-import type { MapPick } from '../render/PetriDishRenderer';
+import type { MapPick } from '../render/types';
 import { currentDirective, scanDetections } from './entity-panel';
 import { escapeHtml } from './state-panel';
 

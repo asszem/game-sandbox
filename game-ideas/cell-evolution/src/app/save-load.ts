@@ -1,5 +1,5 @@
 import type { SimulationState } from '../core/types';
-import type { MapPick, RendererView } from '../render/PetriDishRenderer';
+import type { MapPick, RendererView } from '../render/types';
 import type { WindowLayout } from '../hud/windows';
 
 const SAVE_SLOT_COUNT = 5;

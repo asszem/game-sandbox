@@ -1,55 +1,23 @@
 import * as THREE from 'three';
 import { sensingProfile } from '../core/sensing';
 import type { Block, Cell, Hazard, Resource, SimulationEvent, SimulationState, Vec2 } from '../core/types';
-import { createBlockGeometry, createMineralMaterial, pointInBlock } from './blocks';
-import { createCellBodyGeometry, createCiliaGeometry, seededNoise, updateCiliaGeometry } from './cell-geometry';
+import { createBlockGeometry, createMineralMaterial } from './blocks';
+import { updateCiliaGeometry } from './cell-geometry';
+import { createCellVisual, type CellVisual } from './cell-visuals';
 import { createAgarMaterial, createDishBaseMaterial, createDishRimMaterial } from './dish-materials';
+import { spawnEffectVisuals, syncEffectVisuals, type EffectVisual } from './effects';
 import { createPoisonMaterial } from './hazards';
-import { createResourceVisual, RESOURCE_COLORS } from './resources';
+import { pickAtWorldPoint } from './picking';
+import { createResourceVisual } from './resources';
 import { createTimedShaderMaterial, noiseShaderChunk, updateTimedMaterials } from './shaders';
 import { createDishTexture, createMicroscopeBackdropTexture } from './textures';
-
-type CellVisual = {
-  group: THREE.Group;
-  membrane: THREE.Mesh<THREE.ShapeGeometry, THREE.ShaderMaterial>;
-  cytoplasm: THREE.Mesh<THREE.ShapeGeometry, THREE.ShaderMaterial>;
-  nucleus: THREE.Mesh<THREE.CircleGeometry, THREE.ShaderMaterial>;
-  organelles: THREE.Object3D[];
-  cilia: THREE.LineSegments;
-  aura: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
-  signal: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
-  seed: number;
-};
-
-type EffectVisual = {
-  group: THREE.Group;
-  bornAt: number;
-  duration: number;
-};
+import type { MapPick, PickResult, RendererView } from './types';
 
 type PetriDishRendererOptions = {
   renderBackground?: boolean;
   cameraControls?: boolean;
   defaultCameraX?: number;
   defaultCameraY?: number;
-};
-
-export type MapPick =
-  | { kind: 'cell'; id: number }
-  | { kind: 'resource'; id: number }
-  | { kind: 'hazard'; id: number }
-  | { kind: 'block'; id: number }
-  | { kind: 'dish'; id: null };
-
-export type PickResult = {
-  target: MapPick;
-  dragged: boolean;
-};
-
-export type RendererView = {
-  zoom: number;
-  cameraX: number;
-  cameraY: number;
 };
 
 const LIGHT_RESOURCE_Z = 10;
@@ -170,7 +138,7 @@ export class PetriDishRenderer {
 
   pickAtScreenPosition(clientX: number, clientY: number, state: SimulationState): MapPick {
     const point = this.screenToWorld(clientX, clientY);
-    return this.pickAtPoint(point, state);
+    return pickAtWorldPoint(point, state);
   }
 
   centerOnCell(cell: Cell): void {
@@ -268,7 +236,7 @@ export class PetriDishRenderer {
       active.add(cell.id);
       let visual = this.cellVisuals.get(cell.id);
       if (!visual) {
-        visual = this.createCellVisual(cell);
+        visual = createCellVisual(cell);
         this.cellVisuals.set(cell.id, visual);
         this.cellLayer.add(visual.group);
       }
@@ -428,252 +396,6 @@ export class PetriDishRenderer {
     this.sensorRays.material.opacity = (state.running ? 0.22 + Math.sin(time * 0.01) * 0.08 : 0.22) * sensing.clarity * sensing.processing;
   }
 
-  private createCellVisual(cell: Cell): CellVisual {
-    const group = new THREE.Group();
-    const bodySeed = cell.id * 917 + cell.generation * 53;
-    const membrane = new THREE.Mesh(
-      createCellBodyGeometry(bodySeed, 1.04, 0.16),
-      this.createMembraneMaterial(0xd5fff0, bodySeed),
-    );
-    const cytoplasm = new THREE.Mesh(
-      createCellBodyGeometry(bodySeed + 29, 0.88, 0.1),
-      this.createPlasmaMaterial(cell, bodySeed + 29),
-    );
-    cytoplasm.rotation.z = 0.08;
-    const nucleus = new THREE.Mesh(
-      new THREE.CircleGeometry(1, 48),
-      this.createNucleusMaterial(bodySeed + 71),
-    );
-    nucleus.position.set(-0.06, 0.08, 0.18);
-    nucleus.scale.set(0.18, 0.24, 1);
-
-    const organelles = this.createOrganelles(cell, bodySeed);
-
-    const cilia = new THREE.LineSegments(
-      createCiliaGeometry(bodySeed, 0, 0),
-      new THREE.LineBasicMaterial({ color: 0xf9fff4, transparent: true, opacity: 0.66, depthWrite: false }),
-    );
-    cilia.position.z = 0.28;
-
-    const aura = new THREE.Mesh(
-      new THREE.RingGeometry(0.98, 1.12, 96),
-      new THREE.MeshBasicMaterial({ color: 0x18ffc8, transparent: true, opacity: 0.14, depthWrite: false }),
-    );
-    aura.visible = false;
-    aura.position.z = -0.03;
-
-    const signal = new THREE.Mesh(
-      new THREE.RingGeometry(0.82, 0.86, 80),
-      new THREE.MeshBasicMaterial({ color: 0x00ffe1, transparent: true, opacity: 0, depthWrite: false }),
-    );
-    signal.position.z = -0.02;
-
-    group.add(aura, signal, cilia, membrane, cytoplasm, nucleus, ...organelles);
-    return { group, membrane, cytoplasm, nucleus, organelles, cilia, aura, signal, seed: bodySeed };
-  }
-
-  private createPlasmaMaterial(cell: Cell, seed: number): THREE.ShaderMaterial {
-    const base = this.cellColor(cell, 0.7);
-    return new THREE.ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      uniforms: {
-        uTime: { value: 0 },
-        uSeed: { value: seed * 0.013 },
-        uBase: { value: base },
-        uEnergy: { value: cell.energy / 100 },
-        uStress: { value: 0 },
-      },
-      vertexShader: `
-        varying vec2 vLocal;
-        void main() {
-          vLocal = position.xy;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        precision highp float;
-        uniform float uTime;
-        uniform float uSeed;
-        uniform vec3 uBase;
-        uniform float uEnergy;
-        uniform float uStress;
-        varying vec2 vLocal;
-
-        float hash(vec2 p) {
-          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-        }
-
-        float noise(vec2 p) {
-          vec2 i = floor(p);
-          vec2 f = fract(p);
-          vec2 u = f * f * (3.0 - 2.0 * f);
-          return mix(
-            mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
-            mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
-            u.y
-          );
-        }
-
-        float fbm(vec2 p) {
-          float v = 0.0;
-          float a = 0.5;
-          for (int i = 0; i < 4; i++) {
-            v += a * noise(p);
-            p = mat2(1.62, -1.08, 1.08, 1.62) * p + 11.7;
-            a *= 0.52;
-          }
-          return v;
-        }
-
-        void main() {
-          vec2 p = vLocal;
-          vec2 velocityCurl = vec2(
-            sin(p.y * 5.2 + uTime * 1.35 + uSeed),
-            cos(p.x * 4.8 - uTime * 1.1 + uSeed)
-          ) * 0.16;
-          vec2 advected = p * 2.8 + velocityCurl + vec2(uTime * 0.42, -uTime * 0.28);
-          float dye = fbm(advected + fbm(advected + uSeed));
-          float stream = smoothstep(0.36, 0.78, dye);
-          float depth = smoothstep(1.25, 0.04, length(p / vec2(1.05, 0.78)));
-          vec3 plasma = mix(uBase * 0.55, vec3(0.58, 1.0, 0.86), stream);
-          plasma = mix(plasma, vec3(0.95, 0.55, 1.0), uStress * (0.28 + stream * 0.2));
-          plasma += vec3(0.05, 0.16, 0.12) * sin((p.x - p.y) * 12.0 + uTime * 2.0 + uSeed);
-          float alpha = (0.52 + stream * 0.28 + uEnergy * 0.08) * depth;
-          gl_FragColor = vec4(plasma, alpha);
-        }
-      `,
-    });
-  }
-
-  private createMembraneMaterial(color: number, seed: number): THREE.ShaderMaterial {
-    return new THREE.ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      uniforms: {
-        uTime: { value: 0 },
-        uSeed: { value: seed * 0.019 },
-        uColor: { value: new THREE.Color(color) },
-        uHealth: { value: 1 },
-      },
-      vertexShader: `
-        varying vec2 vLocal;
-        void main() {
-          vLocal = position.xy;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        precision highp float;
-        uniform float uTime;
-        uniform float uSeed;
-        uniform vec3 uColor;
-        uniform float uHealth;
-        varying vec2 vLocal;
-
-        void main() {
-          vec2 p = vLocal / vec2(1.06, 0.8);
-          float r = length(p);
-          float membrane = smoothstep(0.62, 1.02, r);
-          float ripple = sin(atan(p.y, p.x) * 18.0 + uTime * 2.0 + uSeed) * 0.08;
-          float proteins = smoothstep(0.72, 0.98, r + ripple) * smoothstep(1.18, 0.82, r);
-          vec3 proteinColor = mix(vec3(0.65, 1.0, 0.88), uColor, 0.55 + uHealth * 0.35);
-          float alpha = (0.18 + proteins * 0.42 + membrane * 0.16) * smoothstep(1.22, 0.72, r);
-          gl_FragColor = vec4(proteinColor, alpha);
-        }
-      `,
-    });
-  }
-
-  private createNucleusMaterial(seed: number): THREE.ShaderMaterial {
-    return new THREE.ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      uniforms: {
-        uTime: { value: 0 },
-        uSeed: { value: seed * 0.021 },
-        uStress: { value: 0 },
-      },
-      vertexShader: `
-        varying vec2 vLocal;
-        void main() {
-          vLocal = position.xy;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        precision highp float;
-        uniform float uTime;
-        uniform float uSeed;
-        uniform float uStress;
-        varying vec2 vLocal;
-
-        float strand(vec2 p, float offset) {
-          float wave = sin(p.x * 12.0 + uTime * 0.7 + offset) * 0.08;
-          return smoothstep(0.035, 0.0, abs(p.y + wave));
-        }
-
-        void main() {
-          vec2 p = vLocal;
-          float r = length(p);
-          float shell = smoothstep(1.02, 0.74, r);
-          float chromatin = strand(p * mat2(0.86, -0.5, 0.5, 0.86), uSeed)
-            + strand(p * mat2(0.38, 0.92, -0.92, 0.38), uSeed + 2.1);
-          float nucleolus = smoothstep(0.22, 0.02, length(p - vec2(0.26, 0.16)));
-          vec3 color = mix(vec3(0.64, 0.18, 0.9), vec3(0.98, 0.38, 1.0), chromatin * 0.42 + nucleolus * 0.55);
-          color = mix(color, vec3(0.75, 1.0, 0.62), uStress * 0.28);
-          gl_FragColor = vec4(color, shell * (0.66 + chromatin * 0.18 + nucleolus * 0.2));
-        }
-      `,
-    });
-  }
-
-  private createOrganelles(cell: Cell, seed: number): THREE.Object3D[] {
-    const organelles: THREE.Object3D[] = [];
-    for (let index = 0; index < 5; index += 1) {
-      const group = new THREE.Group();
-      const x = -0.56 + index * 0.28 + seededNoise(seed, index + 120) * 0.08;
-      const y = seededNoise(seed, index + 150) * 0.26;
-      const body = new THREE.Mesh(
-        new THREE.CapsuleGeometry(0.045 + (index % 2) * 0.012, 0.1 + (index % 3) * 0.025, 4, 10),
-        new THREE.MeshBasicMaterial({ color: index % 2 ? 0x8dffe0 : 0xf2fff2, transparent: true, opacity: 0.52, depthWrite: false }),
-      );
-      body.scale.set(1.25, 0.56, 1);
-      body.rotation.z = seededNoise(seed, index + 180) * Math.PI;
-      const fold = new THREE.Line(
-        new THREE.BufferGeometry().setAttribute(
-          'position',
-          new THREE.Float32BufferAttribute([-0.04, 0, 0.01, -0.012, 0.018, 0.01, 0.02, -0.016, 0.01, 0.045, 0.012, 0.01], 3),
-        ),
-        new THREE.LineBasicMaterial({ color: 0x063c42, transparent: true, opacity: 0.36, depthWrite: false }),
-      );
-      group.add(body, fold);
-      group.position.set(x, y, 0.23 + index * 0.003);
-      organelles.push(group);
-    }
-
-    for (let index = 0; index < 4; index += 1) {
-      const curve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(-0.42 + index * 0.18, -0.22 + seededNoise(seed, index + 210) * 0.08, 0.235),
-        new THREE.Vector3(-0.24 + index * 0.16, -0.06 + seededNoise(seed, index + 220) * 0.08, 0.235),
-        new THREE.Vector3(-0.04 + index * 0.12, 0.06 + seededNoise(seed, index + 230) * 0.08, 0.235),
-      ]);
-      const tube = new THREE.TubeGeometry(curve, 12, 0.01, 5, false);
-      const strand = new THREE.Mesh(
-        tube,
-        new THREE.MeshBasicMaterial({ color: cell.genome.harvest > 0.55 ? 0x65ffbd : 0xdbfff3, transparent: true, opacity: 0.3, depthWrite: false }),
-      );
-      organelles.push(strand);
-    }
-
-    return organelles;
-  }
-
-  private cellColor(cell: Cell, lightness: number): THREE.Color {
-    const hue = 0.43 + cell.genome.harvest * 0.14 - cell.genome.predator * 0.18 + cell.generation * 0.017;
-    return new THREE.Color().setHSL(hue, 0.92, lightness);
-  }
-
   private syncResources(resources: Resource[], time: number): void {
     const active = new Set<number>();
     for (const resource of resources) {
@@ -722,76 +444,11 @@ export class PetriDishRenderer {
   }
 
   private spawnEffects(events: SimulationEvent[], time: number): void {
-    for (const event of events) {
-      if (event.kind === 'resource-consumed') {
-        this.effects.push(this.createConsumeEffect(event.position, event.radius, RESOURCE_COLORS[event.resourceKind], time));
-      }
-      if (event.kind === 'cell-devoured' || event.kind === 'cell-died') {
-        this.effects.push(this.createDissolveEffect(event.position, event.radius, time));
-      }
-    }
-  }
-
-  private createConsumeEffect(position: Vec2, radius: number, color: number, time: number): EffectVisual {
-    const group = new THREE.Group();
-    group.position.set(position.x, position.y, 7);
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(0.6, 0.8, 36),
-      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, depthWrite: false }),
-    );
-    ring.userData.baseOpacity = 0.8;
-    ring.scale.setScalar(Math.max(1.2, radius));
-    group.add(ring);
-    this.effectLayer.add(group);
-    return { group, bornAt: time, duration: 520 };
-  }
-
-  private createDissolveEffect(position: Vec2, radius: number, time: number): EffectVisual {
-    const group = new THREE.Group();
-    group.position.set(position.x, position.y, 7);
-    const cloud = new THREE.Mesh(
-      createCellBodyGeometry(Math.floor(time), Math.max(0.8, radius * 0.34), 0.22),
-      new THREE.MeshBasicMaterial({ color: 0xdfeee5, transparent: true, opacity: 0.52, depthWrite: false }),
-    );
-    cloud.userData.baseOpacity = 0.52;
-    group.add(cloud);
-    for (let index = 0; index < 10; index += 1) {
-      const angle = (index / 10) * Math.PI * 2;
-      const particle = new THREE.Mesh(
-        new THREE.CircleGeometry(0.18 + (index % 3) * 0.06, 12),
-        new THREE.MeshBasicMaterial({ color: 0xd2ad91, transparent: true, opacity: 0.66, depthWrite: false }),
-      );
-      particle.position.set(Math.cos(angle) * radius * 0.25, Math.sin(angle) * radius * 0.2, index * 0.01);
-      particle.userData.driftX = Math.cos(angle) * (0.25 + (index % 4) * 0.06);
-      particle.userData.driftY = Math.sin(angle) * (0.25 + (index % 5) * 0.04);
-      particle.userData.baseOpacity = 0.66;
-      group.add(particle);
-    }
-    this.effectLayer.add(group);
-    return { group, bornAt: time, duration: 1100 };
+    this.effects.push(...spawnEffectVisuals(events, time, this.effectLayer));
   }
 
   private syncEffects(time: number): void {
-    this.effects = this.effects.filter((effect) => {
-      const progress = (time - effect.bornAt) / effect.duration;
-      if (progress >= 1) {
-        this.effectLayer.remove(effect.group);
-        return false;
-      }
-      const opacity = 1 - progress;
-      effect.group.scale.setScalar(1 + progress * 1.6);
-      for (const child of effect.group.children) {
-        const mesh = child as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
-        if (mesh.material) {
-          mesh.material.opacity = Math.max(0, opacity * (child.userData.baseOpacity ?? 1));
-        }
-        if (child.userData.driftX) {
-          child.position.x += child.userData.driftX * 0.025;
-          child.position.y += child.userData.driftY * 0.025;
-        }
-      }
-      return true;
-    });
+    this.effects = syncEffectVisuals(this.effects, time, this.effectLayer);
   }
 
   private syncBlocks(state: SimulationState): void {
@@ -810,49 +467,6 @@ export class PetriDishRenderer {
       this.blockVisuals.set(block.id, mesh);
       this.blockLayer.add(mesh);
     }
-  }
-
-  private pickAtPoint(point: Vec2, state: SimulationState): MapPick {
-    let target: MapPick = { kind: 'dish', id: null };
-    let best = Infinity;
-
-    const consider = (candidate: MapPick, distance: number): void => {
-      if (distance < best) {
-        target = candidate;
-        best = distance;
-      }
-    };
-
-    for (const cell of state.cells) {
-      const d = Math.hypot(point.x - cell.position.x, point.y - cell.position.y);
-      if (d <= cell.radius * cell.bodyLength * 1.25) {
-        consider({ kind: 'cell', id: cell.id }, d);
-      }
-    }
-
-    for (const resource of state.resources) {
-      const d = Math.hypot(point.x - resource.position.x, point.y - resource.position.y);
-      if (d <= Math.max(resource.radius * 1.35, 2.8)) {
-        consider({ kind: 'resource', id: resource.id }, d + 0.2);
-      }
-    }
-
-    for (const hazard of state.hazards) {
-      const d = Math.hypot(point.x - hazard.position.x, point.y - hazard.position.y);
-      if (d <= hazard.radius * 1.25) {
-        consider({ kind: 'hazard', id: hazard.id }, d + 0.4);
-      }
-    }
-
-    for (const block of state.blocks) {
-      if (pointInBlock(point, block)) {
-        const dx = Math.abs(point.x - block.position.x);
-        const dy = Math.abs(point.y - block.position.y);
-        consider({ kind: 'block', id: block.id }, Math.max(dx, dy) + 0.6);
-      }
-    }
-
-    return target;
   }
 
   private bindEvents(): void {

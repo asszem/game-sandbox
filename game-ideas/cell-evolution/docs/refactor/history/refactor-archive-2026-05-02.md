@@ -525,3 +525,113 @@ No behavior changes intended.
 ### Verification
 - `npm run build` - pass
 - `npm test` - pass
+
+## Renderer effect extraction - consume and dissolve visuals
+
+### Motivation
+Consume and death effect creation/animation was embedded in the renderer facade. Moving it to a focused render helper keeps transient effect visuals separate from scene synchronization.
+
+### Old files changed
+- `src/render/PetriDishRenderer.ts` - delegated effect spawning and animation.
+
+### New files created
+- `src/render/effects.ts` - consume ring, dissolve cloud, and effect animation helpers.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Renderer picking extraction - map pick types and world hit test
+
+### Motivation
+Entity hit testing and renderer interaction types were embedded in the renderer facade. Moving them out makes picking reusable by render helpers and removes another domain-specific block from `PetriDishRenderer`.
+
+### Old files changed
+- `src/render/PetriDishRenderer.ts` - delegated world-point picking and imported shared render types.
+- `src/main.ts`, `src/app/save-load.ts`, `src/app/tutorial.ts`, `src/hud/hover-info.ts` - imported render types from the shared type module.
+
+### New files created
+- `src/render/types.ts` - `MapPick`, `PickResult`, and `RendererView`.
+- `src/render/picking.ts` - world-point entity hit testing.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Core light-cycle extraction - light resource drift
+
+### Motivation
+Light resource orbiting and day-pulse updates are environment behavior, but the logic does not need access to the full simulation class. Moving it to a helper keeps `CellSimulation` focused on tick ordering.
+
+### Old files changed
+- `src/core/simulation.ts` - delegated light resource updates.
+
+### New files created
+- `src/core/light-cycle.ts` - light orbit, sun pull, and amount pulse updates.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Renderer cell material extraction - plasma membrane nucleus shaders
+
+### Motivation
+Cell shader material factories were embedded in `PetriDishRenderer` even though they are renderer-only helpers with no facade state dependency. Moving them out reduces renderer size and keeps cell material tuning focused.
+
+### Old files changed
+- `src/render/PetriDishRenderer.ts` - delegated cell plasma, membrane, nucleus material creation and cell color calculation.
+
+### New files created
+- `src/render/cell-materials.ts` - cell shader material factories and cell color helper.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Renderer cell organelle extraction - internal cell details
+
+### Motivation
+Organelle and strand construction was a large cell-visual helper embedded in the renderer facade. Moving it into a dedicated render helper keeps cell internals easier to tune independently.
+
+### Old files changed
+- `src/render/PetriDishRenderer.ts` - delegated organelle construction.
+
+### New files created
+- `src/render/cell-organelles.ts` - mitochondria-like organelles and internal strand geometry.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass
+
+## Renderer cell visual extraction - cell visual object factory
+
+### Motivation
+The renderer facade still built full cell visual groups directly. Moving the factory to a cell visual helper keeps object construction separate from per-frame synchronization.
+
+### Old files changed
+- `src/render/PetriDishRenderer.ts` - delegated cell visual group creation.
+
+### New files created
+- `src/render/cell-visuals.ts` - `CellVisual` type and cell visual factory.
+
+### Behavior
+No behavior changes intended.
+
+### Verification
+- `npm run build` - pass
+- `npm test` - pass

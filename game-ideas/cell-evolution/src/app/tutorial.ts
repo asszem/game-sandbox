@@ -1,5 +1,5 @@
 import type { Cell, SimulationState } from '../core/types';
-import type { MapPick } from '../render/PetriDishRenderer';
+import type { MapPick } from '../render/types';
 import { distance } from '../core/vector';
 
 const TUTORIAL_PROGRESS_KEY = 'cell-evolution-tutorial-progress-v1';

@@ -31,8 +31,8 @@ Notes:
 - Continued refactor: extracted hover info, metabolism panel, save slots, new dish setup, tutorial panel/progress, drop tools, directive controls, and split `src/styles.css` into `src/styles/*`.
 - Verification: `npm run build`, `npm test`, web-game client, and a full-page Playwright screenshot check passed after the CSS split.
 - Continued renderer prep: extracted procedural textures to `src/render/textures.ts` and shared shader helpers to `src/render/shaders.ts`.
-- Continued renderer prep: extracted procedural textures, shared shader helpers, cell geometry/cilia helpers, dish base/agar/rim material factories, resource marker visuals, poison material helpers, and mineral block helpers.
-- Continued core split: extracted sensing profiles, metabolism resource flow, resource transport, and environment scan pull-vector logic from `src/core/simulation.ts`.
+- Continued renderer prep: extracted procedural textures, shared shader helpers, cell geometry/cilia helpers, cell materials, cell organelles, cell visual factory, dish base/agar/rim material factories, resource marker visuals, poison material helpers, mineral block helpers, transient effects, shared render types, and picking helpers.
+- Continued core split: extracted sensing profiles, metabolism resource flow, resource transport, environment scan pull-vector logic, and light resource cycle updates from `src/core/simulation.ts`.
 - Continued app split: extracted tutorial scenario setup and dish layout/placement helpers from `src/main.ts`.
 - Continued HUD split: extracted Game panel totals and visibility helpers from `src/main.ts`.
 - Updated `refactor/REFACTOR-PROMPT.md` to match the current module and CSS structure.

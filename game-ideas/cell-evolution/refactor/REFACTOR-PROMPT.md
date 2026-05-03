@@ -25,6 +25,7 @@ game-ideas/cell-evolution/
       tutorial-scenarios.ts
     core/
       environment-scan.ts
+      light-cycle.ts
       metabolism.ts
       resource-transport.ts
       rng.ts
@@ -47,11 +48,17 @@ game-ideas/cell-evolution/
       PetriDishRenderer.ts
       blocks.ts
       cell-geometry.ts
+      cell-materials.ts
+      cell-organelles.ts
+      cell-visuals.ts
       dish-materials.ts
+      effects.ts
       hazards.ts
+      picking.ts
       resources.ts
       shaders.ts
       textures.ts
+      types.ts
     styles/
       index.css
       base.css
@@ -90,8 +97,8 @@ Already split:
 - Game panel HUD totals and visibility helpers
 - App helpers for backdrop, dish layout, drop tools, new dish modal, save/load, tutorial UI, and tutorial scenario setup
 - CSS into `src/styles/*` imported by `src/styles/index.css`
-- Renderer texture, shader, cell geometry, dish material, resource marker, hazard material, and mineral block helpers
-- Core sensing, metabolism, resource transport, and environment scan helpers
+- Renderer texture, shader, cell geometry/material/organelle/visual, dish material, resource marker, hazard material, mineral block, transient effect, picking, and shared type helpers
+- Core sensing, metabolism, resource transport, environment scan, and light-cycle helpers
 
 ## Refactor Principles
 
@@ -122,6 +129,7 @@ src/
     drop-tools.ts             # drag/drop item tools and ghost UI
   core/
     environment-scan.ts        # nearby resource/hazard/cell pull vector
+    light-cycle.ts             # light resource orbit and day-pulse updates
     metabolism.ts             # cell resource flow, rates, growth, mass radius
     resource-transport.ts     # resource ingestion and uptake math
     rng.ts
@@ -145,12 +153,16 @@ src/
     blocks.ts                 # mineral block geometry, material, and hit testing
     scene.ts                  # scene/camera/renderer setup
     cells.ts                  # cell visual creation/update
+    cell-materials.ts         # cell shader material factories
+    cell-organelles.ts        # internal organelle and strand geometry
+    cell-visuals.ts           # cell visual group factory and visual type
     resources.ts              # resource visual creation/update
     hazards.ts                # poison material and visual helpers
     blocks.ts                 # mineral block visual creation/picking
     effects.ts                # consume/death effects
     picking.ts                # screen/world picking helpers
     shaders.ts                # shared shader chunks/material factories
+    types.ts                  # render-facing pick/view types
 ```
 
 Do not create all of these files in one pass unless the user asks for a broad refactor. Prefer incremental extraction by domain.

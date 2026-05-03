@@ -19,7 +19,8 @@ import { currentDishPickerSignature, formatDishPickerList, formatDishState, sani
 import { createToastRegion } from './hud/toasts';
 import { hideTooltip, setupTooltips, syncTooltipToggle } from './hud/tooltips';
 import { createWindowSystem } from './hud/windows';
-import { MapPick, PetriDishRenderer, RendererView } from './render/PetriDishRenderer';
+import { PetriDishRenderer } from './render/PetriDishRenderer';
+import type { MapPick, RendererView } from './render/types';
 
 type DishInstance = {
   id: number;
