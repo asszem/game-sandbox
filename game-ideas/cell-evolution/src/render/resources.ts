@@ -3,8 +3,8 @@ import type { Resource, ResourceKind } from '../core/types';
 import { createTimedShaderMaterial, noiseShaderChunk } from './shaders';
 
 export const RESOURCE_COLORS: Record<ResourceKind, number> = {
-  glucose: 0xff5d7a,
-  'amino-acid': 0x65ffbd,
+  glucose: 0x18ff9b,
+  'amino-acid': 0xffe62e,
   oxygen: 0x36d7ff,
   light: 0xf7ff5a,
 };

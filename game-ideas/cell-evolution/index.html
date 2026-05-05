@@ -77,19 +77,22 @@
           </div>
           <div class="metabolic-dashboard" aria-label="metabolic engine dashboard" hidden>
             <div class="homeostasis-flow cell-interior-wireframe" aria-label="cell interior homeostasis flow">
-              <svg class="layer-map-arrows" viewBox="0 0 830 610" preserveAspectRatio="none" aria-hidden="true">
+              <svg class="layer-map-arrows" viewBox="0 0 830 660" preserveAspectRatio="none" aria-hidden="true">
                 <defs>
-                  <marker id="layer-arrow-glucose" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#f9ff4d"></path></marker>
+                  <marker id="layer-arrow-glucose" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#18ff9b"></path></marker>
                   <marker id="layer-arrow-oxygen" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#36a3ff"></path></marker>
+                  <marker id="layer-arrow-damage" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ff5d7a"></path></marker>
                 </defs>
-                <path class="layer-arrow glucose-layer-arrow" d="M117 102 C117 128 102 146 102 178"></path>
-                <path class="layer-arrow oxygen-layer-arrow" d="M415 102 C415 122 452 122 452 138"></path>
+                <path class="layer-arrow glucose-layer-arrow" d="M90 116 C90 140 102 166 102 206"></path>
+                <path class="layer-arrow oxygen-layer-arrow" d="M363 116 C363 140 452 146 452 164"></path>
+                <path class="layer-arrow damage-layer-arrow" d="M504 392 C538 392 552 366 592 366"></path>
               </svg>
-              <div class="cell-map-layer input-layer" aria-label="input layer">
-                <h4>Input Layer</h4>
-                <div class="map-node intake-node glucose-intake" data-tooltip="Glucose enters the cell and feeds the glucose hub."><i class="map-pictogram store-icon icon-glucose" aria-hidden="true"></i><span>Glucose<br />Intake</span><strong id="glucose-rate" class="resource-readout"><span class="resource-value">0</span><small id="glucose-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>external input</small></div>
-                <div class="map-node intake-node oxygen-intake" data-tooltip="Oxygen enables respiration. More oxygen improves ATP yield from pyruvate."><i class="map-pictogram store-icon icon-oxygen" aria-hidden="true"></i><span>Oxygen<br />Intake</span><strong id="oxygen-rate" class="resource-readout"><span class="resource-value">0</span><small id="oxygen-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>external input</small></div>
-                <div id="light-factor" class="map-chip light-chip" data-tooltip="Photosynthesis converts light into glucose and a small amount of oxygen.">0.00 intake | +0.00 Glucose | +0.00 Oxygen</div>
+              <div class="cell-map-layer input-layer" aria-label="environmental resources">
+                <h4>Environmental Resources</h4>
+                <div class="map-node intake-node glucose-intake" data-tooltip="Glucose enters the cell and feeds the glucose hub. Delta shows change per tick."><i class="map-pictogram store-icon icon-glucose" aria-hidden="true"></i><span>Glucose</span><strong id="glucose-rate" class="resource-readout"><span class="resource-value">0</span><small id="glucose-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
+                <div id="light-factor" class="map-node intake-node light-intake" data-tooltip="Light is harvested from the environment. Delta is the light change per tick, not photosynthesis output."><i class="map-pictogram icon-light" aria-hidden="true"></i><span>Light</span><strong class="resource-readout"><span class="resource-value">0.00</span><small class="resource-delta" data-trend="flat">+0.00</small></strong></div>
+                <div class="map-node intake-node oxygen-intake" data-tooltip="Oxygen enables respiration. Delta shows change per tick."><i class="map-pictogram store-icon icon-oxygen" aria-hidden="true"></i><span>Oxygen</span><strong id="oxygen-rate" class="resource-readout"><span class="resource-value">0</span><small id="oxygen-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
+                <div class="map-node intake-node amino-intake" data-tooltip="Amino acids enter from the environment and support protein repair and biosynthesis. Delta shows change per tick."><i class="map-pictogram store-icon icon-amino" aria-hidden="true"></i><span>Amino Acids</span><strong id="amino-rate" class="resource-readout"><span class="resource-value">0</span><small id="amino-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
               </div>
               <div class="cell-map-layer metabolic-core-layer" aria-label="metabolic core">
                 <h4>Metabolic Core</h4>
@@ -135,7 +138,7 @@
                 <h4>Outcome Layer</h4>
                 <div class="map-node growth-node" data-tooltip="Positive balance means high health and enough resources for growth or division."><i class="map-pictogram icon-growth" aria-hidden="true"></i><span>Growth /<br />Division</span><strong id="positive-balance-value">0</strong><small>high health</small></div>
                 <div class="map-node health-node" data-tooltip="Cell Health integrates ATP, repair, protein, ROS, damage, and starvation."><i class="map-pictogram icon-health" aria-hidden="true"></i><span>Cell Health</span><strong id="overall-health-value">0%</strong><small id="overall-health-delta" data-trend="flat">+0.0/tick</small></div>
-                <div class="map-node repair-node" data-tooltip="ATP powers amino-acid use for protein repair, enzymes, sensors, and biosynthesis."><i class="map-pictogram store-icon icon-amino" aria-hidden="true"></i><span>Protein / Repair</span><strong id="protein-rate" class="resource-readout"><span class="resource-value">0</span><small id="protein-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>AA <span id="amino-rate"><span class="resource-value">0</span><small id="amino-node-delta" class="resource-delta" data-trend="flat">+0.0</small></span></small></div>
+                <div class="map-node repair-node" data-tooltip="ATP powers amino-acid use for protein repair, enzymes, sensors, and biosynthesis."><i class="map-pictogram store-icon icon-amino" aria-hidden="true"></i><span>Protein / Repair</span><strong id="protein-rate" class="resource-readout"><span class="resource-value">0</span><small id="protein-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>uses amino acids</small></div>
                 <div class="map-node apoptosis-node" data-tooltip="Negative balance means high damage, low health, or resource depletion pushes the cell toward stalling or apoptosis."><i class="map-pictogram icon-stall" aria-hidden="true"></i><span>Stall /<br />Apoptosis</span><strong id="negative-balance-value">0</strong><small>low health or high damage</small></div>
                 <div class="map-chip positive-balance-chip">positive balance</div>
                 <div class="map-chip negative-balance-chip">negative balance</div>

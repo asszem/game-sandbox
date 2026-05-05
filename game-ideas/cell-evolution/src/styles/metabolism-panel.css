@@ -16,7 +16,7 @@
   box-sizing: border-box;
   position: relative;
   min-width: 760px;
-  min-height: 610px;
+  min-height: 660px;
   padding: 0;
   border: 2px solid rgba(68, 255, 203, 0.34);
   border-radius: 24px;
@@ -24,6 +24,13 @@
     radial-gradient(circle at 50% 58%, rgba(24, 255, 200, 0.06), transparent 42%),
     rgba(4, 14, 16, 0.94);
   overflow: hidden;
+  -webkit-font-smoothing: auto;
+  text-rendering: optimizeLegibility;
+}
+
+.cell-interior-wireframe,
+.cell-interior-wireframe * {
+  text-shadow: none;
 }
 
 .cell-map-layer {
@@ -40,8 +47,8 @@
   left: 18px;
   top: 10px;
   margin: 0;
-  color: rgba(192, 255, 241, 0.78);
-  font-size: 11px;
+  color: rgba(216, 255, 246, 0.9);
+  font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0;
   line-height: 1;
@@ -52,13 +59,13 @@
   left: 24px;
   right: 24px;
   top: 18px;
-  height: 100px;
+  height: 128px;
 }
 
 .metabolic-core-layer {
   left: 24px;
-  top: 138px;
-  width: 64%;
+  top: 166px;
+  width: 62.5%;
   height: 356px;
   border-color: rgba(249, 255, 77, 0.34);
   background: rgba(13, 32, 16, 0.9);
@@ -67,8 +74,8 @@
 
 .damage-layer {
   right: 24px;
-  top: 138px;
-  width: 31.5%;
+  top: 166px;
+  width: 30.5%;
   height: 356px;
   border-color: rgba(255, 93, 122, 0.38);
   background: rgba(35, 8, 16, 0.9);
@@ -88,8 +95,8 @@
   min-width: 0;
   align-content: center;
   justify-items: center;
-  gap: 2px;
-  padding: 6px 7px;
+  gap: 1px;
+  padding: 8px 7px 5px;
   border: 2px solid rgba(247, 255, 243, 0.18);
   border-radius: 12px;
   background: rgba(7, 16, 18, 0.88);
@@ -99,23 +106,22 @@
 }
 
 .map-node span {
-  color: rgba(247, 255, 243, 0.92);
-  font-size: 11px;
+  color: rgba(247, 255, 243, 0.98);
+  font-size: 10.5px;
   font-weight: 700;
   line-height: 1.12;
 }
 
 .map-node strong {
   color: #f9ff4d;
-  font-size: 19px;
+  font-size: 17px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 9px rgba(249, 255, 77, 0.4);
 }
 
 .map-node small {
-  color: rgba(247, 255, 243, 0.64);
-  font-size: 8px;
+  color: rgba(247, 255, 243, 0.86);
+  font-size: 8.5px;
   line-height: 1.1;
 }
 
@@ -126,17 +132,58 @@
 
 .intake-node {
   top: 24px;
-  width: 130px;
-  height: 58px;
-  padding: 6px 8px;
+  display: grid;
+  width: 124px;
+  height: 64px;
+  grid-template-columns: 58px 42px;
+  grid-template-rows: 25px 17px;
+  grid-template-areas:
+    "icon value"
+    "name delta";
+  align-content: center;
+  align-items: center;
+  justify-items: center;
+  gap: 2px 7px;
+  padding: 8px 8px 7px;
+  overflow: hidden;
 }
 
 .intake-node span {
-  font-size: 12px;
+  grid-area: name;
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+  align-self: center;
+  justify-self: center;
 }
 
-.intake-node strong {
+.intake-node strong.resource-readout {
+  display: contents;
+  color: inherit;
+  font-size: 10px;
+  line-height: 1;
+  text-shadow: none;
+}
+
+.intake-node .resource-value {
+  grid-area: value;
+  color: #f9ff4d;
   font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  align-self: center;
+  justify-self: center;
+}
+
+.intake-node .resource-delta {
+  grid-area: delta;
+  display: block;
+  margin-top: 0;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  align-self: center;
+  justify-self: center;
 }
 
 .glucose-intake {
@@ -144,22 +191,38 @@
   border-color: rgba(24, 255, 155, 0.82);
 }
 
-.oxygen-intake {
-  left: 50%;
-  border-color: rgba(54, 163, 255, 0.88);
-  transform: translateX(-50%);
+.light-intake {
+  left: 166px;
+  border-color: rgba(249, 255, 77, 0.82);
 }
 
-.light-chip {
-  left: 128px;
-  top: 84px;
-  width: 220px;
+.oxygen-intake {
+  left: 304px;
+  border-color: rgba(54, 163, 255, 0.88);
+}
+
+.amino-intake {
+  left: 442px;
+  border-color: rgba(255, 230, 46, 0.86);
+}
+
+.amino-intake span {
+  font-size: 9px;
+}
+
+.light-intake .resource-delta {
+  font-size: 9px;
+  letter-spacing: 0;
+}
+
+.intake-node .icon-glucose {
+  transform: none;
 }
 
 .g6p-node {
   left: 22px;
   top: 42px;
-  width: 112px;
+  width: 106px;
   height: 82px;
   border-color: rgba(249, 255, 77, 0.82);
 }
@@ -168,7 +231,7 @@
   left: 190px;
   top: 61px;
   width: 100px;
-  height: 58px;
+  height: 62px;
   border-color: rgba(184, 214, 92, 0.72);
 }
 
@@ -183,7 +246,7 @@
 .glycogen-node {
   left: 22px;
   top: 236px;
-  width: 112px;
+  width: 106px;
   height: 82px;
   border-color: rgba(255, 177, 46, 0.9);
 }
@@ -192,7 +255,7 @@
   left: 214px;
   top: 232px;
   width: 104px;
-  height: 72px;
+  height: 74px;
   border-color: rgba(172, 104, 255, 0.9);
   background: rgba(19, 12, 30, 0.9);
 }
@@ -201,7 +264,7 @@
   left: 382px;
   top: 210px;
   width: 98px;
-  height: 70px;
+  height: 76px;
   border-color: rgba(54, 163, 255, 0.9);
 }
 
@@ -209,7 +272,7 @@
   left: 382px;
   top: 296px;
   width: 98px;
-  height: 52px;
+  height: 58px;
   border-color: rgba(249, 255, 77, 0.9);
 }
 
@@ -273,40 +336,40 @@
   border: 1px solid rgba(68, 255, 203, 0.26);
   border-radius: 5px;
   background: rgba(4, 15, 18, 0.92);
-  color: rgba(247, 255, 243, 0.74);
-  font-size: 8px;
-  line-height: 1;
+  color: rgba(247, 255, 243, 0.9);
+  font-size: 8.5px;
+  line-height: 1.1;
   text-align: center;
   white-space: nowrap;
 }
 
 .storage-store-chip {
-  left: 142px;
-  top: 206px;
+  left: 136px;
+  top: 181px;
   color: #f9ff4d;
 }
 
 .storage-mobilize-chip {
-  left: 205px;
-  top: 206px;
+  left: 136px;
+  top: 211px;
   color: #ffb12e;
 }
 
 .fallback-chip {
-  left: 258px;
-  top: 206px;
+  left: 300px;
+  top: 174px;
   color: #b58cff;
 }
 
 .oxygen-chip {
-  left: 386px;
-  top: 196px;
+  left: 398px;
+  top: 184px;
   color: #36a3ff;
 }
 
 .ros-chip {
-  right: 2px;
-  top: 218px;
+  right: 10px;
+  top: 194px;
   color: #ff5d7a;
 }
 
@@ -333,7 +396,7 @@
 
 .autophagy-chip {
   left: 58%;
-  top: -19px;
+  top: -10px;
   color: #ffb12e;
 }
 
@@ -362,7 +425,7 @@
 }
 
 .glucose-layer-arrow {
-  stroke: #f9ff4d;
+  stroke: #18ff9b;
   marker-end: url(#layer-arrow-glucose);
 }
 
@@ -371,23 +434,55 @@
   marker-end: url(#layer-arrow-oxygen);
 }
 
-.map-pictogram {
+.damage-layer-arrow {
+  stroke: #ff5d7a;
+  marker-end: url(#layer-arrow-damage);
+}
+
+.map-node .map-pictogram {
   position: absolute;
   left: 7px;
-  top: 7px;
+  top: 6px;
+  display: block;
   width: 15px;
   height: 15px;
   opacity: 0.78;
   pointer-events: none;
+  z-index: 1;
 }
 
-.map-pictogram.store-icon {
-  transform: scale(0.52);
+.intake-node .map-pictogram {
+  grid-area: icon;
+  position: relative;
+  left: auto;
+  top: auto;
+  width: 18px;
+  height: 18px;
+  align-self: center;
+  justify-self: center;
+  transform: none;
+}
+
+.intake-node .map-pictogram::before,
+.intake-node .map-pictogram::after {
+  box-sizing: border-box;
+}
+
+.map-node .map-pictogram.store-icon {
+  width: 30px;
+  height: 30px;
+  transform: scale(0.44);
   transform-origin: top left;
 }
 
-.map-pictogram:not(.store-icon)::before,
-.map-pictogram:not(.store-icon)::after {
+.intake-node .map-pictogram.store-icon {
+  width: 18px;
+  height: 18px;
+  transform: none;
+}
+
+.map-node .map-pictogram:not(.store-icon)::before,
+.map-node .map-pictogram:not(.store-icon)::after {
   content: "";
   position: absolute;
   display: block;
@@ -723,9 +818,6 @@
   color: #f9ff4d;
   font-size: 14px;
   line-height: 1;
-  text-shadow:
-    0 0 7px rgba(249, 255, 77, 0.45),
-    0 1px 0 rgba(0, 0, 0, 0.7);
 }
 
 .metabolic-store.node-glucose {
@@ -796,7 +888,7 @@
 }
 
 .resource-delta {
-  color: rgba(247, 255, 243, 0.48);
+  color: rgba(247, 255, 243, 0.76);
   font-size: 10px;
   line-height: 1;
   text-shadow: none;
@@ -811,7 +903,7 @@
 }
 
 .resource-delta[data-trend='flat'] {
-  color: rgba(247, 255, 243, 0.48);
+  color: rgba(247, 255, 243, 0.76);
 }
 .tri-gauges {
   display: grid;
@@ -960,6 +1052,10 @@
   color: #f9ff4d;
 }
 
+.photosynthesis-products {
+  white-space: nowrap;
+}
+
 .tri-gauge-light strong [data-trend='good'] {
   color: #18ffc8;
 }
@@ -974,5 +1070,4 @@
 
 .tri-gauge-light strong[data-trend='good'] {
   color: #f9ff4d;
-  text-shadow: 0 0 10px rgba(249, 255, 77, 0.45);
 }

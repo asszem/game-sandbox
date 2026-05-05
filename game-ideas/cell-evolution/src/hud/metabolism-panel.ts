@@ -126,9 +126,21 @@ function setPhotosynthesis(element: HTMLElement | null, cell: Cell | null): void
     return;
   }
   const intake = Math.max(0, cell?.lightFactor ?? 0);
-  const glucose = cell ? intake * (0.35 + cell.genome.harvest * 0.25) : 0;
-  const oxygen = intake * 0.018;
-  element.innerHTML = `<span class="photosynthesis-intake">${intake.toFixed(2)} intake</span><span><span data-trend="${trendFor(glucose)}">${formatSigned(glucose)} Glucose</span> | <span data-trend="${trendFor(oxygen)}">${formatSigned(oxygen)} Oxygen</span></span>`;
+  const valueElement = element.querySelector<HTMLElement>('.resource-value');
+  const deltaElement = element.querySelector<HTMLElement>('.resource-delta');
+  const previousCellId = element.dataset.lightCellId;
+  const cellId = cell ? String(cell.id) : '';
+  const previousLight = previousCellId === cellId ? Number(element.dataset.lightValue ?? intake) : intake;
+  const lightDelta = intake - previousLight;
+  if (valueElement) {
+    valueElement.textContent = intake.toFixed(2);
+  }
+  if (deltaElement) {
+    deltaElement.textContent = formatSigned(lightDelta);
+    deltaElement.dataset.trend = trendFor(lightDelta);
+  }
+  element.dataset.lightCellId = cellId;
+  element.dataset.lightValue = String(intake);
   element.dataset.trend = intake > 0.01 ? 'good' : 'flat';
   const parent = element.closest<HTMLElement>('.tri-gauge');
   if (parent) {

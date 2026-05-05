@@ -7,35 +7,34 @@
 }
 
 .icon-glucose {
-  color: #ffe62e;
+  color: #f7fff3;
+  filter:
+    drop-shadow(0 0 4px rgba(247, 255, 243, 0.92))
+    drop-shadow(0 0 9px rgba(24, 255, 155, 0.45));
 }
 
 .icon-glucose::before,
 .icon-glucose::after {
   content: "";
   position: absolute;
-  border-radius: 50%;
-  background: currentColor;
 }
 
 .icon-glucose::before {
-  left: 7px;
-  top: 7px;
+  left: 1px;
+  top: 1px;
   width: 16px;
   height: 16px;
-  box-shadow:
-    -6px 0 0 -3px currentColor,
-    6px 0 0 -3px currentColor,
-    0 -6px 0 -3px currentColor,
-    0 6px 0 -3px currentColor;
+  background: currentColor;
+  clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
 }
 
 .icon-glucose::after {
-  left: 12px;
-  top: 12px;
-  width: 6px;
-  height: 6px;
-  background: rgba(4, 9, 16, 0.62);
+  left: 4px;
+  top: 4px;
+  width: 10px;
+  height: 10px;
+  background: rgba(4, 14, 16, 0.84);
+  clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
 }
 
 .icon-glycogen {
@@ -67,24 +66,24 @@
 .icon-oxygen::after {
   content: "";
   position: absolute;
-  top: 8px;
-  width: 12px;
-  height: 12px;
+  top: 3px;
+  width: 11px;
+  height: 11px;
   border: 2px solid currentColor;
   border-radius: 50%;
   background: rgba(54, 215, 255, 0.16);
 }
 
 .icon-oxygen::before {
-  left: 4px;
+  left: 0;
 }
 
 .icon-oxygen::after {
-  right: 4px;
+  right: 0;
 }
 
 .icon-amino {
-  color: #61ffbd;
+  color: #ffe62e;
 }
 
 .icon-amino::before,
@@ -96,24 +95,65 @@
 }
 
 .icon-amino::before {
-  left: 4px;
-  top: 13px;
-  width: 22px;
-  height: 5px;
+  left: 1px;
+  top: 8px;
+  width: 16px;
+  height: 4px;
   transform: rotate(-24deg);
   box-shadow:
-    -3px -6px 0 -1px currentColor,
-    7px 6px 0 -1px currentColor,
-    14px -4px 0 -1px currentColor;
+    -2px -5px 0 -1px currentColor,
+    5px 5px 0 -1px currentColor,
+    11px -3px 0 -1px currentColor;
 }
 
 .icon-amino::after {
-  left: 11px;
+  left: 6px;
+  top: 2px;
+  width: 6px;
+  height: 6px;
+  background: rgba(4, 9, 16, 0.58);
+  border: 2px solid currentColor;
+}
+
+.icon-light {
+  color: #f9ff4d;
+}
+
+.icon-light::before,
+.icon-light::after {
+  content: "";
+  position: absolute;
+  display: block;
+}
+
+.icon-light::before {
+  left: 5px;
   top: 5px;
   width: 8px;
   height: 8px;
-  background: rgba(4, 9, 16, 0.58);
-  border: 2px solid currentColor;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #fffdf0 0 28%, currentColor 29% 62%, transparent 63%);
+  box-shadow:
+    0 0 6px currentColor,
+    0 0 12px rgba(249, 255, 77, 0.5);
+}
+
+.icon-light::after {
+  left: 1px;
+  top: 1px;
+  width: 16px;
+  height: 16px;
+  background:
+    linear-gradient(currentColor, currentColor) 50% 0 / 2px 4px no-repeat,
+    linear-gradient(currentColor, currentColor) 50% 100% / 2px 4px no-repeat,
+    linear-gradient(90deg, currentColor, currentColor) 0 50% / 4px 2px no-repeat,
+    linear-gradient(90deg, currentColor, currentColor) 100% 50% / 4px 2px no-repeat,
+    linear-gradient(45deg, transparent 42%, currentColor 43% 57%, transparent 58%) 1px 1px / 5px 5px no-repeat,
+    linear-gradient(45deg, transparent 42%, currentColor 43% 57%, transparent 58%) 12px 12px / 5px 5px no-repeat,
+    linear-gradient(-45deg, transparent 42%, currentColor 43% 57%, transparent 58%) 12px 1px / 5px 5px no-repeat,
+    linear-gradient(-45deg, transparent 42%, currentColor 43% 57%, transparent 58%) 1px 12px / 5px 5px no-repeat;
+  opacity: 0.92;
 }
 
 .icon-atp {

@@ -23,13 +23,13 @@ export const tutorialSteps: TutorialStep[] = [
   {
     id: 'glucose',
     title: 'Milestone 2: harvest glucose',
-    detail: 'Glucose molecules are yellow board markers. Fuel uptake controls how fast the membrane imports glucose when the cell touches it.',
+    detail: 'Glucose molecules are green board markers. Fuel uptake controls how fast the membrane imports glucose when the cell touches it.',
     goal: 'Harvest the dropped glucose until cell glucose reaches 45.',
   },
   {
     id: 'amino',
     title: 'Milestone 3: harvest amino acids',
-    detail: 'Amino acids are green protein material. They repair damage, support receptors, and let cells grow or divide later.',
+    detail: 'Amino acids are yellow protein material. They repair damage, support receptors, and let cells grow or divide later.',
     goal: 'Harvest the dropped amino-acid cluster until amino acids reach 45.',
   },
   {

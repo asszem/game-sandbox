@@ -13,15 +13,15 @@
 }
 
 .control-glucose {
-  color: #ffe62e;
+  color: #18ff9b;
   transform: rotate(-123deg) translateX(40px);
-  accent-color: #ffe62e;
+  accent-color: #18ff9b;
 }
 
 .control-amino {
-  color: #61ffbd;
+  color: #ffe62e;
   transform: rotate(-57deg) translateX(40px);
-  accent-color: #61ffbd;
+  accent-color: #ffe62e;
 }
 
 .control-oxygen {
@@ -103,14 +103,14 @@
 
 .channel-controls label:has([data-control='glucoseTransport']),
 .transport-controls label:has([data-control='glucoseTransport']) {
-  color: #ffe62e;
-  --channel-color: #ffe62e;
+  color: #18ff9b;
+  --channel-color: #18ff9b;
 }
 
 .channel-controls label:has([data-control='aminoTransport']),
 .transport-controls label:has([data-control='aminoTransport']) {
-  color: #61ffbd;
-  --channel-color: #61ffbd;
+  color: #ffe62e;
+  --channel-color: #ffe62e;
 }
 
 .channel-controls label:has([data-control='oxygenMetabolism']),
