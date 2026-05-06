@@ -112,6 +112,7 @@ export function syncSelectedEntityPanel(
       elements.entityName.textContent = 'No entity selected';
     }
     if (elements.entityDetail) {
+      elements.entityDetail.hidden = false;
       elements.entityDetail.textContent = 'Select a dish, then click a cell, resource, poison cloud, or mineral block.';
     }
     return;
@@ -120,17 +121,24 @@ export function syncSelectedEntityPanel(
   if (selectedCell) {
     const awareness = activeDish.simulation.awarenessRadius(selectedCell);
     const detections = scanDetections(selectedCell, awareness, activeDish.simulation.state);
+    const simpleHealthInDashboard = activeDish.simulation.state.cellComplexity <= 1;
     if (elements.entityName) {
       elements.entityName.hidden = true;
     }
     if (elements.entityDetail) {
-      elements.entityDetail.innerHTML = formatCellState(selectedCell);
+      elements.entityDetail.hidden = simpleHealthInDashboard;
+      elements.entityDetail.innerHTML = simpleHealthInDashboard
+        ? ''
+        : formatCellState(selectedCell, activeDish.simulation.state.cellComplexity);
     }
     return;
   }
 
   if (elements.entityName) {
     elements.entityName.hidden = false;
+  }
+  if (elements.entityDetail) {
+    elements.entityDetail.hidden = false;
   }
   if (inspectedTarget.kind === 'dish') {
     if (elements.entityName) {

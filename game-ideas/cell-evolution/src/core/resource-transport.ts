@@ -14,7 +14,9 @@ export function transportResource(cell: Cell, resource: Resource): number {
   cell.atp -= transportCost;
   const uptake = consumedAmount * (0.7 + cell.genome.harvest * 0.55);
   if (resource.kind === 'glucose') {
-    cell.glucose += uptake * 18;
+    const glucoseInput = uptake * 18;
+    cell.glucose += glucoseInput;
+    cell.externalGlucoseInputRate += glucoseInput;
   }
   if (resource.kind === 'amino-acid') {
     cell.aminoAcids += uptake * 22;

@@ -1,10 +1,9 @@
 import type { Cell, SimulationState } from '../core/types';
 import type { MapPick } from '../render/types';
-import { distance } from '../core/vector';
 
 const TUTORIAL_PROGRESS_KEY = 'cell-evolution-tutorial-progress-v1';
 
-export type TutorialStepId = 'atp' | 'glucose' | 'amino' | 'light' | 'poison' | 'rock' | 'directives';
+export type TutorialStepId = 'atp' | 'glucose';
 
 export type TutorialStep = {
   id: TutorialStepId;
@@ -16,45 +15,15 @@ export type TutorialStep = {
 export const tutorialSteps: TutorialStep[] = [
   {
     id: 'atp',
-    title: 'Milestone 1: ATP, glucose, oxygen',
-    detail: 'ATP is the cell energy currency. Glucose is fuel. Oxygen makes glucose produce more ATP, but aggressive ATP production also creates ROS waste.',
-    goal: 'Select the cell and watch glucose plus oxygen raise ATP to 92.',
+    title: 'Milestone 1: glucose makes ATP',
+    detail: 'Complexity 1 uses one metabolism loop: environmental glucose enters the glucose hub, glycolysis converts it, and ATP becomes the cell energy reserve.',
+    goal: 'Select the cell and watch glucose feed glycolysis until ATP reaches 88.',
   },
   {
     id: 'glucose',
     title: 'Milestone 2: harvest glucose',
-    detail: 'Glucose molecules are green board markers. Fuel uptake controls how fast the membrane imports glucose when the cell touches it.',
-    goal: 'Harvest the dropped glucose until cell glucose reaches 45.',
-  },
-  {
-    id: 'amino',
-    title: 'Milestone 3: harvest amino acids',
-    detail: 'Amino acids are yellow protein material. They repair damage, support receptors, and let cells grow or divide later.',
-    goal: 'Harvest the dropped amino-acid cluster until amino acids reach 45.',
-  },
-  {
-    id: 'light',
-    title: 'Milestone 4: use light',
-    detail: 'Light blooms are environmental energy fields. Sitting in light gives a light intake factor that slowly supports glucose and oxygen.',
-    goal: 'Move into the light bloom and get light intake above 0.20.',
-  },
-  {
-    id: 'poison',
-    title: 'Milestone 5: avoid poison',
-    detail: 'Poison damages health, drains ATP, and raises ROS. Caution DNA strengthens avoidance and makes the cell react sooner.',
-    goal: 'Add Caution DNA and keep the cell outside the poison cloud.',
-  },
-  {
-    id: 'rock',
-    title: 'Milestone 6: avoid rock',
-    detail: 'Rocks are mineral blocks. They cannot be harvested, and cells must route around them instead of overlapping them.',
-    goal: 'Add Motility DNA and keep the cell clear of the rock.',
-  },
-  {
-    id: 'directives',
-    title: 'Milestone 7: read directives',
-    detail: 'Directives summarize what a selected cell is trying to do based on internal state, nearby signals, DNA, and transport settings.',
-    goal: 'Spawn neighbors, select a cell, then add any DNA directive.',
+    detail: 'Glucose molecules are the only environmental resource in complexity 1. Touch glucose to refill the input that feeds the hub.',
+    goal: 'Harvest the dropped glucose until the glucose hub reaches 45.',
   },
 ];
 
@@ -79,28 +48,10 @@ export function isTutorialStepComplete(context: {
     return false;
   }
   if (step.id === 'atp') {
-    return cell.atp >= 92;
+    return cell.atp >= 88;
   }
   if (step.id === 'glucose') {
-    return cell.glucose >= 45;
-  }
-  if (step.id === 'amino') {
-    return cell.aminoAcids >= 45;
-  }
-  if (step.id === 'light') {
-    return cell.lightFactor > 0.2;
-  }
-  if (step.id === 'poison') {
-    const hazard = state.hazards[0];
-    return Boolean(hazard)
-      && cell.genome.caution > 0.55
-      && distance(cell.position, hazard.position) > cell.radius + hazard.radius + 1;
-  }
-  if (step.id === 'rock') {
-    const block = state.blocks[0];
-    return Boolean(block)
-      && cell.genome.motility > 0.55
-      && distance(cell.position, block.position) > cell.radius + block.radius + 1;
+    return cell.glucose + cell.glucose6Phosphate >= 45;
   }
   return inspectedTarget.kind === 'cell' && Array.from(dnaButtons).some((button) => button.dataset.tutorialUsed === 'true');
 }

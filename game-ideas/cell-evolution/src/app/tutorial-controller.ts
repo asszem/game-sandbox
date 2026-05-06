@@ -91,11 +91,7 @@ export function createTutorialController(context: {
     prepareTutorialScenario(step, {
       cell,
       spawnResource: (kind, position, message) => spawnTutorialResource(activeDish.simulation, kind, position, message, context.showToast),
-      spawnHazard: (position, potency) => activeDish.simulation.spawnHazard(position, potency),
-      spawnBlock: (position, width, height) => activeDish.simulation.spawnBlock(position, width, height),
-      spawnCell: (position, generation) => activeDish.simulation.spawnCell(position, generation),
       offsetPoint: (origin, dx, dy) => offsetTutorialPoint(activeDish.simulation.state.boardRadius, origin, dx, dy),
-      showToast: context.showToast,
     });
   };
 

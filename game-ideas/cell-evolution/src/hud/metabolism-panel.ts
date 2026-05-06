@@ -1,10 +1,34 @@
-import type { Cell } from '../core/types';
-import { previewCellMetabolism, type MetabolicPreview } from '../core/metabolism';
+import type { Cell, ResourceKind, SimulationState } from '../core/types';
+import { awarenessRadius } from '../core/sensing';
+import { distance } from '../core/vector';
+import {
+  glycolysisAtpCostPerTick,
+  movementAtpCostPerTick,
+  previewCellMetabolism,
+  sensorAtpCostPerTick,
+  upkeepAtpCostPerTick,
+  type MetabolicPreview,
+} from '../core/metabolism';
 
 type MetabolicRates = MetabolicPreview;
+type SensedObjectKind = ResourceKind | 'poison' | 'cell' | 'block';
 
 export type MetabolicDashboardElements = {
   root: HTMLElement | null;
+  sensorAtpCost: HTMLElement | null;
+  sensorDetections: HTMLElement | null;
+  movementAtpCost: HTMLElement | null;
+  metabolismAtpCost: HTMLElement | null;
+  healthAtpCost: HTMLElement | null;
+  externalGlucoseInput: HTMLElement | null;
+  glucosePoolValue: HTMLElement | null;
+  glucosePoolDelta: HTMLElement | null;
+  glycolysisProcessValue: HTMLElement | null;
+  atpPoolValue: HTMLElement | null;
+  atpPoolDelta: HTMLElement | null;
+  healthUpkeepFactor: HTMLElement | null;
+  cellHealthValue: HTMLElement | null;
+  cellHealthDelta: HTMLElement | null;
   atpCore: HTMLElement | null;
   glucoseRate: HTMLElement | null;
   glycogenRate: HTMLElement | null;
@@ -36,19 +60,27 @@ export type MetabolicDashboardElements = {
   negativeBalanceValue: HTMLElement | null;
   overallHealthValue: HTMLElement | null;
   overallHealthDelta: HTMLElement | null;
+  metabolicHealthImpactList: HTMLElement | null;
   cellGenerationValue: HTMLElement | null;
   cellSizeValue: HTMLElement | null;
 };
 
-export function syncMetabolicDashboard(elements: MetabolicDashboardElements, cell: Cell | null, running: boolean): void {
-  const rates = cell ? configuredMetabolicRates(cell) : null;
+export function syncMetabolicDashboard(
+  elements: MetabolicDashboardElements,
+  cell: Cell | null,
+  running: boolean,
+  complexity = 1,
+  state: SimulationState | null = null,
+): void {
+  const rates = cell ? configuredMetabolicRates(cell, complexity) : null;
+  setBasicMetabolismSections(elements, cell, rates, complexity, state);
   setResourceReadout(elements.atpCore, elements.atpNodeDelta, cell?.atp ?? 0, rates?.atp ?? 0);
   setResourceReadout(elements.glucoseRate, elements.glucoseNodeDelta, cell?.glucose ?? 0, rates?.glucose ?? 0);
   setResourceReadout(elements.glycogenRate, elements.glycogenNodeDelta, cell?.glycogen ?? 0, rates?.glycogen ?? 0);
   setResourceReadout(elements.aminoRate, elements.aminoNodeDelta, cell?.aminoAcids ?? 0, rates?.amino ?? 0);
   setResourceReadout(elements.oxygenRate, elements.oxygenNodeDelta, cell?.oxygen ?? 0, rates?.oxygen ?? 0);
   setResourceReadout(elements.g6pRate, elements.g6pNodeDelta, cell?.glucose6Phosphate ?? 0, rates?.glucose6Phosphate ?? 0);
-  setProcessReadout(elements.glycolysisRate, rates?.glycolysis ?? 0);
+  setGlycolysisReadout(elements.glycolysisRate, rates?.glycolysis ?? 0, complexity);
   setResourceReadout(elements.pyruvateRate, elements.pyruvateNodeDelta, cell?.pyruvate ?? 0, rates?.pyruvate ?? 0);
   setProcessReadout(elements.respirationRate, rates?.respiration ?? 0);
   setResourceReadout(elements.lactateRate, elements.lactateNodeDelta, rates?.fermentation ?? 0, cell?.lactate ?? 0);
@@ -59,8 +91,10 @@ export function syncMetabolicDashboard(elements: MetabolicDashboardElements, cel
   setAutophagy(elements.autophagyDelta, rates?.autophagy ?? 0);
   setCellVitals(elements.cellGenerationValue, elements.cellSizeValue, cell);
   setBalance(elements, cell, rates);
+  setHealthImpactList(elements.metabolicHealthImpactList, cell, complexity);
 
   if (elements.root && cell) {
+    elements.root.dataset.complexity = String(Math.max(1, Math.round(complexity)));
     elements.root.style.setProperty('--glycolysis-flow', `${Math.min(1, rates?.glycolysis ?? 0)}`);
     elements.root.style.setProperty('--respiration-flow', `${Math.min(1, rates?.respiration ?? 0)}`);
     elements.root.style.setProperty('--fermentation-flow', `${Math.min(1, rates?.fermentation ?? 0)}`);
@@ -69,6 +103,7 @@ export function syncMetabolicDashboard(elements: MetabolicDashboardElements, cel
     elements.root.classList.toggle('is-autophagy', cell.autophagyRate > 0);
     elements.root.classList.toggle('is-paused', !running);
   } else if (elements.root) {
+    elements.root.dataset.complexity = String(Math.max(1, Math.round(complexity)));
     elements.root.style.setProperty('--glycolysis-flow', '0');
     elements.root.style.setProperty('--respiration-flow', '0');
     elements.root.style.setProperty('--fermentation-flow', '0');
@@ -76,6 +111,133 @@ export function syncMetabolicDashboard(elements: MetabolicDashboardElements, cel
     elements.root.classList.remove('is-toxic');
     elements.root.classList.remove('is-autophagy');
     elements.root.classList.add('is-paused');
+  }
+}
+
+function setBasicMetabolismSections(
+  elements: MetabolicDashboardElements,
+  cell: Cell | null,
+  rates: MetabolicRates | null,
+  complexity: number,
+  state: SimulationState | null,
+): void {
+  setUsage(elements.sensorAtpCost, cell ? -sensorAtpCostPerTick(cell, complexity) : 0);
+  setUsage(elements.movementAtpCost, cell ? -movementAtpCostPerTick(cell, complexity) : 0);
+  setUsage(elements.metabolismAtpCost, cell ? -glycolysisAtpCostPerTick(cell, complexity, rates?.glycolysis ?? cell.glycolysisRate) : 0);
+  setUsage(elements.healthAtpCost, cell ? -upkeepAtpCostPerTick(cell, complexity) : 0);
+  setText(elements.externalGlucoseInput, formatValue(cell?.externalGlucoseInputRate ?? 0));
+  const glucosePool = cell ? cell.glucose + cell.glucose6Phosphate : 0;
+  setText(elements.glucosePoolValue, formatValue(glucosePool));
+  setDelta(elements.glucosePoolDelta, cell?.glucosePoolRate ?? 0);
+  setText(elements.glycolysisProcessValue, `${formatValue(cell?.glycolysisRate ?? 0)}/tick`);
+  setText(elements.atpPoolValue, formatValue(cell?.atp ?? 0));
+  setDelta(elements.atpPoolDelta, cell?.atpRate ?? 0);
+  setText(elements.healthUpkeepFactor, `${formatCost(cell ? upkeepAtpCostPerTick(cell, complexity) : 0)} ATP/tick`);
+  setText(elements.cellHealthValue, `${Math.round((cell?.health ?? 0) * 100)}%`);
+  setDelta(elements.cellHealthDelta, cell?.healthRate ?? 0);
+  setDetectionList(elements.sensorDetections, cell, state, complexity);
+}
+
+function setDetectionList(
+  element: HTMLElement | null,
+  cell: Cell | null,
+  state: SimulationState | null,
+  complexity: number,
+): void {
+  if (!element) {
+    return;
+  }
+  const counts = sensedObjectCounts(cell, state);
+  element.textContent = '';
+  for (const kind of sensedObjectKindsForComplexity(complexity)) {
+    const item = document.createElement('span');
+    const value = document.createElement('strong');
+    item.append(`${sensedObjectLabel(kind)} `);
+    value.textContent = String(counts[kind] ?? 0);
+    item.appendChild(value);
+    element.appendChild(item);
+  }
+}
+
+function sensedObjectCounts(cell: Cell | null, state: SimulationState | null): Partial<Record<SensedObjectKind, number>> {
+  if (!cell || !state) {
+    return {};
+  }
+  const radius = awarenessRadius(cell);
+  const counts = state.resources.reduce<Partial<Record<SensedObjectKind, number>>>((accumulator, resource) => {
+    if (distance(cell.position, resource.position) <= radius) {
+      accumulator[resource.kind] = (accumulator[resource.kind] ?? 0) + 1;
+    }
+    return accumulator;
+  }, {});
+  counts.poison = state.hazards.filter((hazard) => distance(cell.position, hazard.position) <= radius + hazard.radius).length;
+  counts.cell = state.cells.filter((other) => other.id !== cell.id && distance(cell.position, other.position) <= radius).length;
+  counts.block = state.blocks.filter((block) => distance(cell.position, block.position) <= radius + block.radius).length;
+  return counts;
+}
+
+function sensedObjectKindsForComplexity(complexity: number): SensedObjectKind[] {
+  const base: SensedObjectKind[] = ['glucose', 'poison', 'cell', 'block'];
+  if (complexity <= 1) {
+    return base;
+  }
+  return ['glucose', 'amino-acid', 'oxygen', 'light', 'poison', 'cell', 'block'];
+}
+
+function sensedObjectLabel(kind: SensedObjectKind): string {
+  if (kind === 'amino-acid') {
+    return 'Amino Acids';
+  }
+  if (kind === 'cell') {
+    return 'Cells';
+  }
+  if (kind === 'block') {
+    return 'Blocks';
+  }
+  if (kind === 'poison') {
+    return 'Poison';
+  }
+  return kind[0].toUpperCase() + kind.slice(1);
+}
+
+function setText(element: HTMLElement | null, text: string): void {
+  if (element) {
+    element.textContent = text;
+  }
+}
+
+function setUsage(element: HTMLElement | null, value: number): void {
+  if (!element) {
+    return;
+  }
+  element.textContent = formatSignedCost(value);
+  element.dataset.trend = trendFor(value);
+}
+
+function setHealthImpactList(element: HTMLElement | null, cell: Cell | null, complexity: number): void {
+  if (!element) {
+    return;
+  }
+  element.textContent = '';
+  if (!cell) {
+    return;
+  }
+  const glucosePool = cell.glucose + cell.glucose6Phosphate;
+  const impacts = complexity <= 1
+    ? [
+      { label: `ATP ${Math.round(cell.atp)}`, state: cell.atp > 15 ? 'good' : 'bad' },
+      { label: `Glucose Pool ${Math.round(glucosePool)}`, state: glucosePool > 12 ? 'good' : glucosePool > 2 ? 'warn' : 'bad' },
+    ]
+    : [
+      { label: `ATP ${Math.round(cell.atp)}`, state: cell.atp > 15 ? 'good' : 'bad' },
+      { label: `Amino Acids ${Math.round(cell.aminoAcids)}`, state: cell.aminoAcids > 12 ? 'good' : 'bad' },
+      { label: `ROS ${Math.round(cell.ros)}`, state: cell.ros < 35 ? 'good' : cell.ros > 45 ? 'bad' : 'warn' },
+    ];
+  for (const impact of impacts) {
+    const chip = document.createElement('span');
+    chip.dataset.impact = impact.state;
+    chip.textContent = impact.label;
+    element.appendChild(chip);
   }
 }
 
@@ -88,8 +250,8 @@ function setCellVitals(generationElement: HTMLElement | null, sizeElement: HTMLE
   }
 }
 
-function configuredMetabolicRates(cell: Cell): MetabolicRates {
-  return previewCellMetabolism(cell);
+function configuredMetabolicRates(cell: Cell, complexity: number): MetabolicRates {
+  return previewCellMetabolism(cell, complexity);
 }
 
 function setResourceReadout(container: HTMLElement | null, deltaElement: HTMLElement | null, value: number, delta: number, inverted = false): void {
@@ -118,6 +280,31 @@ function setProcessReadout(container: HTMLElement | null, value: number): void {
   if (deltaElement) {
     deltaElement.textContent = 'flow';
     deltaElement.dataset.trend = value > 0.05 ? 'good' : 'flat';
+  }
+}
+
+function setGlycolysisReadout(container: HTMLElement | null, value: number, complexity: number): void {
+  if (complexity <= 1) {
+    setStaticProcessReadout(container, `${formatValue(value)}/tick`);
+    return;
+  }
+  setProcessReadout(container, value);
+}
+
+function setStaticProcessReadout(container: HTMLElement | null, value: string): void {
+  if (!container) {
+    return;
+  }
+  const valueElement = container.querySelector<HTMLElement>('.resource-value');
+  if (valueElement) {
+    valueElement.textContent = value;
+  } else {
+    container.textContent = value;
+  }
+  const deltaElement = container.querySelector<HTMLElement>('.resource-delta');
+  if (deltaElement) {
+    deltaElement.textContent = '';
+    deltaElement.dataset.trend = 'flat';
   }
 }
 
@@ -198,6 +385,16 @@ function formatSignedOne(value: number): string {
 
 function formatValue(value: number): string {
   return Math.abs(value) >= 10 ? String(Math.round(value)) : value.toFixed(1);
+}
+
+function formatCost(value: number): string {
+  return value >= 1 ? value.toFixed(1) : value.toFixed(2);
+}
+
+function formatSignedCost(value: number): string {
+  const magnitude = Math.abs(value);
+  const formatted = magnitude >= 1 ? magnitude.toFixed(1) : magnitude.toFixed(2);
+  return `${value > 0 ? '+' : value < 0 ? '-' : ''}${formatted}`;
 }
 
 function trendFor(value: number): 'good' | 'bad' | 'flat' {

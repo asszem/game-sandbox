@@ -3,7 +3,7 @@ import { RESOURCE_KINDS, createBlockEntity, createCellEntity, createResourceEnti
 import { constrainCellToDishAndBlocks, keepBlockInDish, keepCellInDish, resolveBlockCollisions } from './cell-constraints';
 import { removeDeadCells } from './cell-death';
 import { updateLightResources } from './light-cycle';
-import { applyCellMetabolism, radiusForMass } from './metabolism';
+import { applyCellMetabolism, applyComplexityOneMetabolism, radiusForMass } from './metabolism';
 import { Rng } from './rng';
 import { transportResource } from './resource-transport';
 import { awarenessRadius, sensingProfile, type SensingProfile } from './sensing';
@@ -22,6 +22,7 @@ type WorldSeedOptions = {
   hazardCount?: number;
   blockCount?: number;
   boardRadius?: number;
+  cellComplexity?: number;
 };
 
 export class CellSimulation {
@@ -35,6 +36,7 @@ export class CellSimulation {
       tick: 0,
       running: true,
       selectedCellId: null,
+      cellComplexity: 1,
       boardRadius: 92,
       cells: [],
       resources: [],
@@ -89,6 +91,7 @@ export class CellSimulation {
     this.state.tick = state.tick;
     this.state.running = state.running;
     this.state.selectedCellId = state.selectedCellId;
+    this.state.cellComplexity = clamp(Math.round(state.cellComplexity ?? 1), 1, 4);
     this.state.boardRadius = state.boardRadius;
     this.state.cells = state.cells;
     this.state.resources = state.resources;
@@ -223,6 +226,7 @@ export class CellSimulation {
     this.state.tick = 0;
     this.state.running = true;
     this.state.selectedCellId = null;
+    this.state.cellComplexity = clamp(Math.round(options.cellComplexity ?? this.state.cellComplexity ?? 1), 1, 4);
     this.state.boardRadius = options.boardRadius === undefined
       ? randomized ? this.rng.range(84, 104) : 92
       : clamp(options.boardRadius, MIN_BOARD_RADIUS, MAX_BOARD_RADIUS);
@@ -310,13 +314,41 @@ export class CellSimulation {
   }
 
   private createCell(position: Vec2, family = 0, generation = 1): Cell {
-    return createCellEntity(this.nextId++, this.rng, position, family, generation);
+    const cell = createCellEntity(this.nextId++, this.rng, position, family, generation);
+    if (this.state.cellComplexity <= 1) {
+      this.configureComplexityOneCell(cell);
+    }
+    return cell;
+  }
+
+  private configureComplexityOneCell(cell: Cell): void {
+    cell.glucose = 0;
+    cell.glucose6Phosphate = 100;
+    cell.pyruvate = 0;
+    cell.lactate = 0;
+    cell.oxygen = 0;
+    cell.ros = 0;
+    cell.damage = 0;
+    cell.glycogen = 0;
+    cell.searchPreference = 'glucose';
+    cell.sensorBudget = 0.4;
+    cell.movementBudget = 0.5;
+    cell.oxygenMetabolism = 0;
+    cell.aminoTransport = 0;
+    cell.ribosomeActivity = 0;
   }
 
   private createResource(resourceKind?: ResourceKind): Resource {
-    const kind = resourceKind ?? this.rng.pick(RESOURCE_KINDS);
+    const kind = resourceKind ?? this.rng.pick(this.resourceKindsForComplexity());
     const position = findOpenPoint(this.state, this.rng, 84, kind === 'light' ? 8 : 4);
     return createResourceEntity(this.nextId++, this.rng, kind, position);
+  }
+
+  private resourceKindsForComplexity(): ResourceKind[] {
+    if (this.state.cellComplexity <= 1) {
+      return ['glucose'];
+    }
+    return RESOURCE_KINDS;
   }
 
   private updateCell(cell: Cell): void {
@@ -336,6 +368,7 @@ export class CellSimulation {
     };
     cell.age += 1;
     cell.signalPhase += 0.12 + cell.genome.motility * 0.04;
+    cell.externalGlucoseInputRate = 0;
 
     const awareness = this.awarenessRadius(cell);
     const pull = scanEnvironment(this.state, cell, awareness);
@@ -353,7 +386,11 @@ export class CellSimulation {
     this.consumeResources(cell);
     this.applyHazards(cell);
 
-    applyCellMetabolism(cell, this.localLight(cell.position), baseline);
+    if (this.state.cellComplexity <= 1) {
+      applyComplexityOneMetabolism(cell, baseline);
+    } else {
+      applyCellMetabolism(cell, this.localLight(cell.position), baseline);
+    }
     constrainCellToDishAndBlocks(this.state, cell);
 
     if (

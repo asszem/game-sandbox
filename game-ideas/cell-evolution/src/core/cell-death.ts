@@ -17,7 +17,8 @@ export function removeDeadCells(context: {
   let nextId = context.nextId;
   const survivors: Cell[] = [];
   for (const cell of state.cells) {
-    if (cell.health > 0 && cell.atp > -10 && cell.mass > 0.16 && cell.protein > 4 && cell.damage < 100) {
+    const minimumAtp = state.cellComplexity <= 1 ? 0 : -10;
+    if (cell.health > 0 && cell.atp > minimumAtp && cell.mass > 0.16 && cell.protein > 4 && cell.damage < 100) {
       survivors.push(cell);
       continue;
     }

@@ -14,23 +14,38 @@ export type DetectionSummary = {
 type CellStatState = 'danger' | 'warning' | 'stable';
 type CellStat = [label: string, value: string, tooltip: string, state?: CellStatState];
 
-export function formatCellState(cell: Cell): string {
+export function formatCellState(cell: Cell, complexity = 1): string {
   const healthPercent = Math.round(cell.health * 100);
-  const healthState = cell.health <= 0.25 || cell.atp <= 5 || cell.mass <= 0.28
-    ? 'danger'
-    : cell.health <= 0.45 || cell.atp <= 15 || cell.ros >= 45
-      ? 'warning'
-      : 'stable';
+  const glucosePool = cell.glucose + cell.glucose6Phosphate;
+  const healthState = complexity <= 1
+    ? cell.health <= 0.25 || cell.atp <= 5 || glucosePool <= 2
+      ? 'danger'
+      : cell.health <= 0.45 || cell.atp <= 15 || glucosePool <= 12
+        ? 'warning'
+        : 'stable'
+    : cell.health <= 0.25 || cell.atp <= 5 || cell.mass <= 0.28
+      ? 'danger'
+      : cell.health <= 0.45 || cell.atp <= 15 || cell.ros >= 45
+        ? 'warning'
+        : 'stable';
   const repairReady = cell.atp > 15 && cell.aminoAcids > 12 && cell.ros < 35;
-  const pressure = [
-    { label: `ATP ${Math.round(cell.atp)}`, state: cell.atp > 15 ? 'good' : 'bad' },
-    { label: `Amino Acids ${Math.round(cell.aminoAcids)}`, state: cell.aminoAcids > 12 ? 'good' : 'bad' },
-    { label: `ROS ${Math.round(cell.ros)}`, state: cell.ros < 35 ? 'good' : cell.ros > 45 ? 'bad' : 'warn' },
-    { label: cell.autophagyRate > 0 ? `Autophagy -${cell.autophagyRate.toFixed(1)}` : 'Autophagy 0', state: cell.autophagyRate > 0 ? 'bad' : 'good' },
-    { label: repairReady ? 'Repair active' : 'Repair limited', state: repairReady ? 'good' : 'warn' },
-  ];
+  const pressure = complexity <= 1
+    ? [
+      { label: `ATP ${Math.round(cell.atp)}`, state: cell.atp > 15 ? 'good' : 'bad' },
+      { label: `Glucose Pool ${Math.round(glucosePool)}`, state: glucosePool > 12 ? 'good' : glucosePool > 2 ? 'warn' : 'bad' },
+    ]
+    : [
+      { label: `ATP ${Math.round(cell.atp)}`, state: cell.atp > 15 ? 'good' : 'bad' },
+      { label: `Amino Acids ${Math.round(cell.aminoAcids)}`, state: cell.aminoAcids > 12 ? 'good' : 'bad' },
+      { label: `ROS ${Math.round(cell.ros)}`, state: cell.ros < 35 ? 'good' : cell.ros > 45 ? 'bad' : 'warn' },
+      { label: cell.autophagyRate > 0 ? `Autophagy -${cell.autophagyRate.toFixed(1)}` : 'Autophagy 0', state: cell.autophagyRate > 0 ? 'bad' : 'good' },
+      { label: repairReady ? 'Repair active' : 'Repair limited', state: repairReady ? 'good' : 'warn' },
+    ];
+  const tooltip = complexity <= 1
+    ? 'Health is normalized from 0% to 100%. At complexity 1, health only uses ATP and glucose pool availability.'
+    : 'Health is normalized from 0% to 100%. Health improves when ATP and amino acids can maintain repair while ROS is low. It drops from poison, high ROS, low ATP, amino-acid shortage, autophagy, and very low mass.';
   return `
-    <div class="health-status health-status-${healthState}" data-tooltip="${escapeHtml('Health is normalized from 0% to 100%. Health improves when ATP and amino acids can maintain repair while ROS is low. It drops from poison, high ROS, low ATP, amino-acid shortage, autophagy, and very low mass.')}">
+    <div class="health-status health-status-${healthState}" data-tooltip="${escapeHtml(tooltip)}">
       <div class="health-status-head"><span>Health</span><strong>${healthPercent}%</strong></div>
       <div class="health-track" role="meter" aria-label="Cell health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${healthPercent}" style="--health-value: ${healthPercent / 100}"><span></span></div>
       <div class="health-impact-list">${pressure.map(({ label, state }) => `<span data-impact="${state}">${escapeHtml(label)}</span>`).join('')}</div>

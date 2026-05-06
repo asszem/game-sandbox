@@ -30,6 +30,7 @@ export function formatDishState(dish: DishPanelDish | null): string {
   const stats = [
     ['Biomass', livingMass.toFixed(1)],
     ['Avg ATP', avgAtp.toFixed(0)],
+    ['Complexity', String(state.cellComplexity ?? 1)],
     ['Resources', state.resources.length.toString()],
     ['Glucose', resources.glucose.toString()],
     ['Amino Acids', resources['amino-acid'].toString()],

@@ -76,80 +76,78 @@
             <p id="entity-detail">Select a dish, then click a cell, resource, poison cloud, or mineral block.</p>
           </div>
           <div class="metabolic-dashboard" aria-label="metabolic engine dashboard" hidden>
-            <div class="homeostasis-flow cell-interior-wireframe" aria-label="cell interior homeostasis flow">
-              <svg class="layer-map-arrows" viewBox="0 0 830 660" preserveAspectRatio="none" aria-hidden="true">
-                <defs>
-                  <marker id="layer-arrow-glucose" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#18ff9b"></path></marker>
-                  <marker id="layer-arrow-oxygen" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#36a3ff"></path></marker>
-                  <marker id="layer-arrow-damage" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ff5d7a"></path></marker>
-                </defs>
-                <path class="layer-arrow glucose-layer-arrow" d="M90 116 C90 140 102 166 102 206"></path>
-                <path class="layer-arrow oxygen-layer-arrow" d="M363 116 C363 140 452 146 452 164"></path>
-                <path class="layer-arrow damage-layer-arrow" d="M504 392 C538 392 552 366 592 366"></path>
-              </svg>
-              <div class="cell-map-layer input-layer" aria-label="environmental resources">
-                <h4>Environmental Resources</h4>
-                <div class="map-node intake-node glucose-intake" data-tooltip="Glucose enters the cell and feeds the glucose hub. Delta shows change per tick."><i class="map-pictogram store-icon icon-glucose" aria-hidden="true"></i><span>Glucose</span><strong id="glucose-rate" class="resource-readout"><span class="resource-value">0</span><small id="glucose-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
-                <div id="light-factor" class="map-node intake-node light-intake" data-tooltip="Light is harvested from the environment. Delta is the light change per tick, not photosynthesis output."><i class="map-pictogram icon-light" aria-hidden="true"></i><span>Light</span><strong class="resource-readout"><span class="resource-value">0.00</span><small class="resource-delta" data-trend="flat">+0.00</small></strong></div>
-                <div class="map-node intake-node oxygen-intake" data-tooltip="Oxygen enables respiration. Delta shows change per tick."><i class="map-pictogram store-icon icon-oxygen" aria-hidden="true"></i><span>Oxygen</span><strong id="oxygen-rate" class="resource-readout"><span class="resource-value">0</span><small id="oxygen-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
-                <div class="map-node intake-node amino-intake" data-tooltip="Amino acids enter from the environment and support protein repair and biosynthesis. Delta shows change per tick."><i class="map-pictogram store-icon icon-amino" aria-hidden="true"></i><span>Amino Acids</span><strong id="amino-rate" class="resource-readout"><span class="resource-value">0</span><small id="amino-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong></div>
+            <section class="metabolism-section" aria-labelledby="metabolism-sensors-title">
+              <div class="metabolism-section-head">
+                <h3 id="metabolism-sensors-title">Sensors</h3>
+                <span class="metabolism-atp-pill">ATP usage <strong id="sensor-atp-cost">0.00</strong></span>
               </div>
-              <div class="cell-map-layer metabolic-core-layer" aria-label="metabolic core">
-                <h4>Metabolic Core</h4>
-                <svg class="cell-map-arrows" viewBox="0 0 529 356" preserveAspectRatio="none" aria-hidden="true">
-                  <defs>
-                    <marker id="arrow-productive" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#f9ff4d"></path></marker>
-                    <marker id="arrow-oxygen" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#36a3ff"></path></marker>
-                    <marker id="arrow-fallback" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#b58cff"></path></marker>
-                    <marker id="arrow-damage" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ff5d7a"></path></marker>
-                    <marker id="arrow-storage" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ffb12e"></path></marker>
-                  </defs>
-                  <path class="map-arrow productive-arrow" d="M78 0 V39"></path>
-                  <path class="map-arrow oxygen-arrow" d="M428 0 C428 28 503 34 503 138 C503 176 431 176 431 205"></path>
-                  <path class="map-arrow productive-arrow" d="M134 86 H188"></path>
-                  <path class="map-arrow productive-arrow" d="M290 86 H348"></path>
-                  <path class="map-arrow productive-arrow" d="M400 130 C400 160 431 181 431 205"></path>
-                  <path class="map-arrow fallback-arrow" d="M372 130 C342 164 296 197 266 229"></path>
-                  <path class="map-arrow productive-arrow" d="M318 268 C344 292 366 322 379 322"></path>
-                  <path class="map-arrow productive-arrow" d="M431 280 V292"></path>
-                  <path class="map-arrow productive-arrow" d="M78 130 V233"></path>
-                  <path class="map-arrow storage-arrow" d="M110 235 V133"></path>
-                  <path class="map-arrow damage-arrow" d="M480 242 H529"></path>
-                </svg>
-                <div class="map-node metabolite-node g6p-node" data-tooltip="G6P is the intracellular glucose hub that feeds glycolysis or glycogen storage."><i class="map-pictogram store-icon icon-glucose" aria-hidden="true"></i><span>G6P<br />Glucose Hub</span><strong id="g6p-rate" class="resource-readout"><span class="resource-value">0</span><small id="g6p-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>usable glucose</small></div>
-                <div class="map-node process-node glycolysis-node" data-tooltip="Glycolysis converts glucose into pyruvate and produces a small amount of ATP."><i class="map-pictogram icon-glycolysis" aria-hidden="true"></i><span>Glycolysis</span><strong id="glycolysis-rate" class="resource-readout"><span class="resource-value">0</span><small data-trend="flat" class="resource-delta">flow</small></strong><small>converts glucose</small></div>
-                <div class="map-node metabolite-node pyruvate-node" data-tooltip="Pyruvate is the branch point between oxygen-dependent respiration and low-oxygen fermentation."><i class="map-pictogram icon-branch" aria-hidden="true"></i><span>Pyr<br />Pyruvate</span><strong id="pyruvate-rate" class="resource-readout"><span class="resource-value">0</span><small id="pyruvate-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>branch point</small></div>
-                <div class="map-node storage-node glycogen-node" data-tooltip="Glycogen stores glucose and mobilizes it back to the glucose hub when energy is low."><i class="map-pictogram store-icon icon-glycogen" aria-hidden="true"></i><span>Glycogen</span><strong id="glycogen-rate" class="resource-readout"><span class="resource-value">0</span><small id="glycogen-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>stored glucose</small></div>
-                <div class="map-node fallback-node fermentation-node" data-tooltip="Fermentation is the low-oxygen fallback pathway. It produces weaker ATP output without oxygen."><i class="map-pictogram icon-fermentation" aria-hidden="true"></i><span>Fermentation</span><strong id="lactate-rate" class="resource-readout"><span class="resource-value">0</span><small id="lactate-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>low oxygen route</small></div>
-                <div class="map-node respiration-node" data-tooltip="Respiration uses oxygen to produce efficient ATP from pyruvate, while also producing ROS waste."><i class="map-pictogram store-icon icon-oxygen" aria-hidden="true"></i><span>Respiration<br />uses O₂</span><strong id="respiration-rate" class="resource-readout"><span class="resource-value">0</span><small data-trend="flat" class="resource-delta">flow</small></strong><small>efficient ATP route</small></div>
-                <div class="map-node atp-node" data-tooltip="ATP is the energy currency generated by glycolysis, fermentation, and respiration."><i class="map-pictogram store-icon icon-atp" aria-hidden="true"></i><span>ATP Pool</span><strong id="atp-core" class="resource-readout"><span class="resource-value">0</span><small id="atp-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>energy currency</small></div>
-                <div class="map-chip storage-store-chip">store excess</div>
-                <div class="map-chip storage-mobilize-chip">mobilize when low</div>
-                <div class="map-chip fallback-chip">Low O₂ fallback</div>
-                <div class="map-chip oxygen-chip">uses O₂</div>
-                <div class="map-chip ros-chip">ROS byproduct</div>
+              <div class="metabolism-fact-row metabolism-fact-row-stack">
+                <span>Objects sensed</span>
+                <div id="sensor-detections" class="metabolism-detection-list">
+                  <span>Glucose <strong>0</strong></span>
+                </div>
               </div>
-              <div class="cell-map-layer damage-layer" aria-label="damage and signaling">
-                <h4>Damage / Signaling</h4>
-                <div class="map-node damage-node" data-tooltip="ROS and accumulated damage reduce cell health unless repair can keep up."><i class="map-pictogram icon-damage" aria-hidden="true"></i><span>ROS / Damage</span><strong id="ros-delta" class="resource-readout"><span class="resource-value">0</span><small id="damage-rate" class="resource-delta" data-trend="flat">+0.0</small></strong><small>from respiration and stress</small></div>
-                <div class="map-node stress-signal-node" data-tooltip="Stress signal rises when damage, starvation, or poison pressure is high."><i class="map-pictogram icon-signal" aria-hidden="true"></i><span>Stress Signal</span><strong id="stress-signal-rate" class="resource-readout"><span class="resource-value">0</span><small id="damage-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>damage pressure</small></div>
+            </section>
+            <section class="metabolism-section" aria-labelledby="metabolism-movement-title">
+              <div class="metabolism-section-head">
+                <h3 id="metabolism-movement-title">Movement Target</h3>
+                <span class="metabolism-atp-pill">ATP usage <strong id="movement-atp-cost">0.00</strong></span>
               </div>
-              <div class="cell-map-layer outcome-layer" aria-label="outcome layer">
-                <h4>Outcome Layer</h4>
-                <div class="map-node growth-node" data-tooltip="Positive balance means high health and enough resources for growth or division."><i class="map-pictogram icon-growth" aria-hidden="true"></i><span>Growth /<br />Division</span><strong id="positive-balance-value">0</strong><small>high health</small></div>
-                <div class="map-node health-node" data-tooltip="Cell Health integrates ATP, repair, protein, ROS, damage, and starvation."><i class="map-pictogram icon-health" aria-hidden="true"></i><span>Cell Health</span><strong id="overall-health-value">0%</strong><small id="overall-health-delta" data-trend="flat">+0.0/tick</small></div>
-                <div class="map-node repair-node" data-tooltip="ATP powers amino-acid use for protein repair, enzymes, sensors, and biosynthesis."><i class="map-pictogram store-icon icon-amino" aria-hidden="true"></i><span>Protein / Repair</span><strong id="protein-rate" class="resource-readout"><span class="resource-value">0</span><small id="protein-node-delta" class="resource-delta" data-trend="flat">+0.0</small></strong><small>uses amino acids</small></div>
-                <div class="map-node apoptosis-node" data-tooltip="Negative balance means high damage, low health, or resource depletion pushes the cell toward stalling or apoptosis."><i class="map-pictogram icon-stall" aria-hidden="true"></i><span>Stall /<br />Apoptosis</span><strong id="negative-balance-value">0</strong><small>low health or high damage</small></div>
-                <div class="map-chip positive-balance-chip">positive balance</div>
-                <div class="map-chip negative-balance-chip">negative balance</div>
-                <div class="map-chip balance-chip" id="balance-impact">Balance stable</div>
-                <div class="map-chip autophagy-chip" id="autophagy-delta">Autophagy +0.0</div>
+              <label class="metabolism-select-row">
+                <span>Object</span>
+                <select id="movement-target-select" data-cell-select="searchPreference">
+                  <option value="glucose">Glucose</option>
+                </select>
+              </label>
+            </section>
+            <section class="metabolism-section" aria-labelledby="metabolism-process-title">
+              <div class="metabolism-section-head">
+                <h3 id="metabolism-process-title">Metabolism</h3>
+                <span class="metabolism-atp-pill">ATP usage <strong id="metabolism-atp-cost">0.00</strong></span>
               </div>
-              <div class="cell-vitals-strip" aria-label="cell generation and size">
-                <span data-tooltip="Generation counts how many divisions separate this cell from the starting population.">Gen <strong id="cell-generation-value">0</strong></span>
-                <span data-tooltip="Cell size affects collision area, food intake, vulnerability, and whether the cell is ready to divide.">Size <strong id="cell-size-value">0.0</strong></span>
+              <div class="metabolism-fact-row metabolism-fact-row-stack">
+                <span>Outside input / tick</span>
+                <div class="metabolism-detection-list">
+                  <span>Glucose <strong id="external-glucose-input">0.0</strong></span>
+                </div>
               </div>
-            </div>
+              <div class="metabolism-fact-row metabolism-fact-row-stack">
+                <span>Glucose Pool</span>
+                <div class="metabolism-detection-list">
+                  <span>Pool <strong id="glucose-pool-value">0.0</strong> <small id="glucose-pool-delta" data-trend="flat">+0.0</small></span>
+                </div>
+              </div>
+              <div class="metabolism-fact-row metabolism-fact-row-stack">
+                <span>Glycolysis Process</span>
+                <div class="metabolism-detection-list">
+                  <span>Rate <strong id="glycolysis-process-value">0.0/tick</strong></span>
+                </div>
+              </div>
+              <div class="metabolism-fact-row metabolism-fact-row-stack">
+                <span>ATP Pool</span>
+                <div class="metabolism-detection-list">
+                  <span>ATP <strong id="atp-pool-value">0.0</strong> <small id="atp-pool-delta" data-trend="flat">+0.0</small></span>
+                </div>
+              </div>
+            </section>
+            <section class="metabolism-section" aria-labelledby="cell-health-title">
+              <div class="metabolism-section-head">
+                <h3 id="cell-health-title">Cell Health</h3>
+                <span class="metabolism-atp-pill">ATP usage <strong id="health-atp-cost">0.00</strong></span>
+              </div>
+              <div class="metabolism-fact-row metabolism-fact-row-stack">
+                <span>Influencing factors</span>
+                <div class="metabolism-detection-list">
+                  <span>Cell upkeep <strong id="health-upkeep-factor">0.00 ATP/tick</strong></span>
+                </div>
+              </div>
+              <div class="metabolism-fact-row metabolism-fact-row-stack">
+                <span>Current health</span>
+                <div class="metabolism-detection-list">
+                  <span>Health <strong id="cell-health-value">0%</strong> <small id="cell-health-delta" data-trend="flat">+0.0</small></span>
+                </div>
+              </div>
+            </section>
           </div>
         </div>
         <span class="window-resize" aria-hidden="true"></span>
@@ -278,14 +276,20 @@
                 <input id="new-dish-cell-count-range" type="range" min="1" max="40" value="10" />
                 <input id="new-dish-cell-count-input" type="number" min="1" max="40" value="10" inputmode="numeric" />
               </label>
+              <label class="cell-count-control dish-complexity-setup" data-tooltip="Cell complexity controls how much metabolism is introduced. Complexity 1 teaches the glucose-to-ATP loop only.">
+                <span>Cell Complexity <output>1</output></span>
+                <select id="new-dish-complexity-select">
+                  <option value="1">1 - Glucose to ATP</option>
+                </select>
+              </label>
             </section>
             <section class="setup-section" aria-labelledby="new-dish-resources-title">
               <h3 id="new-dish-resources-title">Resources</h3>
               <div class="resource-setup-list" aria-label="new dish resource distribution">
                 <label><strong>Glucose <output>20</output></strong><input data-new-dish-resource="glucose" type="range" min="0" max="60" value="20" /><small>Amount per molecule 0.45-1.00</small></label>
-                <label><strong>Amino Acids <output>20</output></strong><input data-new-dish-resource="amino-acid" type="range" min="0" max="60" value="20" /><small>Amount per cluster 0.45-1.00</small></label>
-                <label><strong>Oxygen <output>20</output></strong><input data-new-dish-resource="oxygen" type="range" min="0" max="60" value="20" /><small>Amount per pocket 0.45-1.00</small></label>
-                <label><strong>Light <output>20</output></strong><input data-new-dish-resource="light" type="range" min="0" max="60" value="20" /><small>Intensity per bloom 0.45-1.00</small></label>
+                <label hidden><strong>Amino Acids <output>0</output></strong><input data-new-dish-resource="amino-acid" type="range" min="0" max="60" value="0" /><small>Introduced in a later complexity tier</small></label>
+                <label hidden><strong>Oxygen <output>0</output></strong><input data-new-dish-resource="oxygen" type="range" min="0" max="60" value="0" /><small>Introduced in a later complexity tier</small></label>
+                <label hidden><strong>Light <output>0</output></strong><input data-new-dish-resource="light" type="range" min="0" max="60" value="0" /><small>Introduced in a later complexity tier</small></label>
               </div>
             </section>
             <section class="setup-section" aria-labelledby="new-dish-environment-title">

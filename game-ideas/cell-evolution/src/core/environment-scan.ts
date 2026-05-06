@@ -5,6 +5,9 @@ export function scanEnvironment(state: SimulationState, cell: Cell, awareness: n
   let pull = vec();
 
   for (const resource of state.resources) {
+    if (state.cellComplexity <= 1 && resource.kind !== 'glucose') {
+      continue;
+    }
     const d = distance(cell.position, resource.position);
     if (d > awareness) {
       continue;
@@ -23,6 +26,10 @@ export function scanEnvironment(state: SimulationState, cell: Cell, awareness: n
             : 1.1 - Math.min(1, cell.lightFactor * 2);
     const value = (resource.kind === 'light' ? 0.75 : 1.25) * preferred * Math.max(0.35, need);
     pull = add(pull, scale(normalize(sub(resource.position, cell.position)), value * (1 - d / awareness) * cell.genome.harvest));
+  }
+
+  if (state.cellComplexity <= 1) {
+    return pull;
   }
 
   for (const hazard of state.hazards) {

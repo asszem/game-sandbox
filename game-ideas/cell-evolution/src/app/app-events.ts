@@ -154,6 +154,7 @@ export function bindNewDishModal(
     radiusRange: HTMLInputElement | null;
     cellCountRange: HTMLInputElement | null;
     cellCountInput: HTMLInputElement | null;
+    complexitySelect: HTMLSelectElement | null;
     resourceSliders: NodeListOf<HTMLInputElement>;
     environmentSliders: NodeListOf<HTMLInputElement>;
   },
@@ -183,6 +184,9 @@ export function bindNewDishModal(
   });
   elements.cellCountInput?.addEventListener('input', () => {
     handlers.setCellCount(Number(elements.cellCountInput?.value ?? 0));
+  });
+  elements.complexitySelect?.addEventListener('change', () => {
+    syncComplexityOutput(elements.complexitySelect);
   });
   elements.resourceSliders.forEach((slider) => {
     slider.addEventListener('input', () => syncRangeOutput(slider));
@@ -350,4 +354,11 @@ export function bindDishLayerClear(layer: HTMLElement, clearActiveDish: () => vo
       clearActiveDish();
     }
   });
+}
+
+function syncComplexityOutput(select: HTMLSelectElement | null): void {
+  const output = select?.closest('label')?.querySelector('output');
+  if (output && select) {
+    output.textContent = select.value;
+  }
 }

@@ -41,6 +41,8 @@ export type Cell = {
   searchPreference: SearchPreference;
   atpRate: number;
   glucoseRate: number;
+  glucosePoolRate: number;
+  externalGlucoseInputRate: number;
   glycogenRate: number;
   glycolysisRate: number;
   respirationRate: number;
@@ -96,6 +98,7 @@ export type SimulationState = {
   tick: number;
   running: boolean;
   selectedCellId: number | null;
+  cellComplexity: number;
   boardRadius: number;
   cells: Cell[];
   resources: Resource[];

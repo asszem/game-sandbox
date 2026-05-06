@@ -67,6 +67,8 @@ export function createCellEntity(id: number, rng: EntityRng, position: Vec2, fam
     searchPreference: 'balanced',
     atpRate: 0,
     glucoseRate: 0,
+    glucosePoolRate: 0,
+    externalGlucoseInputRate: 0,
     glycogenRate: 0,
     glycolysisRate: 0,
     respirationRate: 0,
@@ -127,6 +129,8 @@ export function normalizeCellEntity(cell: Cell): void {
   cell.searchPreference ??= 'balanced';
   cell.atpRate ??= 0;
   cell.glucoseRate ??= 0;
+  cell.glucosePoolRate ??= 0;
+  cell.externalGlucoseInputRate ??= 0;
   cell.glycogenRate ??= 0;
   cell.glycolysisRate ??= 0;
   cell.respirationRate ??= 0;

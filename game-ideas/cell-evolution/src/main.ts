@@ -9,7 +9,7 @@ import { handleDishItemDrop } from './app/drop-handler';
 import { createDropController, type DropItemKind } from './app/drop-tools';
 import { createGameLoop } from './app/game-loop';
 import { syncMainHud } from './app/hud-sync';
-import { defaultNewDishBoardRadius, defaultNewDishCellCount, defaultNewDishSetup, readNewDishSetup as readNewDishSetupFromControls, resetNewDishRangeControls as resetNewDishRanges, setNewDishBoardRadius as setNewDishBoardRadiusControl, setNewDishCellCount as setNewDishCellCountControls, type NewDishSetup } from './app/new-dish';
+import { defaultNewDishBoardRadius, defaultNewDishCellCount, defaultNewDishComplexity, defaultNewDishSetup, readNewDishSetup as readNewDishSetupFromControls, resetNewDishRangeControls as resetNewDishRanges, setNewDishBoardRadius as setNewDishBoardRadiusControl, setNewDishCellCount as setNewDishCellCountControls, type NewDishSetup } from './app/new-dish';
 import { applySavedWorld } from './app/save-apply';
 import { SAVE_KEY, createSavePayload as createSavePayloadData, type SaveData } from './app/save-load';
 import { createSaveModalController } from './app/save-modal';
@@ -46,6 +46,7 @@ const {
   newDishRadiusRange,
   newDishCellCountRange,
   newDishCellCountInput,
+  newDishComplexitySelect,
   newDishResourceSliders,
   newDishEnvironmentSliders,
   newDishCancel,
@@ -195,6 +196,7 @@ bindNewDishModal({
   radiusRange: newDishRadiusRange,
   cellCountRange: newDishCellCountRange,
   cellCountInput: newDishCellCountInput,
+  complexitySelect: newDishComplexitySelect,
   resourceSliders: newDishResourceSliders,
   environmentSliders: newDishEnvironmentSliders,
 }, {
@@ -324,6 +326,7 @@ function openNewDishModal(): void {
   }
   setNewDishBoardRadius(defaultNewDishBoardRadius());
   setNewDishCellCount(defaultNewDishCellCount());
+  setNewDishComplexity(defaultNewDishComplexity());
   resetNewDishRangeControls();
   newDishModal.hidden = false;
   newDishRadiusRange?.focus();
@@ -348,7 +351,18 @@ function resetNewDishRangeControls(): void {
 }
 
 function readNewDishSetup(): NewDishSetup {
-  return readNewDishSetupFromControls(newDishRadiusRange, newDishCellCountRange, newDishCellCountInput, newDishResourceSliders, newDishEnvironmentSliders);
+  return readNewDishSetupFromControls(newDishRadiusRange, newDishCellCountRange, newDishCellCountInput, newDishComplexitySelect, newDishResourceSliders, newDishEnvironmentSliders);
+}
+
+function setNewDishComplexity(value: number): void {
+  if (!newDishComplexitySelect) {
+    return;
+  }
+  newDishComplexitySelect.value = String(value);
+  const output = newDishComplexitySelect.closest('label')?.querySelector('output');
+  if (output) {
+    output.textContent = newDishComplexitySelect.value;
+  }
 }
 
 function deleteActiveDish(): void {

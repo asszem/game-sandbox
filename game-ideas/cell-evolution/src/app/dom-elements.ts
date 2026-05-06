@@ -44,6 +44,20 @@ export function queryAppElements(): AppElements {
     deleteDishButton: document.querySelector<HTMLButtonElement>('[data-dish-action="delete"]'),
     selectedDishActions: document.querySelector<HTMLElement>('.selected-dish-actions'),
     dropItemButtons: document.querySelectorAll<HTMLButtonElement>('[data-drop-item]'),
+    sensorAtpCost: document.querySelector<HTMLElement>('#sensor-atp-cost'),
+    sensorDetections: document.querySelector<HTMLElement>('#sensor-detections'),
+    movementAtpCost: document.querySelector<HTMLElement>('#movement-atp-cost'),
+    metabolismAtpCost: document.querySelector<HTMLElement>('#metabolism-atp-cost'),
+    healthAtpCost: document.querySelector<HTMLElement>('#health-atp-cost'),
+    externalGlucoseInput: document.querySelector<HTMLElement>('#external-glucose-input'),
+    glucosePoolValue: document.querySelector<HTMLElement>('#glucose-pool-value'),
+    glucosePoolDelta: document.querySelector<HTMLElement>('#glucose-pool-delta'),
+    glycolysisProcessValue: document.querySelector<HTMLElement>('#glycolysis-process-value'),
+    atpPoolValue: document.querySelector<HTMLElement>('#atp-pool-value'),
+    atpPoolDelta: document.querySelector<HTMLElement>('#atp-pool-delta'),
+    healthUpkeepFactor: document.querySelector<HTMLElement>('#health-upkeep-factor'),
+    cellHealthValue: document.querySelector<HTMLElement>('#cell-health-value'),
+    cellHealthDelta: document.querySelector<HTMLElement>('#cell-health-delta'),
     atpCore: document.querySelector<HTMLElement>('#atp-core'),
     glucoseRate: document.querySelector<HTMLElement>('#glucose-rate'),
     glycogenRate: document.querySelector<HTMLElement>('#glycogen-rate'),
@@ -75,6 +89,7 @@ export function queryAppElements(): AppElements {
     negativeBalanceValue: document.querySelector<HTMLElement>('#negative-balance-value'),
     overallHealthValue: document.querySelector<HTMLElement>('#overall-health-value'),
     overallHealthDelta: document.querySelector<HTMLElement>('#overall-health-delta'),
+    metabolicHealthImpactList: document.querySelector<HTMLElement>('#metabolic-health-impact-list'),
     cellGenerationValue: document.querySelector<HTMLElement>('#cell-generation-value'),
     cellSizeValue: document.querySelector<HTMLElement>('#cell-size-value'),
     toastRegion: document.querySelector<HTMLElement>('#toast-region'),
@@ -84,6 +99,7 @@ export function queryAppElements(): AppElements {
     newDishRadiusRange: document.querySelector<HTMLInputElement>('#new-dish-radius-range'),
     newDishCellCountRange: document.querySelector<HTMLInputElement>('#new-dish-cell-count-range'),
     newDishCellCountInput: document.querySelector<HTMLInputElement>('#new-dish-cell-count-input'),
+    newDishComplexitySelect: document.querySelector<HTMLSelectElement>('#new-dish-complexity-select'),
     newDishResourceSliders: document.querySelectorAll<HTMLInputElement>('[data-new-dish-resource]'),
     newDishEnvironmentSliders: document.querySelectorAll<HTMLInputElement>('[data-new-dish-environment]'),
     newDishCancel: document.querySelector<HTMLButtonElement>('#new-dish-cancel'),
@@ -144,6 +160,20 @@ export type AppElements = {
   deleteDishButton: HTMLButtonElement | null;
   selectedDishActions: HTMLElement | null;
   dropItemButtons: NodeListOf<HTMLButtonElement>;
+  sensorAtpCost: HTMLElement | null;
+  sensorDetections: HTMLElement | null;
+  movementAtpCost: HTMLElement | null;
+  metabolismAtpCost: HTMLElement | null;
+  healthAtpCost: HTMLElement | null;
+  externalGlucoseInput: HTMLElement | null;
+  glucosePoolValue: HTMLElement | null;
+  glucosePoolDelta: HTMLElement | null;
+  glycolysisProcessValue: HTMLElement | null;
+  atpPoolValue: HTMLElement | null;
+  atpPoolDelta: HTMLElement | null;
+  healthUpkeepFactor: HTMLElement | null;
+  cellHealthValue: HTMLElement | null;
+  cellHealthDelta: HTMLElement | null;
   atpCore: HTMLElement | null;
   glucoseRate: HTMLElement | null;
   glycogenRate: HTMLElement | null;
@@ -175,6 +205,7 @@ export type AppElements = {
   negativeBalanceValue: HTMLElement | null;
   overallHealthValue: HTMLElement | null;
   overallHealthDelta: HTMLElement | null;
+  metabolicHealthImpactList: HTMLElement | null;
   cellGenerationValue: HTMLElement | null;
   cellSizeValue: HTMLElement | null;
   toastRegion: HTMLElement | null;
@@ -184,6 +215,7 @@ export type AppElements = {
   newDishRadiusRange: HTMLInputElement | null;
   newDishCellCountRange: HTMLInputElement | null;
   newDishCellCountInput: HTMLInputElement | null;
+  newDishComplexitySelect: HTMLSelectElement | null;
   newDishResourceSliders: NodeListOf<HTMLInputElement>;
   newDishEnvironmentSliders: NodeListOf<HTMLInputElement>;
   newDishCancel: HTMLButtonElement | null;

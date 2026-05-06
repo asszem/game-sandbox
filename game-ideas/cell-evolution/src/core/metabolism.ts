@@ -55,15 +55,28 @@ type MetabolismSnapshot = {
   health: number;
 };
 
+const COMPLEXITY_ONE_UPKEEP_COST = 0.12;
+const COMPLEXITY_ONE_SENSOR_COST = 0.03;
+const COMPLEXITY_ONE_GLYCOLYSIS_ATP_COST = 0.02;
+
 export function applyCellMetabolism(cell: Cell, lightFactor: number, before: MetabolismBaseline): void {
   runMetabolismPipeline(cell, lightFactor);
   recordMetabolismRates(cell, before);
 }
 
-export function previewCellMetabolism(cell: Cell): MetabolicPreview {
+export function applyComplexityOneMetabolism(cell: Cell, before: MetabolismBaseline): void {
+  runComplexityOnePipeline(cell);
+  recordMetabolismRates(cell, before);
+}
+
+export function previewCellMetabolism(cell: Cell, complexity = 1): MetabolicPreview {
   const preview = cloneCellForPreview(cell);
   const before = baselineFromCell(preview);
-  runMetabolismPipeline(preview, preview.lightFactor);
+  if (complexity <= 1) {
+    runComplexityOnePipeline(preview);
+  } else {
+    runMetabolismPipeline(preview, preview.lightFactor);
+  }
   return {
     atp: preview.atp - before.atp,
     glucose: preview.glucose - before.glucose,
@@ -89,6 +102,36 @@ export function previewCellMetabolism(cell: Cell): MetabolicPreview {
   };
 }
 
+function runComplexityOnePipeline(cell: Cell): void {
+  const before = snapshotCell(cell);
+  resetMetabolismRates(cell);
+  cell.searchPreference = 'glucose';
+  cell.sensorBudget = 0.4;
+  cell.oxygenMetabolism = 0;
+  cell.aminoTransport = 0;
+  cell.ribosomeActivity = 0;
+  cell.lightFactor = 0;
+  cell.pyruvate = 0;
+  cell.lactate = 0;
+  cell.oxygen = 0;
+  cell.ros = 0;
+  cell.damage = 0;
+  cell.glycogen = 0;
+  transferFreeGlucoseToG6P(cell);
+  runComplexityOneGlycolysis(cell);
+  payComplexityOneCosts(cell);
+  computeComplexityOneHealth(cell);
+  clampMetabolicState(cell);
+  cell.pyruvate = 0;
+  cell.lactate = 0;
+  cell.oxygen = 0;
+  cell.ros = 0;
+  cell.damage = 0;
+  cell.glycogen = 0;
+  cell.stressSignal = 0;
+  recordInternalRates(cell, before);
+}
+
 function runMetabolismPipeline(cell: Cell, lightFactor: number): void {
   const before = snapshotCell(cell);
   resetMetabolismRates(cell);
@@ -107,6 +150,17 @@ function runMetabolismPipeline(cell: Cell, lightFactor: number): void {
   computeOverallHealth(cell);
   clampMetabolicState(cell);
   recordInternalRates(cell, before);
+}
+
+function runComplexityOneGlycolysis(cell: Cell): void {
+  const used = Math.min(cell.glucose6Phosphate, 1);
+  if (used <= 0) {
+    return;
+  }
+  cell.glucose6Phosphate -= used;
+  cell.atp += used * 0.65;
+  cell.atp -= glycolysisAtpCostPerTick(cell, 1, used);
+  cell.glycolysisRate = used;
 }
 
 function resetMetabolismRates(cell: Cell): void {
@@ -196,13 +250,14 @@ function branchPyruvate(cell: Cell): void {
 }
 
 function payMovementAndSensorCosts(cell: Cell): void {
-  const movementCost = length(cell.velocity)
-    * (0.22 + cell.genome.motility * 0.1)
-    * Math.pow(cell.radius / 3.2, 1.35)
-    * (0.8 + cell.oxygenMetabolism * 0.22)
-    * (0.68 + (cell.movementBudget ?? 0.5) * 0.62);
-  cell.atp -= movementCost;
-  cell.atp -= (cell.sensorBudget ?? 0.5) * 0.04;
+  cell.atp -= movementAtpCostPerTick(cell, 2);
+  cell.atp -= sensorAtpCostPerTick(cell, 2);
+}
+
+function payComplexityOneCosts(cell: Cell): void {
+  cell.atp -= COMPLEXITY_ONE_UPKEEP_COST;
+  cell.atp -= sensorAtpCostPerTick(cell, 1);
+  cell.atp -= movementAtpCostPerTick(cell, 1);
 }
 
 function runAntioxidantDefense(cell: Cell): void {
@@ -316,6 +371,16 @@ function computeOverallHealth(cell: Cell): void {
   cell.health -= (damagePressure + rosPressure + starvationPressure + structuralPressure + cell.autophagyRate * 0.2) * 0.006;
 }
 
+function computeComplexityOneHealth(cell: Cell): void {
+  const glucoseReserve = cell.glucose + cell.glucose6Phosphate;
+  const energyScore = clamp(cell.atp / 50, 0, 1.2);
+  const glucoseScore = clamp(glucoseReserve / 30, 0, 1.1);
+  const positiveHomeostasis = Math.min(energyScore, glucoseScore);
+  const starvationPressure = Math.max(0, 8 - cell.atp) / 8 + Math.max(0, 2 - glucoseReserve) / 2;
+  cell.health += positiveHomeostasis * 0.0035;
+  cell.health -= starvationPressure * 0.01;
+}
+
 function clampMetabolicState(cell: Cell): void {
   cell.mass = clamp(cell.mass, 0.18, 2.4);
   cell.radius = radiusForMass(cell);
@@ -344,6 +409,7 @@ function recordInternalRates(cell: Cell, before: MetabolismSnapshot): void {
 function recordMetabolismRates(cell: Cell, before: MetabolismBaseline): void {
   cell.atpRate = cell.atp - before.atp;
   cell.glucoseRate = cell.glucose - before.glucose;
+  cell.glucosePoolRate = (cell.glucose + cell.glucose6Phosphate) - (before.glucose + (before.glucose6Phosphate ?? cell.glucose6Phosphate));
   cell.glycogenRate = cell.glycogen - before.glycogen;
   cell.aminoRate = cell.aminoAcids - before.amino;
   cell.oxygenRate = cell.oxygen - before.oxygen;
@@ -399,4 +465,39 @@ function cloneCellForPreview(cell: Cell): Cell {
 
 export function radiusForMass(cell: Cell): number {
   return clamp(1.85 + Math.sqrt(cell.mass) * 2.55, 2.2, 6.4);
+}
+
+export function sensorAtpCostPerTick(cell: Cell, complexity = 1): number {
+  if (complexity <= 1) {
+    return COMPLEXITY_ONE_SENSOR_COST;
+  }
+  return (cell.sensorBudget ?? 0.5) * 0.04;
+}
+
+export function upkeepAtpCostPerTick(_cell: Cell, complexity = 1): number {
+  if (complexity <= 1) {
+    return COMPLEXITY_ONE_UPKEEP_COST;
+  }
+  return 0;
+}
+
+export function glycolysisAtpCostPerTick(cell: Cell, complexity = 1, glycolysisRate = cell.glycolysisRate): number {
+  if (complexity <= 1) {
+    return glycolysisRate > 0 ? COMPLEXITY_ONE_GLYCOLYSIS_ATP_COST : 0;
+  }
+  return glycolysisRate * 0.03;
+}
+
+export function movementAtpCostPerTick(cell: Cell, complexity = 1): number {
+  if (complexity <= 1) {
+    return length(cell.velocity)
+      * (0.16 + cell.genome.motility * 0.08)
+      * Math.pow(cell.radius / 3.2, 1.2)
+      * (0.5 + (cell.movementBudget ?? 0.5) * 0.7);
+  }
+  return length(cell.velocity)
+    * (0.22 + cell.genome.motility * 0.1)
+    * Math.pow(cell.radius / 3.2, 1.35)
+    * (0.8 + cell.oxygenMetabolism * 0.22)
+    * (0.68 + (cell.movementBudget ?? 0.5) * 0.62);
 }

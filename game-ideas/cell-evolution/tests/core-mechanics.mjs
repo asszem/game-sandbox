@@ -8,11 +8,13 @@ const server = await createServer({
 
 try {
   const { createCellEntity } = await server.ssrLoadModule('/src/core/entities.ts');
+  const { removeDeadCells } = await server.ssrLoadModule('/src/core/cell-death.ts');
   const { applyCellMetabolism } = await server.ssrLoadModule('/src/core/metabolism.ts');
   const { vec } = await server.ssrLoadModule('/src/core/vector.ts');
 
   function rng() {
     return {
+      next: () => 0.5,
       range: (min, max) => (min + max) / 2,
       signed: () => 0,
     };
@@ -94,6 +96,25 @@ try {
     applyCellMetabolism(subject, 0, baseline(subject));
     assert.ok(subject.healthRate < 0, 'high damage and ROS should lower health');
     assert.ok(subject.damage >= 70, 'unresolved oxidative stress should not reduce damage');
+  }
+
+  {
+    const subject = cell({ atp: 0, health: 1, mass: 0.8, protein: 75, damage: 0 });
+    const state = {
+      tick: 0,
+      running: true,
+      selectedCellId: subject.id,
+      cellComplexity: 1,
+      boardRadius: 92,
+      cells: [subject],
+      resources: [],
+      hazards: [],
+      blocks: [],
+    };
+    const events = [];
+    removeDeadCells({ state, events, rng: rng(), nextId: 2 });
+    assert.equal(state.cells.length, 0, 'complexity 1 cells should die when ATP pool reaches 0');
+    assert.equal(events[0]?.kind, 'cell-died', 'ATP depletion should emit a death event');
   }
 } finally {
   await server.close();

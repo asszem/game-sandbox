@@ -137,7 +137,8 @@ async function exerciseDishLifecycle(page) {
       && input.value === '10'
       && range.value === '10'
       && resources.length === 4
-      && resources.every((slider) => slider instanceof HTMLInputElement && slider.value === '20')
+      && resources.every((slider) => slider instanceof HTMLInputElement
+        && slider.value === (slider.dataset.newDishResource === 'glucose' ? '20' : '0'))
       && environment.length === 2
       && environment.every((slider) => slider instanceof HTMLInputElement && slider.value === '0');
   });
@@ -216,7 +217,7 @@ async function exerciseTutorial(page) {
     layer?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
   });
   await clickBySelector(page, '[data-dish-action="tutorial"]');
-  await page.locator('#tutorial-title', { hasText: 'Tutorial | 1/7' }).waitFor();
+  await page.locator('#tutorial-title', { hasText: 'Tutorial | 1/2' }).waitFor();
   await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length >= 2);
   await page.waitForFunction(() => document.querySelector('#population-readout')?.textContent === '1 cells');
   await page.waitForFunction(() => document.querySelector('#dish-window-title')?.textContent === 'Tutorial Dish | State');
@@ -227,12 +228,20 @@ async function exerciseTutorial(page) {
   });
   await page.waitForFunction(() => {
     const title = document.querySelector('#entity-window-title')?.textContent ?? '';
-    const atp = document.querySelector('#atp-core')?.textContent ?? '';
-    return title.includes('Homeostasis') && /9[2-9]|100/.test(atp);
+    const dashboard = document.querySelector('.metabolic-dashboard');
+    return title.includes('Homeostasis')
+      && dashboard instanceof HTMLElement
+      && !dashboard.hidden
+      && /Sensors/.test(dashboard.textContent ?? '')
+      && /Movement Target/.test(dashboard.textContent ?? '')
+      && /Glucose Pool/.test(dashboard.textContent ?? '')
+      && /Glycolysis Process/.test(dashboard.textContent ?? '')
+      && /ATP Pool/.test(dashboard.textContent ?? '')
+      && /Cell Health/.test(dashboard.textContent ?? '');
   }, null, { timeout: 10_000 });
   await page.waitForFunction(() => document.querySelector('#tutorial-goal')?.getAttribute('data-state') === 'complete', null, { timeout: 10_000 });
   await clickBySelector(page, '#tutorial-next');
-  await page.locator('#tutorial-title', { hasText: 'Tutorial | 2/7' }).waitFor();
+  await page.locator('#tutorial-title', { hasText: 'Tutorial | 2/2' }).waitFor();
   await page.waitForFunction(() => /Glucose\s*[1-9]/.test(document.querySelector('#dish-detail')?.textContent ?? ''));
   const afterNextRect = await page.evaluate(() => {
     const canvas = document.querySelector('.dish-canvas');

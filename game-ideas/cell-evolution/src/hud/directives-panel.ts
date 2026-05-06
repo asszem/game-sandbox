@@ -19,11 +19,15 @@ export function syncTransportControls(
   transportControls: NodeListOf<HTMLInputElement>,
   transportOutputs: NodeListOf<HTMLOutputElement>,
   cell: Cell | null,
+  complexity = 1,
 ): void {
   transportControls.forEach((control) => {
     const key = control.dataset.control as CellControlKey;
     const value = cell ? Math.round((cell[key] ?? 0.5) * 100) : 0;
+    const hiddenAtComplexityOne = complexity <= 1 && key !== 'movementBudget';
     control.value = String(value);
+    control.disabled = !cell || hiddenAtComplexityOne;
+    control.closest('label')?.toggleAttribute('hidden', hiddenAtComplexityOne);
     control.parentElement?.style.setProperty('--control-value', String(value / 100));
   });
   transportOutputs.forEach((output) => {
@@ -58,6 +62,24 @@ export function syncDirectiveSelects(selects: NodeListOf<HTMLSelectElement>, cel
       select.value = cell?.searchPreference ?? 'balanced';
       select.disabled = !cell;
     }
+  });
+}
+
+export function syncDirectiveSelectsForComplexity(selects: NodeListOf<HTMLSelectElement>, cell: Cell | null, complexity = 1): void {
+  selects.forEach((select) => {
+    if (select.dataset.cellSelect !== 'searchPreference') {
+      return;
+    }
+    const isMetabolismSelect = Boolean(select.closest('.metabolic-dashboard'));
+    if (complexity <= 1) {
+      select.value = 'glucose';
+      select.disabled = !cell;
+      select.closest('label')?.toggleAttribute('hidden', !isMetabolismSelect);
+      return;
+    }
+    select.closest('label')?.toggleAttribute('hidden', false);
+    select.value = cell?.searchPreference ?? 'balanced';
+    select.disabled = !cell;
   });
 }
 

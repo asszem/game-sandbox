@@ -102,9 +102,18 @@
   grid-template-columns: minmax(120px, 1fr) minmax(160px, 1.4fr);
 }
 
+.dish-complexity-setup {
+  grid-template-columns: minmax(150px, 1fr) minmax(180px, 1.4fr);
+}
+
 .dish-radius-setup output {
   color: #f9ff4d;
   font-weight: 700;
+}
+
+.dish-complexity-setup output {
+  color: #f9ff4d;
+  font-weight: 800;
 }
 
 .cell-count-control input[type='range'] {
@@ -170,6 +179,27 @@
   font: inherit;
   font-size: 13px;
   text-align: center;
+}
+
+.cell-count-control select {
+  min-width: 0;
+  height: 32px;
+  border: 1px solid rgba(68, 255, 203, 0.22);
+  border-radius: 7px;
+  padding: 0 28px 0 10px;
+  appearance: none;
+  background:
+    linear-gradient(45deg, transparent 50%, #f9ff4d 50%) calc(100% - 14px) 13px / 6px 6px no-repeat,
+    linear-gradient(135deg, #f9ff4d 50%, transparent 50%) calc(100% - 10px) 13px / 6px 6px no-repeat,
+    rgba(4, 9, 16, 0.78);
+  color: #f7fff3;
+  font: inherit;
+  font-size: 13px;
+}
+
+.cell-count-control select:focus {
+  border-color: rgba(249, 255, 77, 0.64);
+  outline: none;
 }
 
 .cell-count-control input[type='number']::-webkit-inner-spin-button,

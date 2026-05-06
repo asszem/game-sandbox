@@ -8,8 +8,146 @@
   margin: 12px 0;
 }
 
+.metabolic-dashboard[data-complexity='1'] {
+  margin-bottom: 6px;
+}
+
+.metabolism-section {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(68, 255, 203, 0.2);
+  border-radius: 8px;
+  background: rgba(4, 18, 20, 0.68);
+}
+
+.metabolism-section h3 {
+  margin: 0;
+  color: rgba(216, 255, 246, 0.92);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.metabolism-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.metabolism-atp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border: 1px solid rgba(68, 255, 203, 0.16);
+  border-radius: 6px;
+  background: rgba(4, 9, 16, 0.54);
+  color: rgba(247, 255, 243, 0.76);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.metabolism-atp-pill strong {
+  font-size: 12px;
+}
+
+.metabolism-atp-pill strong[data-trend='good'] {
+  color: #61ff77;
+}
+
+.metabolism-atp-pill strong[data-trend='bad'] {
+  color: #ff5d7a;
+}
+
+.metabolism-atp-pill strong[data-trend='flat'] {
+  color: rgba(247, 255, 243, 0.62);
+}
+
+.metabolism-fact-row,
+.metabolism-select-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: rgba(247, 255, 243, 0.72);
+  font-size: 12px;
+}
+
+.metabolism-fact-row strong,
+.metabolism-select-row strong {
+  color: #f7fff3;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.metabolism-fact-row small {
+  margin-left: 4px;
+  color: rgba(247, 255, 243, 0.62);
+  font-size: 11px;
+}
+
+.metabolism-fact-row-stack {
+  align-items: flex-start;
+}
+
+.metabolism-detection-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.metabolism-detection-list span {
+  padding: 3px 6px;
+  border: 1px solid rgba(68, 255, 203, 0.16);
+  border-radius: 6px;
+  background: rgba(4, 9, 16, 0.54);
+  color: rgba(247, 255, 243, 0.76);
+}
+
+.metabolism-detection-list strong {
+  color: #18ff9b;
+}
+
+.metabolism-detection-list small {
+  margin-left: 4px;
+  color: rgba(247, 255, 243, 0.62);
+  font-size: 11px;
+}
+
+.metabolism-select-row select {
+  min-width: 128px;
+  height: 30px;
+  border: 1px solid rgba(68, 255, 203, 0.22);
+  border-radius: 6px;
+  padding: 0 8px;
+  background: rgba(4, 9, 16, 0.78);
+  color: #f7fff3;
+  font: inherit;
+}
+
+[data-trend='good'] {
+  color: #61ff77;
+}
+
+[data-trend='bad'] {
+  color: #ff5d7a;
+}
+
 .entity-panel:has(.metabolic-dashboard:not([hidden])) {
   width: min(860px, calc(100vw - 28px)) !important;
+}
+
+.entity-panel:has(.metabolic-dashboard[data-complexity='1']:not([hidden])) {
+  width: min(560px, calc(100vw - 28px)) !important;
+}
+
+.entity-panel:has(.metabolic-dashboard[data-complexity='1']:not([hidden])) .panel-head {
+  display: none;
 }
 
 .cell-interior-wireframe {
@@ -26,6 +164,11 @@
   overflow: hidden;
   -webkit-font-smoothing: auto;
   text-rendering: optimizeLegibility;
+}
+
+.metabolic-dashboard[data-complexity='1'] .cell-interior-wireframe {
+  min-width: 610px;
+  min-height: 530px;
 }
 
 .cell-interior-wireframe,
@@ -53,6 +196,19 @@
   letter-spacing: 0;
   line-height: 1;
   text-transform: uppercase;
+}
+
+.complexity-badge {
+  display: none;
+  margin-left: 8px;
+  color: rgba(249, 255, 77, 0.88);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: none;
+}
+
+.metabolic-dashboard[data-complexity='1'] .complexity-badge {
+  display: inline;
 }
 
 .input-layer {
@@ -86,6 +242,147 @@
   right: 24px;
   bottom: 28px;
   height: 102px;
+}
+
+.metabolic-dashboard[data-complexity='1'] .input-layer {
+  height: 114px;
+}
+
+.metabolic-dashboard[data-complexity='1'] .metabolic-core-layer {
+  left: 24px;
+  right: 24px;
+  top: 148px;
+  width: auto;
+  height: 220px;
+  border-color: rgba(249, 255, 77, 0.34);
+}
+
+.metabolic-dashboard[data-complexity='1'] .damage-layer,
+.metabolic-dashboard[data-complexity='1'] .light-intake,
+.metabolic-dashboard[data-complexity='1'] .oxygen-intake,
+.metabolic-dashboard[data-complexity='1'] .amino-intake,
+.metabolic-dashboard[data-complexity='1'] .oxygen-layer-arrow,
+.metabolic-dashboard[data-complexity='1'] .damage-layer-arrow {
+  display: none;
+}
+
+.metabolic-dashboard[data-complexity='1'] .outcome-layer {
+  left: 24px;
+  right: 24px;
+  bottom: 34px;
+  display: block;
+  height: 112px;
+  border-color: rgba(24, 255, 200, 0.28);
+  background: rgba(4, 18, 20, 0.58);
+}
+
+.metabolic-dashboard[data-complexity='1'] .outcome-layer::before,
+.metabolic-dashboard[data-complexity='1'] .outcome-map-arrows,
+.metabolic-dashboard[data-complexity='1'] .growth-node,
+.metabolic-dashboard[data-complexity='1'] .repair-node,
+.metabolic-dashboard[data-complexity='1'] .apoptosis-node,
+.metabolic-dashboard[data-complexity='1'] .positive-balance-chip,
+.metabolic-dashboard[data-complexity='1'] .negative-balance-chip,
+.metabolic-dashboard[data-complexity='1'] .balance-chip,
+.metabolic-dashboard[data-complexity='1'] .autophagy-chip {
+  display: none;
+}
+
+.metabolic-dashboard[data-complexity='1'] .glucose-layer-arrow {
+  stroke: #f9ff4d;
+}
+
+.metabolic-core-layer::before,
+.metabolic-core-layer::after,
+.outcome-layer::before {
+  content: "";
+  box-sizing: border-box;
+  position: absolute;
+  z-index: 1;
+  border: 2px solid rgba(247, 255, 243, 0.12);
+  border-radius: 18px;
+  pointer-events: none;
+}
+
+.metabolic-core-layer::before {
+  left: 12px;
+  top: 56px;
+  width: 476px;
+  height: 286px;
+  border-color: rgba(249, 255, 77, 0.24);
+  background: rgba(249, 255, 77, 0.025);
+}
+
+.metabolic-dashboard[data-complexity='1'] .metabolic-core-layer::before {
+  left: 18px;
+  top: 42px;
+  width: calc(100% - 36px);
+  height: 142px;
+  border-color: rgba(249, 255, 77, 0.2);
+  background: rgba(249, 255, 77, 0.02);
+}
+
+.metabolic-dashboard[data-complexity='1'] .metabolic-core-layer::after {
+  display: none;
+}
+
+.metabolic-core-layer::after {
+  left: 14px;
+  top: 222px;
+  width: 132px;
+  height: 112px;
+  border-color: rgba(255, 177, 46, 0.34);
+  background: rgba(255, 177, 46, 0.025);
+}
+
+.outcome-layer::before {
+  left: 432px;
+  top: 18px;
+  width: 168px;
+  height: 76px;
+  border-color: rgba(97, 255, 119, 0.3);
+  background: rgba(97, 255, 119, 0.025);
+}
+
+.concept-loop {
+  position: absolute;
+  z-index: 3;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: rgba(4, 15, 18, 0.9);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.energy-loop-label {
+  left: 150px;
+  top: 34px;
+  color: #f9ff4d;
+}
+
+.storage-loop-label {
+  left: 42px;
+  top: 206px;
+  color: #ffb12e;
+}
+
+.metabolic-dashboard[data-complexity='1'] .energy-loop-label {
+  left: 308px;
+  top: 42px;
+}
+
+.metabolic-dashboard[data-complexity='1'] .storage-loop-label,
+.metabolic-dashboard[data-complexity='1'] .building-loop-label {
+  display: none;
+}
+
+.building-loop-label {
+  left: 464px;
+  top: 6px;
+  color: #61ff77;
 }
 
 .map-node {
@@ -219,6 +516,12 @@
   transform: none;
 }
 
+.metabolic-dashboard[data-complexity='1'] .glucose-intake {
+  left: 28px;
+  top: 28px;
+  border-color: rgba(249, 255, 77, 0.84);
+}
+
 .g6p-node {
   left: 22px;
   top: 42px;
@@ -274,6 +577,206 @@
   width: 98px;
   height: 58px;
   border-color: rgba(249, 255, 77, 0.9);
+}
+
+.atp-uses-node {
+  display: none;
+}
+
+.metabolic-dashboard[data-complexity='1'] .cell-map-arrows,
+.metabolic-dashboard[data-complexity='1'] .pyruvate-node,
+.metabolic-dashboard[data-complexity='1'] .glycogen-node,
+.metabolic-dashboard[data-complexity='1'] .fermentation-node,
+.metabolic-dashboard[data-complexity='1'] .respiration-node,
+.metabolic-dashboard[data-complexity='1'] .storage-store-chip,
+.metabolic-dashboard[data-complexity='1'] .storage-mobilize-chip,
+.metabolic-dashboard[data-complexity='1'] .fallback-chip,
+.metabolic-dashboard[data-complexity='1'] .oxygen-chip,
+.metabolic-dashboard[data-complexity='1'] .ros-chip {
+  display: none;
+}
+
+.metabolic-dashboard[data-complexity='1'] .simple-map-arrows {
+  display: none;
+}
+
+.metabolic-dashboard[data-complexity='1'] .g6p-node {
+  left: 42px;
+  top: 76px;
+  width: 124px;
+  height: 88px;
+}
+
+.metabolic-dashboard[data-complexity='1'] .metabolite-node {
+  border-radius: 12px;
+  background: rgba(7, 16, 18, 0.9);
+}
+
+.metabolic-dashboard[data-complexity='1'] .glycolysis-node {
+  left: 230px;
+  top: 76px;
+  width: 136px;
+  height: 88px;
+  padding-inline: 18px;
+  border: 0;
+  border-radius: 4px;
+  background: rgba(12, 21, 16, 0.94);
+  clip-path: polygon(11% 0, 100% 0, 89% 100%, 0 100%);
+}
+
+.metabolic-dashboard[data-complexity='1'] .glycolysis-node::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(184, 214, 92, 0.9);
+  clip-path: polygon(11% 0, 100% 0, 89% 100%, 0 100%, 11% 0, calc(11% + 2px) 2px, 3px calc(100% - 2px), calc(89% - 2px) calc(100% - 2px), calc(100% - 3px) 2px, calc(11% + 2px) 2px);
+}
+
+.metabolic-dashboard[data-complexity='1'] .atp-node {
+  left: 432px;
+  top: 76px;
+  width: 124px;
+  height: 88px;
+}
+
+.metabolic-dashboard[data-complexity='1'] .atp-uses-node {
+  display: none;
+}
+
+.metabolic-dashboard[data-complexity='1'] .atp-uses-node strong {
+  color: #f7fff3;
+  font-size: 12px;
+}
+
+.metabolic-dashboard[data-complexity='1'] .health-node {
+  left: 28px;
+  right: 28px;
+  top: 34px;
+  display: grid;
+  width: auto;
+  height: 58px;
+  grid-template-columns: 26px 1fr auto;
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "icon label value"
+    "chips chips delta";
+  align-content: center;
+  align-items: center;
+  justify-items: start;
+  gap: 4px 8px;
+  padding: 8px 12px;
+  border-color: rgba(24, 255, 200, 0.58);
+  border-radius: 8px;
+  background: rgba(4, 15, 18, 0.42);
+}
+
+.metabolic-dashboard[data-complexity='1'] .health-node .map-pictogram {
+  grid-area: icon;
+  position: relative;
+  left: auto;
+  top: auto;
+  align-self: center;
+  justify-self: center;
+}
+
+.metabolic-dashboard[data-complexity='1'] .health-node span {
+  grid-area: label;
+  font-size: 11px;
+}
+
+.metabolic-dashboard[data-complexity='1'] .health-node strong {
+  grid-area: value;
+  justify-self: end;
+  color: #18ffc8;
+  font-size: 18px;
+}
+
+.metabolic-dashboard[data-complexity='1'] .health-node > small {
+  grid-area: delta;
+  justify-self: end;
+}
+
+.metabolic-dashboard[data-complexity='1'] .health-node .health-impact-list {
+  grid-area: chips;
+}
+
+.metabolic-dashboard[data-complexity='1'] .metabolic-core-layer .map-pictogram {
+  left: 10px;
+  top: 10px;
+  width: 18px;
+  height: 18px;
+  opacity: 0.92;
+  transform: none;
+  transform-origin: center;
+}
+
+.metabolic-dashboard[data-complexity='1'] .metabolic-core-layer .map-pictogram.store-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.metabolic-dashboard[data-complexity='1'] .metabolic-core-layer .icon-atp::before {
+  left: 5px;
+  top: 2px;
+  width: 8px;
+  height: 14px;
+}
+
+.metabolic-dashboard[data-complexity='1'] .metabolic-core-layer .icon-glycolysis::before {
+  left: 2px;
+  top: 8px;
+  width: 12px;
+  height: 3px;
+}
+
+.metabolic-dashboard[data-complexity='1'] .metabolic-core-layer .icon-glycolysis::after {
+  right: 1px;
+  top: 5px;
+  border-top-width: 5px;
+  border-bottom-width: 5px;
+  border-left-width: 6px;
+}
+
+.simple-flow-arrow {
+  position: absolute;
+  z-index: 3;
+  display: none;
+  height: 2px;
+  border-radius: 999px;
+  background: #f9ff4d;
+  box-shadow: 0 0 8px rgba(249, 255, 77, 0.38);
+  pointer-events: none;
+}
+
+.simple-flow-arrow::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left: 10px solid #f9ff4d;
+  filter: drop-shadow(0 0 4px rgba(249, 255, 77, 0.38));
+  transform: translateY(-50%);
+}
+
+.metabolic-dashboard[data-complexity='1'] .simple-flow-arrow {
+  display: block;
+}
+
+.glucose-to-glycolysis {
+  left: 170px;
+  top: 120px;
+  width: 54px;
+}
+
+.glycolysis-to-atp {
+  left: 370px;
+  top: 120px;
+  width: 56px;
 }
 
 .damage-node {
@@ -406,6 +909,46 @@
   z-index: 2;
   overflow: visible;
   pointer-events: none;
+}
+
+.simple-map-arrows {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: none;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.simple-arrow {
+  stroke: #f9ff4d;
+  marker-end: url(#simple-arrow-glucose);
+}
+
+.outcome-map-arrows {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.outcome-arrow {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  opacity: 0.86;
+}
+
+.outcome-energy-arrow {
+  stroke: #f9ff4d;
+  marker-end: url(#arrow-outcome-energy);
+}
+
+.outcome-building-arrow {
+  stroke: #61ff77;
+  marker-end: url(#arrow-outcome-building);
 }
 
 .layer-map-arrows {
