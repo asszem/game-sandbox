@@ -9,7 +9,7 @@ const server = await createServer({
 try {
   const { createCellEntity } = await server.ssrLoadModule('/src/core/entities.ts');
   const { removeDeadCells } = await server.ssrLoadModule('/src/core/cell-death.ts');
-  const { applyCellMetabolism } = await server.ssrLoadModule('/src/core/metabolism.ts');
+  const { applyCellMetabolism, applyComplexityOneMetabolism } = await server.ssrLoadModule('/src/core/metabolism.ts');
   const { vec } = await server.ssrLoadModule('/src/core/vector.ts');
 
   function rng() {
@@ -96,6 +96,21 @@ try {
     applyCellMetabolism(subject, 0, baseline(subject));
     assert.ok(subject.healthRate < 0, 'high damage and ROS should lower health');
     assert.ok(subject.damage >= 70, 'unresolved oxidative stress should not reduce damage');
+  }
+
+  {
+    const subject = cell({ atp: 20, glucose: 100, glucose6Phosphate: 0, oxygenMetabolism: 0, aminoTransport: 0, ribosomeActivity: 0 });
+    applyComplexityOneMetabolism(subject, baseline(subject));
+    assert.equal(subject.glycolysisRate, 1, 'complexity 1 glycolysis should consume 1 glucose per tick');
+    assert.equal(subject.glucose + subject.glucose6Phosphate, 99, 'complexity 1 glycolysis should reduce the glucose pool by 1');
+    assert.ok(subject.atpRate > 2.8 && subject.atpRate < 2.9, 'complexity 1 glycolysis should net roughly +3 ATP minus basal drains');
+  }
+
+  {
+    const subject = cell({ atp: 2, glucose: 0, glucose6Phosphate: 0, oxygenMetabolism: 0, aminoTransport: 0, ribosomeActivity: 0 });
+    applyComplexityOneMetabolism(subject, baseline(subject));
+    assert.equal(subject.glycolysisRate, 0, 'complexity 1 glycolysis should stop when glucose pool is empty');
+    assert.ok(subject.atpRate < 0, 'complexity 1 empty glucose pool should drain ATP through upkeep');
   }
 
   {

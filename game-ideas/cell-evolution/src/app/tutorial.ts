@@ -15,14 +15,14 @@ export type TutorialStep = {
 export const tutorialSteps: TutorialStep[] = [
   {
     id: 'atp',
-    title: 'Milestone 1: glucose makes ATP',
-    detail: 'Complexity 1 uses one metabolism loop: environmental glucose enters the glucose hub, glycolysis converts it, and ATP becomes the cell energy reserve.',
-    goal: 'Select the cell and watch glucose feed glycolysis until ATP reaches 88.',
+    title: 'Milestone 1: basal metabolism',
+    detail: 'The dish starts paused. Select the highlighted cell, then read or skip the Homeostasis guide before pressing Space.',
+    goal: 'Select the cell, read or skip the guide, then watch ATP drain below 19 while glucose pool stays empty.',
   },
   {
     id: 'glucose',
     title: 'Milestone 2: harvest glucose',
-    detail: 'Glucose molecules are the only environmental resource in complexity 1. Touch glucose to refill the input that feeds the hub.',
+    detail: 'Empty glucose pool means glycolysis stops. The cell then pays upkeep from ATP until the pool reaches 0 and the membrane collapses.',
     goal: 'Harvest the dropped glucose until the glucose hub reaches 45.',
   },
 ];
@@ -48,7 +48,7 @@ export function isTutorialStepComplete(context: {
     return false;
   }
   if (step.id === 'atp') {
-    return cell.atp >= 88;
+    return inspectedTarget.kind === 'cell' && cell.glucose + cell.glucose6Phosphate <= 0 && cell.atp < 19;
   }
   if (step.id === 'glucose') {
     return cell.glucose + cell.glucose6Phosphate >= 45;

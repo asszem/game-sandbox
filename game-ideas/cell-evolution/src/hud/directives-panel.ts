@@ -24,7 +24,8 @@ export function syncTransportControls(
   transportControls.forEach((control) => {
     const key = control.dataset.control as CellControlKey;
     const value = cell ? Math.round((cell[key] ?? 0.5) * 100) : 0;
-    const hiddenAtComplexityOne = complexity <= 1 && key !== 'movementBudget';
+    const isMetabolismControl = Boolean(control.closest('.metabolic-dashboard'));
+    const hiddenAtComplexityOne = complexity <= 1 && key !== 'movementBudget' && !isMetabolismControl;
     control.value = String(value);
     control.disabled = !cell || hiddenAtComplexityOne;
     control.closest('label')?.toggleAttribute('hidden', hiddenAtComplexityOne);
@@ -33,7 +34,7 @@ export function syncTransportControls(
   transportOutputs.forEach((output) => {
     const key = output.dataset.controlValue as CellControlKey;
     const value = cell ? Math.round((cell[key] ?? 0.5) * 100) : 0;
-    output.textContent = controlLabel(key, value);
+    output.textContent = output.closest('.metabolic-dashboard') ? `${value}%` : controlLabel(key, value);
   });
 }
 
@@ -72,7 +73,7 @@ export function syncDirectiveSelectsForComplexity(selects: NodeListOf<HTMLSelect
     }
     const isMetabolismSelect = Boolean(select.closest('.metabolic-dashboard'));
     if (complexity <= 1) {
-      select.value = 'glucose';
+      select.value = cell?.searchPreference ?? 'none';
       select.disabled = !cell;
       select.closest('label')?.toggleAttribute('hidden', !isMetabolismSelect);
       return;
@@ -84,5 +85,5 @@ export function syncDirectiveSelectsForComplexity(selects: NodeListOf<HTMLSelect
 }
 
 export function isSearchPreference(value: string): value is SearchPreference {
-  return value === 'balanced' || value === 'glucose' || value === 'amino-acid' || value === 'oxygen' || value === 'light';
+  return value === 'none' || value === 'balanced' || value === 'glucose' || value === 'amino-acid' || value === 'oxygen' || value === 'light';
 }

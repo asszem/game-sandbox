@@ -497,4 +497,14 @@ export class PetriDishRenderer {
     this.raycaster.ray.intersectPlane(this.dishPlane, point);
     return { x: point.x, y: point.y };
   }
+
+  worldToScreen(point: Vec2): Vec2 {
+    const rect = this.canvas.getBoundingClientRect();
+    const worldHeight = this.frustumHeight / Math.max(0.001, this.zoom);
+    const worldWidth = worldHeight * this.aspect;
+    return {
+      x: rect.left + ((point.x - this.camera.position.x) / worldWidth + 0.5) * rect.width,
+      y: rect.top + (0.5 - (point.y - this.camera.position.y) / worldHeight) * rect.height,
+    };
+  }
 }

@@ -57,6 +57,7 @@ const {
   tutorialStepTitle,
   tutorialStepDetail,
   tutorialGoal,
+  tutorialRestart,
   tutorialNext,
   tutorialExit,
   saveModal,
@@ -125,12 +126,14 @@ bindGlobalShortcuts({
   newDishModal,
 }, {
   hasActiveDish: () => Boolean(activeDish),
+  canToggleRunning: () => tutorialController.canRunSimulation(),
   toggleActiveDishRunning: () => {
     simulation.toggleRunning();
     updateHud();
   },
   toggleAllDishesRunning,
   restartScenario,
+  startTutorial: tutorialController.start,
   saveGame,
   loadGame,
   resetActiveDishZoom: () => {
@@ -231,10 +234,12 @@ bindDishStateControls(dishDetail, {
   },
 });
 bindTutorialControls({
+  restart: tutorialRestart,
   next: tutorialNext,
   exit: tutorialExit,
 }, {
   canAdvance: tutorialController.canAdvance,
+  restart: tutorialController.restart,
   advance: tutorialController.advance,
   exit: tutorialController.exit,
 });
@@ -245,10 +250,8 @@ bindSaveModal({
 
 drawMicroscopeBackdrop(microscopeBackdrop);
 window.addEventListener('resize', () => drawMicroscopeBackdrop(microscopeBackdrop));
-dishManager.createDefaultDishes();
-clearActiveDish();
 setupTooltips(tooltipLayer, () => tooltipsEnabled);
-updateHud();
+tutorialController.start();
 const animate = createGameLoop({
   dishes: () => dishes,
   tickMs,

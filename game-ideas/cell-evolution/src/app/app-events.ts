@@ -7,7 +7,9 @@ type GlobalShortcutHandlers = {
   hasActiveDish: () => boolean;
   toggleActiveDishRunning: () => void;
   toggleAllDishesRunning: () => void;
+  canToggleRunning: () => boolean;
   restartScenario: () => void;
+  startTutorial: () => void;
   saveGame: () => void;
   loadGame: () => void;
   resetActiveDishZoom: () => void;
@@ -62,6 +64,10 @@ export function bindGlobalShortcuts(
         handlers.showToast('Select a petri dish first');
         return;
       }
+      if (!handlers.canToggleRunning()) {
+        handlers.showToast('Read or skip the metabolism guide first');
+        return;
+      }
       handlers.toggleActiveDishRunning();
       return;
     }
@@ -77,6 +83,10 @@ export function bindGlobalShortcuts(
     if (event.code === 'KeyR') {
       event.preventDefault();
       handlers.restartScenario();
+    }
+    if (event.code === 'KeyT') {
+      event.preventDefault();
+      handlers.startTutorial();
     }
     if (event.code === 'F5') {
       event.preventDefault();
@@ -310,15 +320,18 @@ export function bindDirectiveSelects(selects: NodeListOf<HTMLSelectElement>, han
 
 export function bindTutorialControls(
   elements: {
+    restart: HTMLButtonElement | null;
     next: HTMLButtonElement | null;
     exit: HTMLButtonElement | null;
   },
   handlers: {
     canAdvance: () => boolean;
+    restart: () => void;
     advance: () => void;
     exit: () => void;
   },
 ): void {
+  elements.restart?.addEventListener('click', handlers.restart);
   elements.next?.addEventListener('click', () => {
     if (handlers.canAdvance()) {
       handlers.advance();

@@ -39,16 +39,12 @@ async function runSmoke() {
     page.on('pageerror', (error) => errors.push(error.message));
 
     await page.goto(serverUrl, { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length === 2, null, { timeout: INITIAL_RENDER_TIMEOUT_MS });
-    await exerciseHoverWithoutSelection(page);
-    const firstDish = await dishCenter(page, 0);
-    await page.mouse.click(firstDish.x, firstDish.y);
-    await page.keyboard.press('Space');
-    await page.keyboard.press('Space');
+    await page.locator('#tutorial-title', { hasText: 'Tutorial | 1/2' }).waitFor({ timeout: INITIAL_RENDER_TIMEOUT_MS });
+    await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length === 1, null, { timeout: INITIAL_RENDER_TIMEOUT_MS });
+    await exerciseTutorial(page);
     await exerciseDishLifecycle(page);
     await exerciseSaveSlot(page);
     await exerciseDishPicker(page);
-    await exerciseTutorial(page);
     await page.waitForTimeout(250);
 
     const canvasPixels = await page.evaluate(() => {
@@ -123,8 +119,9 @@ async function exerciseHoverWithoutSelection(page) {
 }
 
 async function exerciseDishLifecycle(page) {
+  await clickBySelector(page, '#tutorial-exit');
   await clickBySelector(page, '[data-dish-action="delete"]');
-  await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length === 1);
+  await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length === 0);
   await clickBySelector(page, '[data-dish-action="add"]');
   await page.locator('#new-dish-modal-title', { hasText: 'New dish' }).waitFor();
   await page.waitForFunction(() => {
@@ -156,7 +153,7 @@ async function exerciseDishLifecycle(page) {
     rock.dispatchEvent(new Event('input', { bubbles: true }));
   });
   await clickBySelector(page, '#new-dish-create');
-  await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length === 2);
+  await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length === 1);
   await page.waitForFunction(() => document.querySelectorAll('.dish-canvas.is-selected').length === 1);
   await page.waitForFunction(() => document.querySelector('#population-readout')?.textContent === '12 cells');
   await page.waitForFunction(() => {
@@ -185,7 +182,7 @@ async function exerciseSaveSlot(page) {
   });
   await page.waitForFunction(() => {
     const slots = JSON.parse(localStorage.getItem('cell-evolution-save-slots-v1') ?? '[]');
-    return slots[0]?.name === 'Smoke slot' && slots[0]?.data?.dishes?.length === 2;
+    return slots[0]?.name === 'Smoke slot' && slots[0]?.data?.dishes?.length === 1;
   });
   await clickBySelector(page, '#save-modal-close');
 }
@@ -212,20 +209,31 @@ async function exerciseDishPicker(page) {
 }
 
 async function exerciseTutorial(page) {
-  await page.evaluate(() => {
-    const layer = document.querySelector('#dish-layer');
-    layer?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-  });
-  await clickBySelector(page, '[data-dish-action="tutorial"]');
   await page.locator('#tutorial-title', { hasText: 'Tutorial | 1/2' }).waitFor();
-  await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length >= 2);
+  await page.waitForFunction(() => document.querySelectorAll('.dish-canvas').length === 1);
   await page.waitForFunction(() => document.querySelector('#population-readout')?.textContent === '1 cells');
   await page.waitForFunction(() => document.querySelector('#dish-window-title')?.textContent === 'Tutorial Dish | State');
-  const beforeNextRect = await page.evaluate(() => {
-    const canvas = document.querySelector('.dish-canvas');
-    const rect = canvas.getBoundingClientRect();
-    return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+  await page.evaluate(() => {
+    document.querySelector('.dish-canvas')?.setAttribute('data-smoke-original', 'true');
   });
+  await clickBySelector(page, '#tutorial-restart');
+  await page.waitForFunction(() => {
+    const dishes = document.querySelectorAll('.dish-canvas');
+    return dishes.length === 1 && dishes[0]?.getAttribute('data-smoke-original') !== 'true';
+  });
+  await page.waitForFunction(() => document.querySelector('#dish-window-title')?.textContent === 'Tutorial Dish | State');
+  await page.waitForFunction(() => {
+    const pointer = document.querySelector('#tutorial-cell-pointer');
+    return pointer instanceof HTMLElement
+      && !pointer.hasAttribute('hidden')
+      && Number.isFinite(Number(pointer.dataset.targetX))
+      && Number.isFinite(Number(pointer.dataset.targetY));
+  });
+  const targetPoint = await page.evaluate(() => {
+    const pointer = document.querySelector('#tutorial-cell-pointer');
+    return { x: Number(pointer?.dataset.targetX), y: Number(pointer?.dataset.targetY) };
+  });
+  await page.mouse.click(targetPoint.x, targetPoint.y);
   await page.waitForFunction(() => {
     const title = document.querySelector('#entity-window-title')?.textContent ?? '';
     const dashboard = document.querySelector('.metabolic-dashboard');
@@ -239,7 +247,15 @@ async function exerciseTutorial(page) {
       && /ATP Pool/.test(dashboard.textContent ?? '')
       && /Cell Health/.test(dashboard.textContent ?? '');
   }, null, { timeout: 10_000 });
+  await page.waitForFunction(() => !document.querySelector('#metabolism-helper-window')?.hasAttribute('hidden'), null, { timeout: 10_000 });
+  await clickBySelector(page, '#metabolism-helper-skip');
+  await page.keyboard.press('Space');
   await page.waitForFunction(() => document.querySelector('#tutorial-goal')?.getAttribute('data-state') === 'complete', null, { timeout: 10_000 });
+  const beforeNextRect = await page.evaluate(() => {
+    const canvas = document.querySelector('.dish-canvas');
+    const rect = canvas.getBoundingClientRect();
+    return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+  });
   await clickBySelector(page, '#tutorial-next');
   await page.locator('#tutorial-title', { hasText: 'Tutorial | 2/2' }).waitFor();
   await page.waitForFunction(() => /Glucose\s*[1-9]/.test(document.querySelector('#dish-detail')?.textContent ?? ''));

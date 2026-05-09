@@ -75,3 +75,23 @@ Notes:
 - Verification: `npm run build`, `npm test`, and targeted Playwright screenshot passed. Screenshot saved to `test-output/metabolism-health-section.png`; no browser console errors.
 - Updated complexity 1 death mechanics: a cell now dies when its ATP Pool reaches 0. Later complexity tiers keep the existing lower ATP tolerance.
 - Verification: added a core mechanics assertion for ATP-zero death, then ran `npm test` and `npm run build`.
+- Added `T` as a global shortcut to start the tutorial and documented it in the Shortcuts window.
+- Updated the beginner/tutorial metabolism model: complexity 1 cells now start at 100 Glucose and 20 ATP, glycolysis consumes 1 Glucose and 1 ATP to produce 4 ATP, and empty glucose stops glycolysis so upkeep drains ATP toward apoptosis.
+- Verification: `npm run build`, `npm test`, and a browser check pressing `T` passed; tutorial opened at step 1 with the new teaching copy and no console errors.
+- Updated tutorial step 1 to start dormant: 1 cell, no external resources, no glucose pool, movement target `None`, sensor range 0, and movement/sensor ATP usage 0. Added a Homeostasis sensor range slider that immediately updates range and sensor ATP usage.
+- Verification: `npm run build`, `npm test`, and browser check passed; initial tutorial state showed target `none`, range `0.0`, sensor/movement usage `0.00`, glucose pool `0.0`, ATP `20`, then setting sensor range to 60% updated range and sensor ATP usage live.
+- Added the first tutorial guidance gate: step 1 starts paused with no cell selected, points from the tutorial window to the target cell, then opens a dimmed Homeostasis view and a Prev/Next/Skip helper for Metabolism and Cell Health explanations before Space can start time.
+- Added renderer world-to-screen projection for accurate tutorial targeting and extended the smoke test to click the guided pointer, verify the helper appears, skip it, then start the simulation.
+- Verification: `npm run build` and `npm test` passed.
+- Changed app startup to skip default dish creation and enter tutorial mode immediately. The initial visible state is now one paused tutorial dish created from an empty dish list, with the tutorial pointer active.
+- Verification: `npm run build`, `npm test`, and a browser startup check passed (`#state-readout` = `Paused`, running count `0`, one tutorial dish).
+- Updated the default desktop window arrangement to match the provided wide screenshot: Game and Entity on the left, State upper middle-left, Hover/Drop/Shortcuts upper right, Navigation near top center-right, and Tutorial on the right side of the dish. A narrower-desktop fallback keeps the tutorial window from covering the guided cell.
+- Verification: `npm run build`, `npm test`, and a 1902x935 browser layout check passed.
+- Centered the tutorial dish placement in the viewport and counter-rotated the tutorial pointer label so `Select this cell` stays readable when the arrow points left.
+- Verification: `npm run build`, `npm test`, and a 798x650 browser check passed; the tutorial dish center matched the viewport center and pointer/label transforms were inverse rotations.
+- Repositioned the tutorial dish to the lower middle free workspace band instead of the geometric viewport center, matching the provided screenshot and avoiding initial overlap with windows.
+- Verification: `npm run build`, `npm test`, a 1909x977 browser overlap check passed with zero visible window overlaps, and a 798x650 pointer click still selected the tutorial cell.
+- Made the Metabolism tutorial explanation window anchor beside the Homeostasis/entity window when the cell is selected. It now clamps and narrows before overlapping so it stays immediately visible next to the highlighted content.
+- Verification: `npm run build`, `npm test`, and a 900x666 browser check passed with a 12px gap between Homeostasis and the helper.
+- Added a `Restart tutorial` button to the tutorial window. It deletes the current tutorial dish, rebuilds a fresh tutorial dish, resets step/helper state, and leaves exactly one tutorial dish active.
+- Verification: `npm run build` and `npm test` passed; smoke coverage now checks that the original tutorial canvas is removed on restart.

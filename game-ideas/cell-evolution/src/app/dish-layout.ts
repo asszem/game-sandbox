@@ -29,9 +29,13 @@ export function addedDishPlacement(count: number, size: number, viewportWidth: n
 
 export function tutorialDishPlacement(count: number, size: number, viewportWidth: number, viewportHeight: number): DishPlacement {
   const offset = (count % 5) * 34;
+  const leftPanelEdge = Math.min(540, viewportWidth * 0.28);
+  const rightPanelEdge = viewportWidth >= 1500 ? viewportWidth - 410 : viewportWidth - 24;
+  const availableLeft = Math.min(Math.max(24, leftPanelEdge + 300), Math.max(24, viewportWidth - size - 24));
+  const availableRight = Math.max(availableLeft, rightPanelEdge - size);
   return {
-    left: clamp(viewportWidth - size - 64 - offset, 350, Math.max(350, viewportWidth - size - 24)),
-    top: clamp(viewportHeight - size - 44 - offset, 106, Math.max(106, viewportHeight - size - 24)),
+    left: clamp((availableLeft + availableRight) / 2 + offset, 24, Math.max(24, viewportWidth - size - 24)),
+    top: clamp(viewportHeight - size - 26 + offset, 88, Math.max(88, viewportHeight - size - 24)),
   };
 }
 

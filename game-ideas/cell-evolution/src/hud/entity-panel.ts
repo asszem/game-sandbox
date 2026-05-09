@@ -100,6 +100,9 @@ export function currentDirective(cell: Cell, detections: DetectionSummary, aware
 }
 
 function searchPreferenceLabel(value: Cell['searchPreference']): string {
+  if (value === 'none') {
+    return 'None';
+  }
   if (value === 'amino-acid') {
     return 'Amino acids';
   }

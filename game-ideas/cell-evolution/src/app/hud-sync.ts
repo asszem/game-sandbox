@@ -140,6 +140,7 @@ function syncMetabolism(
   syncMetabolicDashboard({
     root: elements.metabolicDashboard,
     sensorAtpCost: elements.sensorAtpCost,
+    sensorRangeValue: elements.sensorRangeValue,
     sensorDetections: elements.sensorDetections,
     movementAtpCost: elements.movementAtpCost,
     metabolismAtpCost: elements.metabolismAtpCost,

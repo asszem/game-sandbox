@@ -3,6 +3,9 @@ import { add, distance, normalize, scale, sub, vec } from './vector';
 
 export function scanEnvironment(state: SimulationState, cell: Cell, awareness: number): Vec2 {
   let pull = vec();
+  if (cell.searchPreference === 'none' || awareness <= 0) {
+    return pull;
+  }
 
   for (const resource of state.resources) {
     if (state.cellComplexity <= 1 && resource.kind !== 'glucose') {

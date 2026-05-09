@@ -45,6 +45,7 @@ export function queryAppElements(): AppElements {
     selectedDishActions: document.querySelector<HTMLElement>('.selected-dish-actions'),
     dropItemButtons: document.querySelectorAll<HTMLButtonElement>('[data-drop-item]'),
     sensorAtpCost: document.querySelector<HTMLElement>('#sensor-atp-cost'),
+    sensorRangeValue: document.querySelector<HTMLElement>('#sensor-range-value'),
     sensorDetections: document.querySelector<HTMLElement>('#sensor-detections'),
     movementAtpCost: document.querySelector<HTMLElement>('#movement-atp-cost'),
     metabolismAtpCost: document.querySelector<HTMLElement>('#metabolism-atp-cost'),
@@ -110,6 +111,7 @@ export function queryAppElements(): AppElements {
     tutorialStepTitle: document.querySelector<HTMLElement>('#tutorial-step-title'),
     tutorialStepDetail: document.querySelector<HTMLElement>('#tutorial-step-detail'),
     tutorialGoal: document.querySelector<HTMLElement>('#tutorial-goal'),
+    tutorialRestart: document.querySelector<HTMLButtonElement>('#tutorial-restart'),
     tutorialNext: document.querySelector<HTMLButtonElement>('#tutorial-next'),
     tutorialExit: document.querySelector<HTMLButtonElement>('#tutorial-exit'),
     saveModal: document.querySelector<HTMLElement>('#save-modal'),
@@ -161,6 +163,7 @@ export type AppElements = {
   selectedDishActions: HTMLElement | null;
   dropItemButtons: NodeListOf<HTMLButtonElement>;
   sensorAtpCost: HTMLElement | null;
+  sensorRangeValue: HTMLElement | null;
   sensorDetections: HTMLElement | null;
   movementAtpCost: HTMLElement | null;
   metabolismAtpCost: HTMLElement | null;
@@ -226,6 +229,7 @@ export type AppElements = {
   tutorialStepTitle: HTMLElement | null;
   tutorialStepDetail: HTMLElement | null;
   tutorialGoal: HTMLElement | null;
+  tutorialRestart: HTMLButtonElement | null;
   tutorialNext: HTMLButtonElement | null;
   tutorialExit: HTMLButtonElement | null;
   saveModal: HTMLElement | null;

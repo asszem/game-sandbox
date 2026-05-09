@@ -322,17 +322,19 @@ export class CellSimulation {
   }
 
   private configureComplexityOneCell(cell: Cell): void {
+    cell.atp = 20;
+    cell.energy = 20;
     cell.glucose = 0;
-    cell.glucose6Phosphate = 100;
+    cell.glucose6Phosphate = 0;
     cell.pyruvate = 0;
     cell.lactate = 0;
     cell.oxygen = 0;
     cell.ros = 0;
     cell.damage = 0;
     cell.glycogen = 0;
-    cell.searchPreference = 'glucose';
-    cell.sensorBudget = 0.4;
-    cell.movementBudget = 0.5;
+    cell.searchPreference = 'none';
+    cell.sensorBudget = 0;
+    cell.movementBudget = 0;
     cell.oxygenMetabolism = 0;
     cell.aminoTransport = 0;
     cell.ribosomeActivity = 0;
@@ -372,12 +374,17 @@ export class CellSimulation {
 
     const awareness = this.awarenessRadius(cell);
     const pull = scanEnvironment(this.state, cell, awareness);
-    const jitter = vec(this.rng.signed(0.15), this.rng.signed(0.15));
+    const canMove = cell.searchPreference !== 'none';
+    const jitter = canMove ? vec(this.rng.signed(0.15), this.rng.signed(0.15)) : vec();
     const movementBudget = cell.movementBudget ?? 0.5;
-    const desired = add(scale(normalize(pull), (0.08 + cell.genome.motility * 0.16) * (0.55 + movementBudget * 0.9)), jitter);
+    const desired = canMove
+      ? add(scale(normalize(pull), (0.08 + cell.genome.motility * 0.16) * (0.55 + movementBudget * 0.9)), jitter)
+      : vec();
     const metabolicBoost = 0.75 + cell.oxygenMetabolism * 0.55;
     const sizeDrag = 1 + Math.max(0, cell.radius - 3) * 0.16;
-    cell.velocity = clampLength(add(scale(cell.velocity, 0.82), desired), (((0.38 + cell.genome.motility * 0.42) * metabolicBoost) / sizeDrag) * (0.55 + movementBudget * 0.9));
+    cell.velocity = canMove
+      ? clampLength(add(scale(cell.velocity, 0.82), desired), (((0.38 + cell.genome.motility * 0.42) * metabolicBoost) / sizeDrag) * (0.55 + movementBudget * 0.9))
+      : vec();
     cell.position = add(cell.position, cell.velocity);
     cell.lastSignal = pull;
 

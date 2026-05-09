@@ -32,10 +32,10 @@ export function createTutorialDish(dishManager: DishManager, viewportWidth: numb
   Object.assign(cell, {
     position: { x: 0, y: 0 },
     velocity: { x: 0, y: 0 },
-    atp: 72,
-    energy: 72,
+    atp: 20,
+    energy: 20,
     glucose: 0,
-    glucose6Phosphate: 100,
+    glucose6Phosphate: 0,
     pyruvate: 0,
     oxygen: 0,
     aminoAcids: 76,
@@ -45,9 +45,9 @@ export function createTutorialDish(dishManager: DishManager, viewportWidth: numb
     glucoseTransport: 0.35,
     aminoTransport: 0.35,
     oxygenMetabolism: 0,
-    sensorBudget: 0.4,
-    movementBudget: 0.5,
-    searchPreference: 'glucose',
+    sensorBudget: 0,
+    movementBudget: 0,
+    searchPreference: 'none',
     ribosomeActivity: 0.5,
   });
   return { dish, target: { kind: 'cell', id: cell.id } };

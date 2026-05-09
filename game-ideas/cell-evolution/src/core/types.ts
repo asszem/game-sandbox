@@ -4,7 +4,7 @@ export type Vec2 = {
 };
 
 export type ResourceKind = 'glucose' | 'amino-acid' | 'oxygen' | 'light';
-export type SearchPreference = ResourceKind | 'balanced';
+export type SearchPreference = ResourceKind | 'balanced' | 'none';
 export type HazardKind = 'poison';
 export type DNAKey = 'motility' | 'split' | 'harvest' | 'predator' | 'caution';
 

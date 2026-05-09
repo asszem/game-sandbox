@@ -57,7 +57,8 @@ type MetabolismSnapshot = {
 
 const COMPLEXITY_ONE_UPKEEP_COST = 0.12;
 const COMPLEXITY_ONE_SENSOR_COST = 0.03;
-const COMPLEXITY_ONE_GLYCOLYSIS_ATP_COST = 0.02;
+const COMPLEXITY_ONE_GLYCOLYSIS_ATP_COST = 1;
+const COMPLEXITY_ONE_GLYCOLYSIS_ATP_YIELD = 4;
 
 export function applyCellMetabolism(cell: Cell, lightFactor: number, before: MetabolismBaseline): void {
   runMetabolismPipeline(cell, lightFactor);
@@ -105,8 +106,6 @@ export function previewCellMetabolism(cell: Cell, complexity = 1): MetabolicPrev
 function runComplexityOnePipeline(cell: Cell): void {
   const before = snapshotCell(cell);
   resetMetabolismRates(cell);
-  cell.searchPreference = 'glucose';
-  cell.sensorBudget = 0.4;
   cell.oxygenMetabolism = 0;
   cell.aminoTransport = 0;
   cell.ribosomeActivity = 0;
@@ -117,7 +116,6 @@ function runComplexityOnePipeline(cell: Cell): void {
   cell.ros = 0;
   cell.damage = 0;
   cell.glycogen = 0;
-  transferFreeGlucoseToG6P(cell);
   runComplexityOneGlycolysis(cell);
   payComplexityOneCosts(cell);
   computeComplexityOneHealth(cell);
@@ -153,13 +151,17 @@ function runMetabolismPipeline(cell: Cell, lightFactor: number): void {
 }
 
 function runComplexityOneGlycolysis(cell: Cell): void {
-  const used = Math.min(cell.glucose6Phosphate, 1);
-  if (used <= 0) {
+  const availableGlucose = cell.glucose + cell.glucose6Phosphate;
+  const used = Math.min(availableGlucose, 1);
+  if (used <= 0 || cell.atp < COMPLEXITY_ONE_GLYCOLYSIS_ATP_COST) {
     return;
   }
-  cell.glucose6Phosphate -= used;
-  cell.atp += used * 0.65;
+  const freeGlucoseUsed = Math.min(cell.glucose, used);
+  const poolGlucoseUsed = used - freeGlucoseUsed;
+  cell.glucose -= freeGlucoseUsed;
+  cell.glucose6Phosphate -= poolGlucoseUsed;
   cell.atp -= glycolysisAtpCostPerTick(cell, 1, used);
+  cell.atp += used * COMPLEXITY_ONE_GLYCOLYSIS_ATP_YIELD;
   cell.glycolysisRate = used;
 }
 
@@ -469,7 +471,7 @@ export function radiusForMass(cell: Cell): number {
 
 export function sensorAtpCostPerTick(cell: Cell, complexity = 1): number {
   if (complexity <= 1) {
-    return COMPLEXITY_ONE_SENSOR_COST;
+    return (cell.sensorBudget ?? 0.5) * COMPLEXITY_ONE_SENSOR_COST;
   }
   return (cell.sensorBudget ?? 0.5) * 0.04;
 }
@@ -489,6 +491,9 @@ export function glycolysisAtpCostPerTick(cell: Cell, complexity = 1, glycolysisR
 }
 
 export function movementAtpCostPerTick(cell: Cell, complexity = 1): number {
+  if (cell.searchPreference === 'none') {
+    return 0;
+  }
   if (complexity <= 1) {
     return length(cell.velocity)
       * (0.16 + cell.genome.motility * 0.08)

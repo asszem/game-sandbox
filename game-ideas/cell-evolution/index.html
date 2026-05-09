@@ -76,11 +76,21 @@
             <p id="entity-detail">Select a dish, then click a cell, resource, poison cloud, or mineral block.</p>
           </div>
           <div class="metabolic-dashboard" aria-label="metabolic engine dashboard" hidden>
-            <section class="metabolism-section" aria-labelledby="metabolism-sensors-title">
+            <section class="metabolism-section" data-help-section="sensors" aria-labelledby="metabolism-sensors-title">
               <div class="metabolism-section-head">
                 <h3 id="metabolism-sensors-title">Sensors</h3>
                 <span class="metabolism-atp-pill">ATP usage <strong id="sensor-atp-cost">0.00</strong></span>
               </div>
+              <div class="metabolism-fact-row metabolism-fact-row-stack">
+                <span>Sensor range</span>
+                <div class="metabolism-detection-list">
+                  <span>Range <strong id="sensor-range-value">0.0</strong></span>
+                </div>
+              </div>
+              <label class="metabolism-slider-row">
+                <span>Range control <output id="sensor-range-output" data-control-value="sensorBudget">0%</output></span>
+                <input id="sensor-range-control" data-control="sensorBudget" type="range" min="0" max="100" value="0" />
+              </label>
               <div class="metabolism-fact-row metabolism-fact-row-stack">
                 <span>Objects sensed</span>
                 <div id="sensor-detections" class="metabolism-detection-list">
@@ -88,7 +98,7 @@
                 </div>
               </div>
             </section>
-            <section class="metabolism-section" aria-labelledby="metabolism-movement-title">
+            <section class="metabolism-section" data-help-section="movement" aria-labelledby="metabolism-movement-title">
               <div class="metabolism-section-head">
                 <h3 id="metabolism-movement-title">Movement Target</h3>
                 <span class="metabolism-atp-pill">ATP usage <strong id="movement-atp-cost">0.00</strong></span>
@@ -96,52 +106,53 @@
               <label class="metabolism-select-row">
                 <span>Object</span>
                 <select id="movement-target-select" data-cell-select="searchPreference">
+                  <option value="none">None</option>
                   <option value="glucose">Glucose</option>
                 </select>
               </label>
             </section>
-            <section class="metabolism-section" aria-labelledby="metabolism-process-title">
-              <div class="metabolism-section-head">
+            <section class="metabolism-section" data-help-section="metabolism" aria-labelledby="metabolism-process-title">
+              <div class="metabolism-section-head" data-help-target="metabolism-title">
                 <h3 id="metabolism-process-title">Metabolism</h3>
                 <span class="metabolism-atp-pill">ATP usage <strong id="metabolism-atp-cost">0.00</strong></span>
               </div>
-              <div class="metabolism-fact-row metabolism-fact-row-stack">
+              <div class="metabolism-fact-row metabolism-fact-row-stack" data-help-target="glucose-input">
                 <span>Outside input / tick</span>
                 <div class="metabolism-detection-list">
                   <span>Glucose <strong id="external-glucose-input">0.0</strong></span>
                 </div>
               </div>
-              <div class="metabolism-fact-row metabolism-fact-row-stack">
+              <div class="metabolism-fact-row metabolism-fact-row-stack" data-help-target="glucose-pool">
                 <span>Glucose Pool</span>
                 <div class="metabolism-detection-list">
                   <span>Pool <strong id="glucose-pool-value">0.0</strong> <small id="glucose-pool-delta" data-trend="flat">+0.0</small></span>
                 </div>
               </div>
-              <div class="metabolism-fact-row metabolism-fact-row-stack">
+              <div class="metabolism-fact-row metabolism-fact-row-stack" data-help-target="glycolysis">
                 <span>Glycolysis Process</span>
                 <div class="metabolism-detection-list">
                   <span>Rate <strong id="glycolysis-process-value">0.0/tick</strong></span>
                 </div>
               </div>
-              <div class="metabolism-fact-row metabolism-fact-row-stack">
+              <div class="metabolism-fact-row metabolism-fact-row-stack" data-help-target="atp-pool">
                 <span>ATP Pool</span>
                 <div class="metabolism-detection-list">
                   <span>ATP <strong id="atp-pool-value">0.0</strong> <small id="atp-pool-delta" data-trend="flat">+0.0</small></span>
                 </div>
               </div>
             </section>
-            <section class="metabolism-section" aria-labelledby="cell-health-title">
-              <div class="metabolism-section-head">
+            <section class="metabolism-section" data-help-section="cell-health" aria-labelledby="cell-health-title">
+              <div class="metabolism-section-head" data-help-target="cell-health-title">
                 <h3 id="cell-health-title">Cell Health</h3>
                 <span class="metabolism-atp-pill">ATP usage <strong id="health-atp-cost">0.00</strong></span>
               </div>
-              <div class="metabolism-fact-row metabolism-fact-row-stack">
+              <div class="metabolism-fact-row metabolism-fact-row-stack" data-help-target="health-factors">
                 <span>Influencing factors</span>
                 <div class="metabolism-detection-list">
                   <span>Cell upkeep <strong id="health-upkeep-factor">0.00 ATP/tick</strong></span>
                 </div>
               </div>
-              <div class="metabolism-fact-row metabolism-fact-row-stack">
+              <div class="metabolism-fact-row metabolism-fact-row-stack" data-help-target="health-current">
                 <span>Current health</span>
                 <div class="metabolism-detection-list">
                   <span>Health <strong id="cell-health-value">0%</strong> <small id="cell-health-delta" data-trend="flat">+0.0</small></span>
@@ -209,6 +220,7 @@
         </div>
         <div class="window-body shortcut-list">
           <div><kbd>Space</kbd><span>Start or stop ticks</span></div>
+          <div><kbd>T</kbd><span>Start tutorial</span></div>
           <div><kbd>R</kbd><span>Restart scenario</span></div>
           <div><kbd>F5</kbd><span>Save to browser</span></div>
           <div><kbd>F9</kbd><span>Load from browser</span></div>
@@ -250,12 +262,29 @@
           </div>
           <div class="tutorial-goal" id="tutorial-goal">Goal: start the tutorial.</div>
           <div class="tutorial-actions">
+            <button id="tutorial-restart" type="button">Restart tutorial</button>
             <button id="tutorial-next" type="button" disabled>Next</button>
             <button id="tutorial-exit" type="button">Exit tutorial</button>
           </div>
         </div>
         <span class="window-resize" aria-hidden="true"></span>
       </aside>
+      <aside id="metabolism-helper-window" class="hud game-window metabolism-helper-window" aria-label="metabolism helper window" hidden>
+        <div class="window-titlebar">
+          <h2 id="metabolism-helper-title">Metabolism Guide</h2>
+        </div>
+        <div class="window-body metabolism-helper-body">
+          <p id="metabolism-helper-detail"></p>
+          <div class="metabolism-helper-actions">
+            <button id="metabolism-helper-prev" type="button">Prev</button>
+            <button id="metabolism-helper-next" type="button">Next</button>
+            <button id="metabolism-helper-skip" type="button">Skip</button>
+          </div>
+        </div>
+      </aside>
+      <div id="tutorial-cell-pointer" class="tutorial-cell-pointer" hidden aria-hidden="true">
+        <span>Select this cell</span>
+      </div>
       <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
       <div id="tooltip-layer" class="tooltip-layer" role="tooltip" hidden></div>
       <div id="new-dish-modal" class="modal-backdrop" hidden>

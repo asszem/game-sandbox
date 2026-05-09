@@ -68,7 +68,8 @@
 }
 
 .metabolism-fact-row,
-.metabolism-select-row {
+.metabolism-select-row,
+.metabolism-slider-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -78,10 +79,21 @@
 }
 
 .metabolism-fact-row strong,
-.metabolism-select-row strong {
+.metabolism-select-row strong,
+.metabolism-slider-row strong {
   color: #f7fff3;
   font-size: 13px;
   font-weight: 700;
+}
+
+.metabolism-slider-row output {
+  margin-left: 6px;
+  color: #18ff9b;
+  font-weight: 700;
+}
+
+.metabolism-slider-row input {
+  width: 160px;
 }
 
 .metabolism-fact-row small {

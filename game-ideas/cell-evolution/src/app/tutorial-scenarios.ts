@@ -12,7 +12,7 @@ export function prepareTutorialScenario(step: TutorialStep, context: TutorialSce
   const { cell, offsetPoint, spawnResource } = context;
 
   if (step.id === 'atp') {
-    Object.assign(cell, { position: { x: 0, y: 0 }, velocity: { x: 0, y: 0 }, atp: 72, glucose: 0, glucose6Phosphate: 100, pyruvate: 0, oxygen: 0, aminoAcids: 76, glycogen: 0, ros: 0, oxygenMetabolism: 0, sensorBudget: 0.4, movementBudget: 0.5, searchPreference: 'glucose' });
+    Object.assign(cell, { position: { x: 0, y: 0 }, velocity: { x: 0, y: 0 }, atp: 20, energy: 20, glucose: 0, glucose6Phosphate: 0, pyruvate: 0, oxygen: 0, aminoAcids: 76, glycogen: 0, ros: 0, oxygenMetabolism: 0, sensorBudget: 0, movementBudget: 0, searchPreference: 'none' });
   }
   if (step.id === 'glucose') {
     Object.assign(cell, { velocity: { x: 0, y: 0 }, atp: Math.max(cell.atp, 82), glucose: 0, glucose6Phosphate: 18, oxygen: 0, aminoAcids: Math.max(cell.aminoAcids, 70), glycogen: 0, glucoseTransport: 0.35, searchPreference: 'glucose' });

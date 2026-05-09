@@ -101,41 +101,41 @@
 }
 
 .state-panel {
-  top: 212px;
-  left: 12px;
+  top: 7px;
+  left: 541px;
   width: min(418px, calc(100vw - 16px));
   height: 366px;
 }
 
 .entity-panel {
-  top: 590px;
-  left: 14px;
+  top: 293px;
+  left: 7px;
   width: min(520px, calc(100vw - 22px));
-  height: min(448px, calc(100vh - 598px));
+  height: min(448px, calc(100vh - 301px));
 }
 
 .directives-panel {
-  top: 54px;
-  left: 481px;
+  top: 207px;
+  left: calc(100vw - 681px);
   width: min(386px, calc(100vw - 405px));
   height: min(520px, calc(100vh - 130px));
 }
 
 .hover-info-window {
-  top: 12px;
-  right: 253px;
+  top: 7px;
+  right: 324px;
   width: min(382px, calc(100vw - 16px));
   height: 190px;
 }
 
 .shortcuts-window {
-  top: 12px;
-  left: 481px;
+  top: 153px;
+  right: 8px;
   width: 286px;
 }
 
 .drop-items-window {
-  top: 12px;
+  top: 9px;
   right: 12px;
   width: 244px;
 }

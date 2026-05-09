@@ -1,6 +1,6 @@
 .tutorial-window {
-  top: 204px;
-  right: 18px;
+  top: 340px;
+  right: 48px;
   width: min(360px, calc(100vw - 24px));
   height: 330px;
 }
@@ -83,3 +83,98 @@
   opacity: 0.48;
 }
 
+.tutorial-cell-pointer {
+  position: fixed;
+  z-index: 8;
+  width: 180px;
+  height: 2px;
+  border-top: 2px solid #f9ff4d;
+  background: rgba(249, 255, 77, 0.18);
+  box-shadow: 0 0 16px rgba(249, 255, 77, 0.48);
+  pointer-events: none;
+  transform-origin: 0 50%;
+}
+
+.tutorial-cell-pointer::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: -7px;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 11px solid #f9ff4d;
+}
+
+.tutorial-cell-pointer span {
+  position: absolute;
+  left: 0;
+  top: -28px;
+  padding: 4px 7px;
+  border: 1px solid rgba(249, 255, 77, 0.42);
+  border-radius: 6px;
+  background: rgba(8, 15, 24, 0.9);
+  color: #f9ff4d;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.metabolism-helper-window {
+  top: 394px;
+  right: 18px;
+  width: min(330px, calc(100vw - 24px));
+}
+
+.metabolism-helper-body {
+  display: grid;
+  gap: 12px;
+}
+
+.metabolism-helper-body p {
+  margin: 0;
+  color: rgba(247, 255, 243, 0.86);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.metabolism-helper-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.metabolism-helper-actions button {
+  min-height: 28px;
+  border: 1px solid rgba(68, 255, 203, 0.24);
+  border-radius: 7px;
+  background: rgba(24, 255, 200, 0.1);
+  color: #f7fff3;
+  cursor: pointer;
+  font: inherit;
+  padding: 0 9px;
+}
+
+.metabolism-helper-actions button:disabled {
+  cursor: default;
+  opacity: 0.48;
+}
+
+.metabolic-dashboard[data-tutorial-focus='metabolism'] [data-help-section='sensors'],
+.metabolic-dashboard[data-tutorial-focus='metabolism'] [data-help-section='movement'] {
+  opacity: 0.32;
+}
+
+.metabolic-dashboard [data-help-target].is-help-highlight {
+  position: relative;
+  z-index: 2;
+  outline: 2px solid rgba(249, 255, 77, 0.9);
+  outline-offset: 3px;
+  border-radius: 6px;
+  box-shadow: 0 0 18px rgba(249, 255, 77, 0.24);
+}
+
+@media (max-width: 1500px) {
+  .tutorial-window {
+    left: 18px;
+    right: auto;
+  }
+}

@@ -9,6 +9,9 @@ export type SensingProfile = {
 
 export function sensingProfile(cell: Cell): SensingProfile {
   const sensorBudget = cell.sensorBudget ?? 0.5;
+  if (sensorBudget <= 0) {
+    return { radius: 0, clarity: 0, processing: 0 };
+  }
   const baseRadius = (16 + cell.radius * 3.4 + cell.genome.caution * 16) * (0.72 + sensorBudget * 0.62);
   const atpResolution = clamp(cell.atp / 80, 0.18, 1.25);
   const aminoIntegrity = clamp(cell.aminoAcids / 45, 0.25, 1.15);

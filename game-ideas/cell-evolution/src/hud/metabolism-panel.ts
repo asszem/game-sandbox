@@ -16,6 +16,7 @@ type SensedObjectKind = ResourceKind | 'poison' | 'cell' | 'block';
 export type MetabolicDashboardElements = {
   root: HTMLElement | null;
   sensorAtpCost: HTMLElement | null;
+  sensorRangeValue: HTMLElement | null;
   sensorDetections: HTMLElement | null;
   movementAtpCost: HTMLElement | null;
   metabolismAtpCost: HTMLElement | null;
@@ -122,6 +123,7 @@ function setBasicMetabolismSections(
   state: SimulationState | null,
 ): void {
   setUsage(elements.sensorAtpCost, cell ? -sensorAtpCostPerTick(cell, complexity) : 0);
+  setText(elements.sensorRangeValue, formatValue(cell ? awarenessRadius(cell) : 0));
   setUsage(elements.movementAtpCost, cell ? -movementAtpCostPerTick(cell, complexity) : 0);
   setUsage(elements.metabolismAtpCost, cell ? -glycolysisAtpCostPerTick(cell, complexity, rates?.glycolysis ?? cell.glycolysisRate) : 0);
   setUsage(elements.healthAtpCost, cell ? -upkeepAtpCostPerTick(cell, complexity) : 0);
